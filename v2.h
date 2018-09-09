@@ -1,6 +1,12 @@
 #pragma once
 
 
+struct v2f32_xy
+{
+	float x;
+	float y;
+};
+
 
 // ret a > b
 int v2f32_gt_all (float const * a, float const * b)

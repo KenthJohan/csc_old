@@ -75,6 +75,18 @@ int vf32_lt_all (float const * a, float const * b, size_t n)
 
 
 // Set all element (x) of r to b
+// r := {x | x = ?}
+void vf32_random (float * r, size_t n)
+{
+	for (size_t i = 0; i < n; ++ i)
+	{
+		r [i] = (float)rand () / (float)RAND_MAX;
+		//r [i] = 1.0f;
+	}
+}
+
+
+// Set all element (x) of r to b
 // r := {x | x = b}
 void vf32_set_scalar (float * r, float const b, size_t n)
 {
@@ -83,6 +95,7 @@ void vf32_set_scalar (float * r, float const b, size_t n)
 		r [i] = b;
 	}
 }
+
 
 // r := a * b
 void vf32_mul_scalar (float * r, float const * a, float const b, size_t n)

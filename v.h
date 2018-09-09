@@ -1,5 +1,5 @@
 #pragma once
-
+#include <math.h>
 
 // r := a . b
 float vf32_dot (float const * a, float const * b, size_t n)
@@ -30,6 +30,47 @@ void vf32_sub (float * r, float const * a, float const * b, size_t n)
 	{
 		r [i] = a [i] - b [i];
 	}
+}
+
+
+// r := a < b
+void vf32_lt (float * r, float const * a, float const * b, size_t n)
+{
+	for (size_t i = 0; i < n; ++ i)
+	{
+		r [i] = a [i] < b [i];
+	}
+}
+
+// r := a > b
+void vf32_gt (float * r, float const * a, float const * b, size_t n)
+{
+	for (size_t i = 0; i < n; ++ i)
+	{
+		r [i] = a [i] > b [i];
+	}
+}
+
+
+// ret a > b
+int vf32_gt_all (float const * a, float const * b, size_t n)
+{
+	for (size_t i = 0; i < n; ++ i)
+	{
+		if (a [i] <= b [i]) {return 0;}
+	}
+	return 1;
+}
+
+
+// ret a < b
+int vf32_lt_all (float const * a, float const * b, size_t n)
+{
+	for (size_t i = 0; i < n; ++ i)
+	{
+		if (a [i] <= b [i]) {return 0;}
+	}
+	return 1;
 }
 
 
@@ -126,6 +167,70 @@ int vf32_ray_sphere_intersect
 	vf32_add (q, p, q, 3);
 	
 	return 1;
+}
+
+
+
+
+
+
+
+
+
+
+void vf32_print (FILE * f, float const x [], size_t n, char const * format)
+{
+	fprintf (f, "(");
+	for (size_t i = 0; i < n; ++ i)
+	{
+		fprintf (f, format, x [i]);
+	}
+	fprintf (f, "\b)\n");
+	fflush (f);
+}
+
+
+
+
+
+
+
+
+void vf32_print2 (FILE * f, float const x [], size_t n1, size_t n2, char const * format)
+{
+	for (size_t i = 0; i < n1; ++ i)
+	{
+		vf32_print (f, x + (i*n2), n2, format);
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// r := a - b
+void vf32_sub2 (float * r, float const * a, float const * b, size_t an, size_t bn)
+{
+	for (size_t i = 0; i < an; ++ i)
+	{
+		vf32_sub (r + (i*bn), a + (i*bn), b, bn);
+	}
 }
 
 

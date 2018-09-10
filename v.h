@@ -1,5 +1,7 @@
 #pragma once
+
 #include <math.h>
+#include "global.h"
 
 // r := a . b
 float vf32_dot (float const * a, float const * b, size_t n)

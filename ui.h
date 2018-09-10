@@ -5,6 +5,18 @@
 #include "v.h"
 #include "q.h"
 
+
+void ui_mouse (float x [2], SDL_Window * window, SDL_MouseButtonEvent const * m)
+{
+	int w;
+	int h;
+	SDL_GetWindowSize (window, &w, &h);
+	x [0] = ((float)m->x/(float)w)*2.0f - 1.0f;
+	x [1] = ((float)m->y/(float)w)*2.0f - 1.0f;
+	x [1] *= -1.0;
+}
+
+
 void ui_mouse_quaternion (SDL_MouseMotionEvent const * m, float q1 [4])
 {
 	float z1 [4];

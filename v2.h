@@ -3,8 +3,7 @@
 
 struct v2f32_xy
 {
-	float x;
-	float y;
+	float v [2];
 };
 
 

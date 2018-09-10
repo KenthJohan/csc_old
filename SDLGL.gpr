@@ -1,0 +1,93 @@
+abstract project SDLGL is
+
+	type Target_type is ("Windows_NT", "UNIX");
+	Target : Target_type := external ("OS", "UNIX");
+
+
+	for Source_Files use ();
+
+	case Target is
+	
+	when "UNIX" =>
+		for Source_Dirs use ();
+		
+	when "Windows_NT" =>
+		for Source_Dirs use 
+		(
+			"lib/SDL2-2.0.8/x86_64-w64-mingw32/include",
+			"lib/glew-2.1.0/include"
+		);
+		
+	end case;
+
+
+	package Linker is
+		case Target is
+		
+		when "UNIX" =>
+			for Linker_Options use ("-lSDL2", "-lGL", "-lm");
+			
+		when "Windows_NT" =>
+			for Linker_Options use 
+			(
+				"-Llib/SDL2-2.0.8/x86_64-w64-mingw32/lib",
+				"-lmingw32",
+				"-lSDL2main", 
+				"-lSDL2", 
+				"-mwindows",
+				"-Wl,--no-undefined", 
+				"-lm", 
+				"-ldinput8", 
+				"-ldxguid", 
+				"-ldxerr8", 
+				"-luser32", 
+				"-lgdi32", 
+				"-lwinmm", 
+				"-limm32", 
+				"-lole32", 
+				"-loleaut32", 
+				"-lshell32", 
+				"-lversion", 
+				"-luuid", 
+				"-static-libgcc",
+
+				"-Llib/glew-2.1.0/lib/Release/x64",
+				"-lglew32",
+				"-lopengl32",
+				"-lglu32",
+				
+				"-lm"
+			);
+			--for Driver use "C:/Program Files/mingw-w64/x86_64-7.3.0-posix-seh-rt_v5-rev0/mingw64/bin/gcc";
+			
+		end case;
+	end Linker;
+	
+	
+	package Compiler is
+		for Switches ("C") use 
+		(
+			"-Wno-unused-function",
+			"-Wno-error=unused-function",
+			"-Wno-missing-braces",
+			--"-Wno-missing-field-initializers",
+			--"-Wno-missing-braces", 
+			--"-Wno-error=unused-but-set-variable",
+			--"-Wno-error=unused-parameter",
+			--"-Wno-error=unused-variable",
+			--"-Wno-variadic-macros",
+			--"-std=gnu11", 
+			--"-fdiagnostics-color", 
+			"-Wall", 
+			--"-Wextra", 
+			--"-Wpedantic", 
+			--"-Wshadow", 
+			--"-Werror", 
+			--"-Wshadow", 
+			--"-march=native",
+			""
+		);
+	end Compiler;
+	
+
+end SDLGL;

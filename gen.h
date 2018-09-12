@@ -217,6 +217,27 @@ void gen_mandelbrot_pixmap
 
 
 
+void gen_economic_curve (uint8_t * o, size_t w, size_t h, size_t d)
+{
+	memset (o, 0, w * h * d);
+	float * f = malloc (w);
+	for (size_t i = 0; i < 100; ++ i)
+	{
+		f [i] = cos ((float)i / 40.0f);
+	}
+	
+	for (size_t ix = 0; ix < w; ++ ix)
+	{
+		size_t iy = f [ix];
+		size_t const i = (d * w * iy) + (d * ix);
+		o [i+0] = 1.0f;
+		o [i+1] = 1.0f;
+		o [i+2] = 1.0f;
+		o [i+3] = 1.0f;
+	}
+	free (f);
+}
+
 
 
 

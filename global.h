@@ -5,8 +5,13 @@
 #define COUNTOF(x) (sizeof(x) / sizeof(*(x)))
 
 //TODO add CROP
+#ifndef MIN
 #define MIN(a, b) (((a)<(b))?(a):(b))
+#endif
+
+#ifndef MAX
 #define MAX(a, b) (((a)>(b))?(a):(b))
+#endif
 
 //typeof is a GNU extension
 #define SWAP(x, y) do { typeof(x) SWAP = x; x = y; y = SWAP; } while (0)

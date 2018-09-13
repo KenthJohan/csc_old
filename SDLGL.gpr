@@ -14,8 +14,8 @@ abstract project SDLGL is
 	when "Windows_NT" =>
 		for Source_Dirs use 
 		(
-			"lib/SDL2-2.0.8/x86_64-w64-mingw32/include",
-			"lib/glew-2.1.0/include"
+			"C:/lib/SDL2-2.0.8/x86_64-w64-mingw32/include",
+			"C:/lib/glew-2.1.0/include"
 		);
 		
 	end case;
@@ -30,7 +30,7 @@ abstract project SDLGL is
 		when "Windows_NT" =>
 			for Linker_Options use 
 			(
-				"-Llib/SDL2-2.0.8/x86_64-w64-mingw32/lib",
+				"-LC:/lib/SDL2-2.0.8/x86_64-w64-mingw32/lib",
 				"-lmingw32",
 				"-lSDL2main", 
 				"-lSDL2", 
@@ -51,8 +51,8 @@ abstract project SDLGL is
 				"-luuid", 
 				"-static-libgcc",
 
-				"-Llib/glew-2.1.0/lib/Release/x64",
-				"-lglew32",
+				"-LC:/lib/glew-2.1.0/lib/Release/x64",
+				"-lglew32s",
 				"-lopengl32",
 				"-lglu32",
 				
@@ -76,7 +76,7 @@ abstract project SDLGL is
 			--"-Wno-error=unused-parameter",
 			--"-Wno-error=unused-variable",
 			--"-Wno-variadic-macros",
-			--"-std=gnu11", 
+			"-std=gnu99", 
 			--"-fdiagnostics-color", 
 			"-Wall", 
 			--"-Wextra", 

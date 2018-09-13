@@ -2,6 +2,29 @@
 
 #include "v.h"
 
+struct v4f32_xyzw
+{
+	float x;
+	float y;
+	float z;
+	float w;
+};
+
+struct v4f32_xyzw v4f32_xyzw (float x, float y, float z, float w)
+{
+	struct v4f32_xyzw v;
+	v.x = x;
+	v.y = y;
+	v.z = z;
+	v.w = w;
+	return v;
+}
+
+
+void v4f32_cpy (float r [4], float const a [4])
+{
+	vf32_cpy (r, a, 4);
+}
 
 void v4f32_add (float r [4], float const a [4], float const b [4])
 {

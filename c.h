@@ -1,6 +1,25 @@
 #pragma once
 
 
+struct v4f32_RGBA
+{
+	float r;
+	float g;
+	float b;
+	float a;
+};
+
+struct v4f32_RGBA v4f32_RGBA (float r, float g, float b, float a)
+{
+	struct v4f32_RGBA c;
+	c.r = r;
+	c.g = g;
+	c.b = b;
+	c.a = a;
+	return c;
+}
+
+
 void rgb_from_hsv (float rgb [3], float const hsv [3])
 {
 	float H = hsv [0];

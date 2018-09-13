@@ -2,7 +2,7 @@
 
 #include "v.h"
 
-struct v4f32_xyzw
+struct v4f32_XYZW
 {
 	float x;
 	float y;
@@ -10,9 +10,9 @@ struct v4f32_xyzw
 	float w;
 };
 
-struct v4f32_xyzw v4f32_xyzw (float x, float y, float z, float w)
+struct v4f32_XYZW v4f32_XYZW (float x, float y, float z, float w)
 {
-	struct v4f32_xyzw v;
+	struct v4f32_XYZW v;
 	v.x = x;
 	v.y = y;
 	v.z = z;
@@ -45,6 +45,12 @@ void v4f32_set (float r [4], float const b)
 
 
 void v4f32_mul_scalar (float r [4], float const a [4], float const b)
+{
+	vf32_mul_scalar (r, a, b, 4);
+}
+
+
+void v4f32_mus (float r [4], float const a [4], float const b)
 {
 	vf32_mul_scalar (r, a, b, 4);
 }

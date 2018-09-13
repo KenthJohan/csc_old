@@ -1,9 +1,5 @@
 #pragma once
 
-#include <GL/gl.h>
-#include <GL/glext.h>
-#include <GL/glcorearb.h>
-
 #include "vertex.h"
 #include "gbuf.h"
 #include "bufq.h"
@@ -29,27 +25,35 @@ struct GMesh
 };
 
 
+void vao_create_vertex_layout 
+(GLuint program, GLuint vao, GLuint vbo, size_t v8, void * v)
+{
+	GLuint l [2];
+	l [0] = glGetAttribLocation (program, "pos");
+	l [1] = glGetAttribLocation (program, "col");
+	ASSERT_F (l [0] >= 0, "glGetAttribLocation no attribute found.");
+	ASSERT_F (l [1] >= 0, "glGetAttribLocation no attribute found.");
+	glBindVertexArray (vao);
+	glGenBuffers (1, &vbo);
+	glBindBuffer (GL_ARRAY_BUFFER, vbo);
+	glBufferData (GL_ARRAY_BUFFER, v8, v, GL_STATIC_DRAW);
+	glVertexAttribPointer (l [0], 4, GL_FLOAT, GL_FALSE, sizeof (struct Vertex), (void*) offsetof (struct Vertex, pos));
+	glEnableVertexAttribArray (l [0]);
+	glVertexAttribPointer (l [1], 4, GL_FLOAT, GL_FALSE, sizeof (struct Vertex), (void*) offsetof (struct Vertex, col));
+	glEnableVertexAttribArray (l [1]);
+}
+
+
+
 void gmesh_init (struct GMesh * m, GLuint program)
 {
 	GBUF_LOOP (size_t, i, m)
 	{
 		if (!(m [i].flags & GMESH_INIT)) {continue;}
 		m [i].flags &= ~GMESH_INIT;
-		glCreateVertexArrays (1, &(m [i].vao));
-		GLuint l [2];
-		l [0] = glGetAttribLocation (program, "pos");
-		l [1] = glGetAttribLocation (program, "col");
-		ASSERT_F (l [0] >= 0, "glGetAttribLocation no attribute found.");
-		ASSERT_F (l [1] >= 0, "glGetAttribLocation no attribute found.");
-		glVertexArrayAttribFormat (m [i].vao, l [0], 4, GL_FLOAT, GL_FALSE, (GLuint)offsetof (struct Vertex, pos));
-		glVertexArrayAttribFormat (m [i].vao, l [1], 4, GL_FLOAT, GL_FALSE, (GLuint)offsetof (struct Vertex, col));
-		glVertexArrayAttribBinding (m [i].vao, l [0], 0);
-		glVertexArrayAttribBinding (m [i].vao, l [1], 0);
-		glEnableVertexArrayAttrib (m [i].vao, l [0]);
-		glEnableVertexArrayAttrib (m [i].vao, l [1]);
-		glCreateBuffers (1, &(m [i].vbo));
-		glNamedBufferStorage (m [i].vbo, gbuf_cap8 (m [i].data), m [i].data, GL_DYNAMIC_STORAGE_BIT);
-		glVertexArrayVertexBuffer (m [i].vao, 0, m [i].vbo, 0, sizeof (struct Vertex));
+		glGenVertexArrays (1, &m [i].vao);
+		glGenBuffers (1, &m [i].vbo);
+		vao_create_vertex_layout (program, m [i].vao, m [i].vbo, gbuf_cap8 (m [i].data), m [i].data);
 		TRACE_F ("");
 		GL_CHECK_ERROR;
 	}
@@ -88,7 +92,9 @@ void gmesh_update (struct GMesh * m)
 		GLintptr const offset8 = 0;
 		if (m [i].flags & GMESH_UPDATE) 
 		{
-			glNamedBufferSubData (m [i].vbo, offset8, size8, m [i].data);
+			glBindBuffer (GL_ARRAY_BUFFER, m [i].vbo);
+			glBufferSubData (GL_ARRAY_BUFFER, offset8, size8, m [i].data);
+			//glNamedBufferSubData (m [i].vbo, offset8, size8, m [i].data);
 		}
 		if (m [i].flags & GMESH_UPDATE_ONCE) 
 		{

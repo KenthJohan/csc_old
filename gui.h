@@ -59,7 +59,7 @@ void gui_vertex_layout
 }
 
 
-void setup_texture (GLuint tex, size_t w, size_t h)
+void setup_texture2d (GLuint tex, size_t w, size_t h)
 {
 	//GL_RGBA
 	size_t d = 4;
@@ -77,6 +77,37 @@ void setup_texture (GLuint tex, size_t w, size_t h)
 	glGenerateMipmap (GL_TEXTURE_2D);
 	free (data);
 }
+
+
+void setup_texture3d (GLuint tex, size_t w, size_t h)
+{
+	//GL_RGBA
+	size_t d = 4;
+	glBindTexture (GL_TEXTURE_2D_ARRAY, tex);
+	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	uint8_t * data = malloc (w * h * d * 2);
+	//gen_pixmap_sample (data, w, h, d);
+	uint8_t pallete [100 * 4];
+	gen_mandelbrot_pallete (pallete, 100, 4);
+	gen_mandelbrot_pixmap (data, pallete, w, h, d, 1000);
+	glTexImage3D
+	(
+		GL_TEXTURE_2D_ARRAY,
+		0,                // level
+		GL_RGBA8,         // Internal format
+		w, h, 2, // width,height,depth
+		0,                // border?
+		GL_RGBA,          // format
+		GL_UNSIGNED_BYTE, // type
+		data
+	);
+	glGenerateMipmap (GL_TEXTURE_2D_ARRAY);
+	free (data);
+}
+
 
 
 
@@ -233,7 +264,7 @@ void gui_sync (struct GUI * g)
 }
 
 
-void gui_draw (struct GUI * g, GLint uniform_color)
+void gui_draw (struct GUI * g, GLint uniform)
 {
 	//Number of rectangles (g->n).
 	size_t const n = g->n;
@@ -249,10 +280,13 @@ void gui_draw (struct GUI * g, GLint uniform_color)
 	{
 		if (o [i].flags & GUI_COLOR1)
 		{
-			glUniform4f (uniform_color, 1.0, 0.0, 0.0, 0.0);
+			glUniform1i (uniform, 1);
+			//glUniform4f (uniform, 1.0, 1.0, 1.0, 1.0);
 		}
+		else
 		{
-			glUniform4f (uniform_color, 0.0, 0.0, 0.0, 0.0);
+			glUniform1i (uniform, 0);
+			//glUniform4f (uniform, 0.0, 0.0, 0.0, 0.0);
 		}
 		size_t m = i * 6 * sizeof (unsigned int);
 		glDrawElements (GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)m);

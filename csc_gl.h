@@ -4,6 +4,7 @@
 
 struct Vertex_Format
 {
+	GLuint vao;
 	//The generic vertex attribute array being described.
 	GLuint location;
 	//The number of values per vertex that are stored in the array.
@@ -14,6 +15,11 @@ struct Vertex_Format
 	GLboolean normalized;
 	//The distance between elements within the buffer.
 	GLuint offset;
+	
+	//GL_ARRAY_BUFFER
+	//GL_ELEMENT_ARRAY_BUFFER
+	GLenum target;
+	GLuint buffer;
 };
 
 struct Vertex_Format Vertex_Format 

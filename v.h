@@ -100,6 +100,16 @@ void vf32_set_scalar (float * r, float const b, size_t n)
 
 
 // r := a * b
+void vf32_mul (float r [], float const a [], float const b [], size_t n)
+{
+	for (size_t i = 0; i < n; ++ i)
+	{
+		r [i] = a [i] * b [i];
+	}
+}
+
+
+// r := a * b
 void vf32_mul_scalar (float * r, float const * a, float const b, size_t n)
 {
 	for (size_t i = 0; i < n; ++ i)

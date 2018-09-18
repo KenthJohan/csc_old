@@ -17,10 +17,10 @@ buf.c = cap; \
 buf.n = 0; \
 buf.p = (type *) calloc (buf.c, sizeof (type))
 
-#define BUFV_PUSH(buf, count) \
-((buf.n + count - 1) < buf.c) ? (buf.p + buf.n) : NULL; \
-/*ASSERT ((buf.i + count) < buf.n);*/ \
-buf.n += count
+#define BUFV_PUSH(buf, count, x) \
+if ((buf.n + count - 1) < buf.c) {x = buf.p + buf.n; buf.n ++;} \
+else {x = NULL;}
+/*ASSERT ((buf.i + count) < buf.n);*/
 
 #define BUFV_FULL(buf) (buf.n >= buf.c)
 

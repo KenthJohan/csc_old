@@ -1,7 +1,17 @@
 #pragma once
 
-#include <math.h>
 #include "global.h"
+
+//sqrt
+#include <math.h>
+
+//rand
+#include <stdlib.h>
+
+//FLT_MAX
+#include <float.h>
+
+
 
 // r := a . b
 float vf32_dot (float const * a, float const * b, size_t n)

@@ -69,6 +69,7 @@ abstract project SDLGL is
 		(
 			"-Wno-unused-function",
 			"-Wno-error=unused-function",
+			"-Wno-error=unused-variable",
 			"-Wno-missing-braces",
 			--"-Wno-missing-field-initializers",
 			--"-Wno-missing-braces", 
@@ -77,12 +78,12 @@ abstract project SDLGL is
 			--"-Wno-error=unused-variable",
 			--"-Wno-variadic-macros",
 			"-std=gnu99", 
-			--"-fdiagnostics-color", 
+			"-fdiagnostics-color", 
 			"-Wall", 
 			--"-Wextra", 
 			--"-Wpedantic", 
 			--"-Wshadow", 
-			--"-Werror", 
+			"-Werror", 
 			--"-Wshadow", 
 			--"-march=native",
 			""

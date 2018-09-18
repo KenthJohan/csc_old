@@ -1,26 +1,35 @@
 #pragma once
 
-
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 
 #define BUFV(type, name) \
 { \
 	type * p; \
+	size_t c; \
 	size_t n; \
-	size_t i; \
 } name
 
-#define BUFV_INIT(type, buf, count) \
-buf.n = count; \
-buf.i = 0; \
-buf.p = (type *) calloc (buf.n, sizeof (type))
+#define BUFV_INIT(type, buf, cap) \
+buf.c = cap; \
+buf.n = 0; \
+buf.p = (type *) calloc (buf.c, sizeof (type))
 
 #define BUFV_PUSH(buf, count) \
-(buf.p + buf.i); \
+((buf.n + count - 1) < buf.c) ? (buf.p + buf.n) : NULL; \
 /*ASSERT ((buf.i + count) < buf.n);*/ \
-buf.i += count
+buf.n += count
 
-#define BUFV_FULL(buf) ((buf.i+1) >= buf.n)
+#define BUFV_FULL(buf) (buf.n >= buf.c)
 
+/*
+#define BUFV_FREE(buf) \
+free (buf.p); \
+buf.p = NULL; \
+buf.c = 0; \
+buf.n = 0
+*/
 
 #define BUFV_LOOP(buf, type, e) for (type (e) = buf.p; (e) < (buf.p + buf.n); ++ e)

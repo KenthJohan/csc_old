@@ -41,3 +41,16 @@ void v2f32_sub (float r [2], float const a [2], float const b [2])
 	vf32_sub (r, a, b, 2);
 }
 
+
+float v2f32_norm2 (float const a [2])
+{
+	return vf32_dot (a, a, 2);
+}
+
+
+float v2f32_dist2 (float const a [2], float const b [2])
+{
+	float d [2];
+	v2f32_sub (d, a, b);
+	return v2f32_norm2 (d);
+}

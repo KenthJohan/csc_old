@@ -46,3 +46,14 @@ void rgb_from_hsv (float rgb [3], float const hsv [3])
     else if (5.0f <= H && H < 6.0f) {rgb [0] = V; rgb [1] = P; rgb [2] = Q;}
     else {rgb [0] = 0.0f; rgb [1] = 0.0f; rgb [2] = 0.0f;}
 }
+
+
+void rgb_random (float c [3], unsigned int seed)
+{
+	//TRACE_F ("%li", seed);
+	srand (seed);
+	//TRACE_F ("%li %f %f %f", seed, rand (), rand (), rand ());
+	c [0] = (float)rand () / (float)RAND_MAX;
+	c [1] = (float)rand () / (float)RAND_MAX;
+	c [2] = (float)rand () / (float)RAND_MAX;
+}

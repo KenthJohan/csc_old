@@ -95,7 +95,8 @@ void glva_update (struct GLVA * va)
 		GLintptr const offset8 = m [i].first * sizeof (struct Vertex);
 		GLsizeiptr const size8 = m [i].count * sizeof (struct Vertex);
 		GLvoid * data = m [i].data;
-		TRACE_F ("mesh %i : glBufferSubData : %i B", i, size8);
+		typedef long long int lli;
+		TRACE_F ("mesh %lli : glBufferSubData : Offset : %10lli B. Size : %10lli B.", (lli)i, (lli)offset8, (lli)size8);
 		glBufferSubData (target, offset8, size8, data);
 	}
 }

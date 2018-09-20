@@ -45,6 +45,8 @@ struct Cam
 	//e.t. near_xyz1 := PVinv * mouse_xy01
 	//e.t. far_xyz1 := PVinv * mouse_xy11
 	float PVinv [16];
+	
+	float PVM [16];
 };
 
 
@@ -107,15 +109,15 @@ void cam_update (struct Cam * cam, float const p1 [4], float const q1 [4])
 }
 
 
-void cam_mvp_update (struct Cam * cam, float M [16], GLuint uniform)
+void cam_mvp_update (struct Cam * cam, float M [16])
 {
-	float PVM [16]; // ProjecitonMatrix * ViewMatrix * ModelMatrix
+	float * PVM = cam->PVM;
+	//float PVM [16]; // ProjecitonMatrix * ViewMatrix * ModelMatrix
 	float * PV = cam->PV;
 	// Apply model matrix to projection*view matrix
 	// PVM := PV * M;
 	m4f32_mul (PVM, PV, M, M_COLMAJ);
 	//m4f32_print (PVM, M_COLMAJ, stdout);
-	glUniformMatrix4fv (uniform, 1, GL_FALSE, PVM);
 }
 
 

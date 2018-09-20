@@ -44,7 +44,7 @@ void print_time (FILE * f, time_t s)
 
 
 
-char * app_malloc_file (char * filename)
+char * app_malloc_file (char const * filename)
 {
 	ASSERT_F (filename != NULL, "filename is NULL%s", "");
 	FILE * file = fopen (filename, "rb");

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "global.h"
 #include "debug.h"
 #include <inttypes.h>
 #include <time.h>
@@ -106,5 +107,59 @@ int str_contain (char const * haystack, size_t len, char const * needles)
 		if (h[0] == n[0]) {return 1;}
 	}
 }
+
+
+	
+struct str_ab
+{
+	char const * a;
+	char const * b;
+};
+
+
+/*
+	struct str_ab s;
+	s.a = "src/project_grpagica/shader.glvs;src/project_graphica/shader.glfs";
+	char buf [100];
+	while (1)
+	{
+		str_cpytok (100, buf, &s, ";");
+		printf ("%s\n", buf);
+		if (s.b == NULL) {break;}
+	}
+	return 0;
+*/
+
+// char const * s.a : input_string.
+// char const * s.b : null when no more token is found.
+// buf              : each call will copy the next token to this.
+void str_cpytok (size_t n, char buf [], struct str_ab * s, char const * delimeters)
+{
+	//Find the first occurrence of the substring (delimeters):
+	s->b = strstr (s->a, delimeters);
+	//No delimeters found:
+	if (s->b == NULL) 
+	{
+		//Copy the whole string:
+		strncpy (buf, s->a, n);
+		//The user can check if (s->b) = NULL to know when there is no more tokens.
+		return;
+	}
+	//Delimeters found:
+	//Copy the token which starts from (a) to delimeter position (i)
+	//Use MIN as overflow guard.
+	int i = MIN ((s->b) - (s->a), n-1);
+	buf [i] = 0;
+	strncpy (buf, s->a, i);
+	//Goto next token:
+	s->a = s->b + 1;
+}
+
+
+
+
+
+
+
 
 

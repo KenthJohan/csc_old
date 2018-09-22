@@ -21,7 +21,7 @@ buf.c = cap; \
 buf.n = 0; \
 buf.p = (type *) calloc (buf.c, sizeof (type))
 
-//Allocate a clear buffeer all elements is set to zero.
+//Allocate (cap) amount of elements where every element is cleared.
 #define BUFV_CALLOC(type, buf, cap) \
 buf.c = cap; \
 buf.n = 0; \

@@ -25,6 +25,8 @@ GLuint gl_shader_fileext (char const * filename)
 
 
 //Load a shader from a file by filename.
+//Returns a compiled shader on success.
+//Returns a non compiled shader on error.
 GLuint gl_shader_from_filename (char const * filename, GLenum kind)
 {
 	ASSERT (kind != 0);
@@ -91,6 +93,26 @@ char const * gl_str_boolean (GLint value)
 }
 
 
+struct GL_Shader_State
+{
+	GLint type;
+	GLint delete_status;
+	GLint compile_status;
+	GLint infolog_length;
+	GLint source_length;
+};
+
+
+void gl_shader_get_state (GLuint shader, struct GL_Shader_State * s)
+{
+	glGetShaderiv (shader, GL_SHADER_TYPE, &s->type);
+	glGetShaderiv (shader, GL_DELETE_STATUS, &s->delete_status);
+	glGetShaderiv (shader, GL_COMPILE_STATUS, &s->compile_status);
+	glGetShaderiv (shader, GL_INFO_LOG_LENGTH, &s->infolog_length);
+	glGetShaderiv (shader, GL_SHADER_SOURCE_LENGTH, &s->source_length);
+}
+
+
 //Show extra information about a GL program.
 void gl_program_debug (GLuint program)
 {
@@ -98,24 +120,23 @@ void gl_program_debug (GLuint program)
 	GLuint shaders [10];
 	glGetAttachedShaders (program, count, &count, shaders);
 	fprintf (stderr, "Program (%i)\n", (int) program);
-	fprintf (stderr, "\u251C %10s %20s %10s %10s %10s %10s\n", "ID", "TYPE", "DELETE", "COMPILE", "LOGLEN", "SRCLEN");
+	fprintf (stderr, "\u251C%10s %20s %10s %10s %10s %10s\n", "OBJ", "TYPE", "DELETE", "COMPILE", "LOGLEN", "SRCLEN");
 	for (GLsizei i = 0; i < count; ++ i)
 	{
-		GLint type;
-		GLint del;
-		GLint comp;
-		GLint loglen;
-		GLint srclen;
-		glGetShaderiv (shaders [i], GL_SHADER_TYPE, &type);
-		glGetShaderiv (shaders [i], GL_DELETE_STATUS, &del);
-		glGetShaderiv (shaders [i], GL_COMPILE_STATUS, &comp);
-		glGetShaderiv (shaders [i], GL_INFO_LOG_LENGTH, &loglen);
-		glGetShaderiv (shaders [i], GL_SHADER_SOURCE_LENGTH, &srclen);
-		GLuint s = shaders [i];
-		char const * typestr = gl_str_shader_type (type);
-		char const * delstr = gl_str_boolean (del);
-		char const * compstr = gl_str_boolean (comp);
-		fprintf (stderr, "\u251C %10i %20s %10s %10s %10i %10i\n", (int) s, typestr, delstr, compstr, (int) loglen, (int) srclen);
+		struct GL_Shader_State s;
+		GLuint o = shaders [i];
+		gl_shader_get_state (o, &s);
+		char const * typestr = gl_str_shader_type (s.type);
+		char const * delstr = gl_str_boolean (s.delete_status);
+		char const * compstr = gl_str_boolean (s.compile_status);
+		fprintf (stderr, "\u251C");
+		fprintf (stderr, "%10i ", (int) o);
+		fprintf (stderr, "%20s " , typestr);
+		fprintf (stderr, "%10s ", delstr);
+		fprintf (stderr, "%10s ", compstr);
+		fprintf (stderr, "%10i ", (int) s.infolog_length);
+		fprintf (stderr, "%10i ", (int) s.source_length);
+		fprintf (stderr, "\n");
 	}
 	fflush (stderr);
 }

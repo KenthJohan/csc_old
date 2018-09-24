@@ -6,6 +6,22 @@
 #include "debug_gl.h"
 
 
+void gl_program_free_shaders (GLuint program)
+{
+	ASSERT (glIsProgram (program));
+
+	GLsizei n = 10;
+	GLuint shaders [10];
+	glGetAttachedShaders (program, n, &n, shaders);
+	
+	for (size_t i = 0; i < n; ++ i)
+	{
+		glDetachShader (program, shaders [i]);
+		glDeleteShader (shaders [i]);
+	}
+}
+
+
 //Get the shader type depending on filename extension.
 //These extensions are not standard but it makes it easy differentiate between different shader types.
 GLuint gl_shader_fileext (char const * filename)
@@ -47,6 +63,7 @@ GLuint gl_shader_from_filename (char const * filename, GLenum kind)
 GLuint gl_program_from_filename (char const * filename)
 {
 	GLuint program = glCreateProgram ();
+	GL_CHECK_ERROR;
 	ASSERT (program > 0);
 	struct str_ab s;
 	s.a = filename;
@@ -57,6 +74,7 @@ GLuint gl_program_from_filename (char const * filename)
 		TRACE_F ("Token: %s", token);
 		GLuint shader = gl_shader_from_filename (token, gl_shader_fileext (token));
 		glAttachShader (program, shader);
+		GL_CHECK_ERROR;
 		if (s.b == NULL) {break;}
 	}
 	glLinkProgram (program);
@@ -93,6 +111,70 @@ char const * gl_str_boolean (GLint value)
 }
 
 
+GLint gl_is_linked (GLuint program)
+{
+	GLint status;
+	glGetProgramiv (program, GL_LINK_STATUS, &status);
+	return status;
+}
+
+
+GLint gl_is_compiled (GLuint shader)
+{
+	GLint status;
+	glGetShaderiv (shader, GL_COMPILE_STATUS, &status);
+	return status;
+}
+
+
+struct GL_Program_State
+{
+	GLint delete_status;
+	GLint link_status;
+	GLint validate_status;
+	GLint infolog_length;
+	GLint attached_shaders;
+	GLint active_atomic_counter_buffers;
+	GLint active_attributes;
+	GLint active_attribute_max_length;
+	GLint active_uniforms;
+	GLint active_uniform_max_length;
+	GLint binary_length;
+	GLint compute_work_group_size;
+	GLint transform_feedback_buffer_mode;
+	GLint transform_feedback_varyings;
+	GLint transform_feedback_varying_max_length;
+	GLint geometry_vertices_out;
+	GLint geometry_input_type;
+	GLint geometry_output_type;
+};
+
+
+void gl_program_get_state (GLuint program, struct GL_Program_State * s)
+{
+	ASSERT (glIsProgram (program));
+	glGetProgramiv (program,                         GL_DELETE_STATUS, &s->delete_status);GL_CHECK_ERROR;
+	glGetProgramiv (program,                           GL_LINK_STATUS, &s->link_status);GL_CHECK_ERROR;
+	glGetProgramiv (program,                       GL_VALIDATE_STATUS, &s->validate_status);GL_CHECK_ERROR;
+	glGetProgramiv (program,                       GL_INFO_LOG_LENGTH, &s->infolog_length);GL_CHECK_ERROR;
+	glGetProgramiv (program,                      GL_ATTACHED_SHADERS, &s->attached_shaders);GL_CHECK_ERROR;
+	glGetProgramiv (program,         GL_ACTIVE_ATOMIC_COUNTER_BUFFERS, &s->active_atomic_counter_buffers);GL_CHECK_ERROR;
+	glGetProgramiv (program,                     GL_ACTIVE_ATTRIBUTES, &s->active_attributes);GL_CHECK_ERROR;
+	glGetProgramiv (program,           GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, &s->active_attribute_max_length);GL_CHECK_ERROR;
+	glGetProgramiv (program,                       GL_ACTIVE_UNIFORMS, &s->active_uniforms);GL_CHECK_ERROR;
+	glGetProgramiv (program,             GL_ACTIVE_UNIFORM_MAX_LENGTH, &s->active_uniform_max_length);GL_CHECK_ERROR;
+	glGetProgramiv (program,                 GL_PROGRAM_BINARY_LENGTH, &s->binary_length);GL_CHECK_ERROR;
+	//glGetProgramiv (program,               GL_COMPUTE_WORK_GROUP_SIZE, &s->compute_work_group_size);GL_CHECK_ERROR;
+	glGetProgramiv (program,        GL_TRANSFORM_FEEDBACK_BUFFER_MODE, &s->transform_feedback_buffer_mode);GL_CHECK_ERROR;
+	glGetProgramiv (program,           GL_TRANSFORM_FEEDBACK_VARYINGS, &s->transform_feedback_varyings);GL_CHECK_ERROR;
+	glGetProgramiv (program, GL_TRANSFORM_FEEDBACK_VARYING_MAX_LENGTH, &s->transform_feedback_varying_max_length);GL_CHECK_ERROR;
+	//glGetProgramiv (program,                 GL_GEOMETRY_VERTICES_OUT, &s->geometry_vertices_out);GL_CHECK_ERROR;
+	//glGetProgramiv (program,                   GL_GEOMETRY_INPUT_TYPE, &s->geometry_input_type);GL_CHECK_ERROR;
+	//glGetProgramiv (program,                  GL_GEOMETRY_OUTPUT_TYPE, &s->geometry_output_type);GL_CHECK_ERROR;
+
+}
+
+
 struct GL_Shader_State
 {
 	GLint type;
@@ -113,31 +195,92 @@ void gl_shader_get_state (GLuint shader, struct GL_Shader_State * s)
 }
 
 
-//Show extra information about a GL program.
-void gl_program_debug (GLuint program)
+void gl_print_bool (FILE * f, int n, GLint x, char const * c0, char const * c1)
 {
-	GLsizei count = 10;
-	GLuint shaders [10];
-	glGetAttachedShaders (program, count, &count, shaders);
-	fprintf (stderr, "Program (%i)\n", (int) program);
-	fprintf (stderr, "\u251C%10s %20s %10s %10s %10s %10s\n", "OBJ", "TYPE", "DELETE", "COMPILE", "LOGLEN", "SRCLEN");
-	for (GLsizei i = 0; i < count; ++ i)
+	char const * c [2];
+	c [0] = c0;
+	c [1] = c1;
+	ASSERT (x == 0 || x == 1);
+	fprintf (f, "%s%*s " TCOL_RESET, c [x], n, gl_str_boolean (x));
+}
+
+#define GL_TCOL_SUCCESS TCOL (TCOL_NORMAL, TCOL_GREEN, TCOL_DEFAULT)
+#define GL_TCOL_ERROR TCOL (TCOL_NORMAL, TCOL_RED, TCOL_DEFAULT)
+
+
+
+void gl_shader_debug (size_t n, GLuint shaders [])
+{
+	fprintf (stderr, "\u251C");
+	fprintf (stderr, "%8s %20s %10s %10s %10s %10s\n", "SHADER", "TYPE", "DELETE", "COMPILE", "LOGLEN", "SRCLEN");
+	for (GLsizei i = 0; i < n; ++ i)
 	{
 		struct GL_Shader_State s;
-		GLuint o = shaders [i];
-		gl_shader_get_state (o, &s);
-		char const * typestr = gl_str_shader_type (s.type);
-		char const * delstr = gl_str_boolean (s.delete_status);
-		char const * compstr = gl_str_boolean (s.compile_status);
+		gl_shader_get_state (shaders [i], &s);
 		fprintf (stderr, "\u251C");
-		fprintf (stderr, "%10i ", (int) o);
-		fprintf (stderr, "%20s " , typestr);
-		fprintf (stderr, "%10s ", delstr);
-		fprintf (stderr, "%10s ", compstr);
+		fprintf (stderr, "%8i ", (int) shaders [i]);
+		fprintf (stderr, "%20s " , gl_str_shader_type (s.type));
+		gl_print_bool (stderr, 10, s.delete_status, TCOL_RESET, TCOL_RESET);
+		gl_print_bool (stderr, 10, s.compile_status, GL_TCOL_ERROR, GL_TCOL_SUCCESS);
 		fprintf (stderr, "%10i ", (int) s.infolog_length);
 		fprintf (stderr, "%10i ", (int) s.source_length);
 		fprintf (stderr, "\n");
 	}
 	fflush (stderr);
 }
+
+
+void gl_shader_debug1 (GLuint program)
+{
+	GLsizei n = 10;
+	GLuint shaders [10];
+	glGetAttachedShaders (program, n, &n, shaders);
+		
+	fprintf (stderr, "\u250C");
+	fprintf (stderr, "%8s %8s %20s %10s %10s %10s %10s\n", "PROGRAM", "SHADER", "TYPE", "DELETE", "COMPILE", "LOGLEN", "SRCLEN");
+	for (GLsizei i = 0; i < n; ++ i)
+	{
+		struct GL_Shader_State s;
+		gl_shader_get_state (shaders [i], &s);
+		fprintf (stderr, "\u251C");
+		fprintf (stderr, "%8i ", (int) program);
+		fprintf (stderr, "%8i ", (int) shaders [i]);
+		fprintf (stderr, "%20s " , gl_str_shader_type (s.type));
+		gl_print_bool (stderr, 10, s.delete_status, TCOL_RESET, TCOL_RESET);
+		gl_print_bool (stderr, 10, s.compile_status, GL_TCOL_ERROR, GL_TCOL_SUCCESS);
+		fprintf (stderr, "%10i ", (int) s.infolog_length);
+		fprintf (stderr, "%10i ", (int) s.source_length);
+		fprintf (stderr, "\n");
+	}
+	fflush (stderr);
+}
+
+
+
+//Show extra information about a GL program.
+void gl_program_debug (size_t n, GLuint programs [])
+{
+	fprintf (stderr, "\u250C");
+	fprintf (stderr, "%8s %10s %10s\n", "PROGRAM", "DEL", "LINK");
+	for (size_t i = 0; i < n; ++ i)
+	{
+		if (!glIsProgram (programs [i])) {continue;}
+		struct GL_Program_State s;
+		gl_program_get_state (programs [i], &s);
+		fprintf (stderr, "\u251C");
+		fprintf (stderr, "%8i ", (int) programs [i]);
+		gl_print_bool (stderr, 10, s.delete_status, TCOL_RESET, TCOL_RESET);
+		gl_print_bool (stderr, 10, s.link_status, GL_TCOL_ERROR, GL_TCOL_SUCCESS);
+		fprintf (stderr, "\n");
+	}
+	fprintf (stderr, "\u2514\n");
+	
+	for (size_t i = 0; i < n; ++ i)
+	{
+		if (!glIsProgram (programs [i])) {continue;}
+		gl_shader_debug1 (programs [i]);
+		fprintf (stderr, "\u2514\n");
+	}
+}
+
 

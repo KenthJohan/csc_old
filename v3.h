@@ -67,6 +67,12 @@ void v3f32_normalize (float r [3], float const a [3])
 }
 
 
+float v3f32_dot (float const a [3], float const b [3])
+{
+	return vf32_dot (a, b, 3);
+}
+
+
 float v3f32_norm2 (float const a [3])
 {
 	return vf32_dot (a, a, 3);

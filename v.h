@@ -47,6 +47,16 @@ void vf32_sub (float * r, float const * a, float const * b, size_t n)
 }
 
 
+// r := a - b
+void vf32_subs (float * r, float const * a, float const b, size_t n)
+{
+	for (size_t i = 0; i < n; ++ i)
+	{
+		r [i] = a [i] - b;
+	}
+}
+
+
 // r := a < b
 void vf32_lt (float * r, float const * a, float const * b, size_t n)
 {
@@ -103,6 +113,17 @@ void vf32_random (float * r, size_t n)
 // Set all element (x) of r to b
 // r := {x | x = b}
 void vf32_set_scalar (float * r, float const b, size_t n)
+{
+	for (size_t i = 0; i < n; ++ i)
+	{
+		r [i] = b;
+	}
+}
+
+
+// Set all element (x) of r to b
+// r := {x | x = b}
+void vf32_sets (float * r, float const b, size_t n)
 {
 	for (size_t i = 0; i < n; ++ i)
 	{

@@ -58,6 +58,9 @@ abstract project SDLGL is
 				
 				"-lm"
 			);
+			
+			--"-msse2", "-msse3", "-msse4", "-msse4.1"
+			
 			--for Driver use "C:/Program Files/mingw-w64/x86_64-7.3.0-posix-seh-rt_v5-rev0/mingw64/bin/gcc";
 			
 		end case;
@@ -86,7 +89,7 @@ abstract project SDLGL is
 			"-Werror", 
 			--"-Wshadow", 
 			--"-march=native",
-			""
+			"-march=native"
 		);
 	end Compiler;
 	

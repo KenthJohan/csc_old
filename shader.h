@@ -14,7 +14,7 @@ void gl_program_free_shaders (GLuint program)
 	GLuint shaders [10];
 	glGetAttachedShaders (program, n, &n, shaders);
 	
-	for (size_t i = 0; i < n; ++ i)
+	for (GLsizei i = 0; i < n; ++ i)
 	{
 		glDetachShader (program, shaders [i]);
 		glDeleteShader (shaders [i]);
@@ -213,7 +213,7 @@ void gl_shader_debug (size_t n, GLuint shaders [])
 {
 	fprintf (stderr, "\u251C");
 	fprintf (stderr, "%8s %20s %10s %10s %10s %10s\n", "SHADER", "TYPE", "DELETE", "COMPILE", "LOGLEN", "SRCLEN");
-	for (GLsizei i = 0; i < n; ++ i)
+	for (size_t i = 0; i < n; ++ i)
 	{
 		struct GL_Shader_State s;
 		gl_shader_get_state (shaders [i], &s);

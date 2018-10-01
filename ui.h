@@ -13,7 +13,7 @@ void ui_mouse (float x [2], SDL_Window * window, SDL_MouseButtonEvent const * m)
 	SDL_GetWindowSize (window, &w, &h);
 	x [0] = ((float)m->x/(float)w)*2.0f - 1.0f;
 	x [1] = ((float)m->y/(float)w)*2.0f - 1.0f;
-	x [1] *= -1.0;
+	x [1] *= -1.0f;
 }
 
 

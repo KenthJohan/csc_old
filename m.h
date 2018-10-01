@@ -27,7 +27,7 @@ void mf32_print (float * M, size_t rn, size_t cn, uint8_t flags, FILE * f)
 	{
 		for (size_t c = 0; c < cn; ++ c)
 		{
-			fprintf (f, "%f ", M [m_index (r, c, rn, cn, flags)]);
+			fprintf (f, "%f ", (double) M [m_index (r, c, rn, cn, flags)]);
 		}
 		fprintf (f, "\n");
 	}

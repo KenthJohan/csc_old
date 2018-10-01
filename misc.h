@@ -148,7 +148,7 @@ void str_cpytok (size_t n, char buf [], struct str_ab * s, char const * delimete
 	//Delimeters found:
 	//Copy the token which starts from (a) to delimeter position (i)
 	//Use MIN as overflow guard.
-	int i = MIN ((s->b) - (s->a), n-1);
+	int i = MIN ((s->b) - (s->a), (int)n-1);
 	buf [i] = 0;
 	strncpy (buf, s->a, i);
 	//Goto next token:

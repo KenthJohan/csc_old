@@ -32,7 +32,7 @@ void rgb_from_hsv (float rgb [3], float const hsv [3])
 
 	if (H == 360.0f) {H = 0;}
 	else             {H /= 60.0f;}
-    fract = H - floor (H);
+    fract = H - floorf (H);
     P = V * (1.0f - S);
     Q = V * (1.0f - S * fract);
     T = V * (1.0f - S * (1.0f - fract));

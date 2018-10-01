@@ -116,7 +116,7 @@ void m4f32_frustum
 void m4f32_perspective 
 (float M [16], float fov1, float aspect1, float near1, float far1, uint8_t flags)
 {
-	float tangent = tan ((M_PI/180.0f) * (fov1 / 2.0f));
+	float tangent = tanf (((float)M_PI/180.0f) * (fov1 / 2.0f));
 	float height = near1 * tangent;
 	float width = height * aspect1;
 	m4f32_frustum (M, -width, width, -height, height, near1, far1, flags);
@@ -267,7 +267,7 @@ float m4f32_glu_inv (float R [16], float const M [16])
 
 	if (det == 0) {return det;}
 
-	det = 1.0 / det;
+	det = 1.0f / det;
 
 	for (size_t i = 0; i < 16; ++ i)
 	{

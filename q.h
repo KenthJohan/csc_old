@@ -118,7 +118,7 @@ void qf32_print (float q [4], FILE * f)
 {
 	for (size_t i = 0; i < 4; ++ i)
 	{
-		fprintf (f, "%f ", q [i]);
+		fprintf (f, "%f ", (double) q [i]);
 	}
 	fprintf (f, "\n");
 }

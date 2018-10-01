@@ -241,7 +241,10 @@ void vf32_print (FILE * f, float const x [], size_t n, char const * format)
 	fprintf (f, "(");
 	for (size_t i = 0; i < n; ++ i)
 	{
-		fprintf (f, format, x [i]);
+		#pragma GCC diagnostic push
+		#pragma GCC diagnostic ignored "-Wformat-nonliteral"
+		fprintf (f, format, (double) x [i]);
+		#pragma GCC diagnostic pop
 	}
 	fprintf (f, "\b)\n");
 	fflush (f);

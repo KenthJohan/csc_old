@@ -35,6 +35,7 @@ GLuint gl_shader_fileext (char const * filename)
 	{
 		return GL_FRAGMENT_SHADER;
 	}
+	ASSERT_F (0, "%s", filename);
 	return 0;
 }
 
@@ -80,6 +81,15 @@ GLuint gl_program_from_filename (char const * filename)
 	glLinkProgram (program);
 	GL_CHECK_ERROR;
 	return program;
+}
+
+
+void gl_programs_from_filenames (size_t n, GLuint programs [], char const * filenames [])
+{
+	for (size_t i = 0; i < n; ++i)
+	{
+		programs [i] = gl_program_from_filename (filenames [i]);
+	}
 }
 
 

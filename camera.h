@@ -16,7 +16,6 @@ void gl_update_projection (SDL_Window * window, float P [16])
 	int h;
 	SDL_GetWindowSize (window, &w, &h);
 	m4f32_perspective (P, 45.0f, (float)w/(float)h, 0.1f, 100.0f, M_COLMAJ);
-	glViewport (0, 0, w, h);
 }
 
 

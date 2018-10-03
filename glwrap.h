@@ -3,7 +3,7 @@
 #include "debug.h"
 #include "debug_gl.h"
 
-void csc_glVertexAttribPointer 
+void glVertexAttribPointer_byname 
 (
 	GLuint program,
 	char const * name,
@@ -15,7 +15,7 @@ void csc_glVertexAttribPointer
 )
 {
 	GLint loc = glGetAttribLocation (program, name);
-	ASSERT_F (loc >= 0, "glGetAttribLocation (%i, %s) no attribute found", (int) program, "name");
+	ASSERT_F (loc >= 0, "glGetAttribLocation (%i, %s) no attribute found", (int) program, name);
 	glVertexAttribPointer (loc, (GLint) dim, type, normalized, (GLsizei) stride, (const GLvoid *) (uintptr_t) offset);
 	glEnableVertexAttribArray (loc);
 }

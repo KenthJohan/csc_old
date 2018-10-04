@@ -19,3 +19,22 @@ void glVertexAttribPointer_byname
 	glVertexAttribPointer (loc, (GLint) dim, type, normalized, (GLsizei) stride, (const GLvoid *) (uintptr_t) offset);
 	glEnableVertexAttribArray (loc);
 }
+
+
+
+
+char const * str_from_gl_primitive (GLenum primitive)
+{
+	switch (primitive)
+	{
+		case GL_POINTS:
+		return "GL_POINTS";
+		case GL_LINES:
+		return "GL_LINES";
+		case GL_TRIANGLES:
+		return "GL_TRIANGLES";
+		case GL_LINE_STRIP:
+		return "GL_LINE_STRIP";
+	}
+	return "";
+}

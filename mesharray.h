@@ -31,7 +31,7 @@ void mesharray_init (struct Mesharray * m, size_t cap)
 {
 	m->cap = cap;
 	m->n = 0;
-	m->meshes = calloc (cap + 1, sizeof (struct Mesh));
+	m->meshes = (struct Mesh *) calloc (cap + 1, sizeof (struct Mesh));
 }
 
 
@@ -111,6 +111,7 @@ void * mesharray_add_glMapBufferRange
 
 void mesharray_add_square (struct Mesharray * m, GLuint vbo)
 {
+	/*
 	float v [] =
 	{
 		 0.5f,  0.5f, 1.0f, 1.0f, // top right
@@ -120,6 +121,17 @@ void mesharray_add_square (struct Mesharray * m, GLuint vbo)
 		 0.5f, -0.5f, 1.0f, 0.0f, // bottom right
 		-0.5f, -0.5f, 0.0f, 0.0f, // bottom left
 		-0.5f,  0.5f, 0.0f, 1.0f  // top left 
+	};
+	*/
+	float v [] =
+	{
+		-1.0f,  1.0f, 0.0f, 0.0f, // top left
+		 1.0f,  1.0f, 0.0f, 1.0f, // top right
+		 1.0f, -1.0f, 1.0f, 1.0f, // bottom right 
+		
+		 1.0f, -1.0f, 1.0f, 1.0f, // bottom right 
+		-1.0f, -1.0f, 1.0f, 0.0f, // bottom left
+		-1.0f,  1.0f, 0.0f, 0.0f, // top left
 	};
 	
 	size_t const dim = 4;
@@ -137,7 +149,7 @@ void mesharray_add_plot (struct Mesharray * m, GLuint vbo, size_t n, float y [],
 	size_t const dim = 4;
 	size_t const vcount = n;
 	GLenum const target = GL_ARRAY_BUFFER;
-	float * v = mesharray_add_glMapBufferRange (m, vbo, vcount, dim, primitive, target);
+	float * v = (float *) mesharray_add_glMapBufferRange (m, vbo, vcount, dim, primitive, target);
 	for (size_t i = 0; i < n; ++ i)
 	{
 		v [i*dim + 0] = ((float)i / ((float)n)) - 0.5f;
@@ -155,7 +167,7 @@ void mesharray_add_line (struct Mesharray * m, GLuint vbo, float x0, float y0, f
 	size_t const vcount = 2;
 	GLenum const primitive = GL_LINES;
 	GLenum const target = GL_ARRAY_BUFFER;
-	float * v = mesharray_add_glMapBufferRange (m, vbo, vcount, dim, primitive, target);
+	float * v = (float *) mesharray_add_glMapBufferRange (m, vbo, vcount, dim, primitive, target);
 	v [0] = x0;
 	v [1] = y0;
 	v [2] = 0.0f;

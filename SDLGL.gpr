@@ -113,6 +113,49 @@ abstract project SDLGL is
 			
 			""
 		);
+		
+		for Switches ("C++") use 
+		(
+			"-march=native",
+			"-fdiagnostics-color", 
+			
+			"-Wall", 
+			"-Werror",
+			"-Wextra", 
+			"-Wshadow",
+			"-Wpedantic",  
+			
+			"-Wduplicated-cond",
+			"-Wlogical-op",
+			"-Wrestrict",
+			"-Wnull-dereference",
+			"-Wdouble-promotion",
+			"-Wformat=2",
+			
+			"-Werror=format-security",
+			"-Werror=implicit-function-declaration",
+		
+			"-Wno-unused-function",
+			"-Wno-unused-parameter",
+			"-Wno-error=unused-function",
+			"-Wno-error=unused-but-set-variable",
+			"-Wno-error=unused-parameter",
+			"-Wno-error=unused-variable",
+			
+			--"-Wno-missing-braces",
+			--"-Wno-missing-field-initializers",
+			--"-Wno-variadic-macros",
+			
+			
+			"-D_FORTIFY_SOURCE=2",
+			
+			"-Wl,-z,defs",
+			"-pipe",
+			
+			""
+		);
+		
+		
 	end Compiler;
 	
 

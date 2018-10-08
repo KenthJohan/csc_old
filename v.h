@@ -152,6 +152,16 @@ void vf32_mul_scalar (float * r, float const * a, float const b, size_t n)
 }
 
 
+// r := a * b
+void vf32_mus (float * r, float const * a, float const b, size_t n)
+{
+	for (size_t i = 0; i < n; ++ i)
+	{
+		r [i] = a [i] * b;
+	}
+}
+
+
 // r := a
 void vf32_cpy (float * r, float const * a, size_t n)
 {

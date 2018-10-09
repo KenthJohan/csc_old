@@ -27,7 +27,7 @@ void mesh_draw_one (struct Mesh * m)
 	GLint const vfirst = m->vfirst;
 	GLsizei const vcount = m->vcount;
 	//TRACE_F ("%x %i %i", mode, (int)vfirst, (int)vcount);
-	glDrawArrays (m->mode, m->vfirst, m->vcount);
+	glDrawArrays (mode, vfirst, vcount);
 }
 
 
@@ -90,6 +90,7 @@ void mesh_add_square (struct Mesh * m, GLint * vfirst, GLuint vbo)
 	GLenum const primitive = GL_TRIANGLES;
 	GLenum const target = GL_ARRAY_BUFFER;
 	void * buffer = mesh_add_glMapBufferRange (m, vfirst, vbo, vcount, dim, primitive, target);
+	GL_CHECK_ERROR;
 	memcpy (buffer, v, sizeof (v));
 	glUnmapBuffer (target);
 }

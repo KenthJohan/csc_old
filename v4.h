@@ -21,6 +21,35 @@ struct v4f32_XYZW v4f32_XYZW (float x, float y, float z, float w)
 }
 
 
+
+
+struct v4f32_rgba
+{
+	float r;
+	float g;
+	float b;
+	float a;
+};
+
+
+struct v4f32_xywh
+{
+	float x;
+	float y;
+	float w;
+	float h;
+};
+
+
+//static_assert (sizeof (struct v4f32_rgba) == sizeof (float) * 4, "struct v4f32_rgba is not 4 x float size");
+//static_assert (sizeof (struct v4f32_xywh) == sizeof (float) * 4, "struct v4f32_xywh is not 4 x float size");
+
+
+
+
+
+
+
 void v4f32_cpy (float r [4], float const a [4])
 {
 	vf32_cpy (r, a, 4);

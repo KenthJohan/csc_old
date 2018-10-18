@@ -72,7 +72,7 @@ abstract project SDLGL is
 		--https://developers.redhat.com/blog/2018/03/21/compiler-and-linker-flags-gcc/
 		for Switches ("C") use 
 		(
-			"-std=gnu99", 
+			"-std=gnu11", 
 			"-march=native",
 			"-fdiagnostics-color", 
 			

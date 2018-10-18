@@ -12,7 +12,7 @@ struct Mesh
 };
 
 
-void mesh_add (struct Mesh * m, GLint * vfirst, size_t vcount, GLenum primitive)
+void mesh_addv (struct Mesh * m, GLint * vfirst, size_t vcount, GLenum primitive)
 {
 	m->mode = primitive;
 	m->vfirst = (*vfirst);
@@ -26,6 +26,7 @@ void mesh_draw_one (struct Mesh * m)
 	GLenum const mode = m->mode;
 	GLint const vfirst = m->vfirst;
 	GLsizei const vcount = m->vcount;
+	if (vcount == 0) {return;}
 	//TRACE_F ("%x %i %i", mode, (int)vfirst, (int)vcount);
 	glDrawArrays (mode, vfirst, vcount);
 }
@@ -54,9 +55,16 @@ void * mesh_add_glMapBufferRange
 	GLintptr const offset = (*vfirst) * sizeof (float) * dim;
 	GLsizeiptr const length = vcount * dim * sizeof (float);
 	GLbitfield const access = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT;
-	mesh_add (m, vfirst, vcount, primitive);
+	//mesh_addv (m, vfirst, vcount, primitive);
+	TRACE_F ("vbo %i", vbo);
+	TRACE_F ("offset %i", offset);
+	TRACE_F ("vcount %i", vcount);
+	TRACE_F ("length %i", length);
 	glBindBuffer (target, vbo);
-	return glMapBufferRange (target, offset, length, access);
+	void * data = glMapBufferRange (target, offset, length, access);
+	ASSERT (data != NULL);
+	GL_CHECK_ERROR;
+	return data;
 }
 
 

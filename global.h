@@ -28,3 +28,6 @@ for (t (i1) = 0;      (i1) < (n); (i1) = (i1) + 1) \
 for (t (i2) = i1 + 1; (i2) < (n); (i2) = (i2) + 1)
 
 
+//https://stackoverflow.com/questions/9907160/how-to-convert-enum-names-to-string-in-c
+#define GENERATE_ENUM(ENUM) ENUM,
+#define GENERATE_STRING(STRING) #STRING,

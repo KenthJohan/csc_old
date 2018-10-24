@@ -92,7 +92,7 @@ void sdl_get_translation_vector (float t [4], uint8_t const * keyboard)
 	t [3] = 0;
 	
 	v4f32_normalize (t, t);
-	v4f32_mul_scalar (t, t, 0.01f * (10.0f * faster +1));
+	v4f32_mul_scalar (t, t, 0.01f * (50.0f * faster +1));
 	
 	//printf ("(%f %f %f %f)\n", t [0], t [1], t [2], t [3]);
 }

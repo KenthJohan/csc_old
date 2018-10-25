@@ -27,6 +27,16 @@ intmax_t str_imax (char const * str)
 }
 
 
+int str_f32 (char const * str, float * v)
+{
+	float a;
+	char * b;
+	a = strtof (str, &b);
+	*v = a;
+	return 0;
+}
+
+
 void print_time (FILE * f, time_t s)
 {
 	struct tm * t = localtime (&s);

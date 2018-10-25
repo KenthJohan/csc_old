@@ -311,3 +311,26 @@ void vf32_setl (float r [], size_t n, ...)
 }
 
 
+
+
+
+
+void vu32_setl (uint32_t r [], size_t n, ...)
+{
+	va_list ap;
+	va_start (ap, n);
+	for (size_t i = 0; i < n; ++i)
+	{
+		r [i] = va_arg (ap, uint32_t);
+	}
+	va_end (ap);
+}
+
+
+void vu32_set1 (uint32_t n, uint32_t r [], uint32_t v)
+{
+	for (size_t i = 0; i < n; ++ i)
+	{
+		r [i] = v;
+	}
+}

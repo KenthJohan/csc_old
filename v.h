@@ -15,6 +15,15 @@
 #include <stdarg.h> 
 
 
+struct v4f64_xyuv
+{
+	float x;
+	float y;
+	float u;
+	float v;
+};
+
+
 // r := a . b
 float vf32_dot (float const * a, float const * b, size_t n)
 {

@@ -192,6 +192,7 @@ struct GL_Shader_State
 	GLint compile_status;
 	GLint infolog_length;
 	GLint source_length;
+	char * log;
 };
 
 
@@ -202,6 +203,10 @@ void gl_shader_get_state (GLuint shader, struct GL_Shader_State * s)
 	glGetShaderiv (shader, GL_COMPILE_STATUS, &s->compile_status);
 	glGetShaderiv (shader, GL_INFO_LOG_LENGTH, &s->infolog_length);
 	glGetShaderiv (shader, GL_SHADER_SOURCE_LENGTH, &s->source_length);
+	
+	GLsizei l = s->infolog_length;
+	s->log = malloc (sizeof (char) * l);
+	glGetShaderInfoLog (shader, l, &l, s->log);
 }
 
 
@@ -234,6 +239,7 @@ void gl_shader_debug (size_t n, GLuint shaders [])
 		gl_print_bool (stderr, 10, s.compile_status, GL_TCOL_ERROR, GL_TCOL_SUCCESS);
 		fprintf (stderr, "%10i ", (int) s.infolog_length);
 		fprintf (stderr, "%10i ", (int) s.source_length);
+		fprintf (stderr, "%s ", s.log);
 		fprintf (stderr, "\n");
 	}
 	fflush (stderr);
@@ -260,6 +266,7 @@ void gl_shader_debug1 (GLuint program)
 		gl_print_bool (stderr, 10, s.compile_status, GL_TCOL_ERROR, GL_TCOL_SUCCESS);
 		fprintf (stderr, "%10i ", (int) s.infolog_length);
 		fprintf (stderr, "%10i ", (int) s.source_length);
+		fprintf (stderr, "%.*s", s.infolog_length, s.log);
 		fprintf (stderr, "\n");
 	}
 	fflush (stderr);

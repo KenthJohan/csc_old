@@ -15,7 +15,7 @@
 #include <stdarg.h> 
 
 
-struct v4f64_xyuv
+struct v4f32_xyuv
 {
 	float x;
 	float y;
@@ -343,3 +343,15 @@ void vu32_set1 (uint32_t n, uint32_t r [], uint32_t v)
 		r [i] = v;
 	}
 }
+
+
+void vu32_ladder (uint32_t n, uint32_t x [], uint32_t const d [])
+{
+	uint32_t h = 0;
+	for (uint32_t i = 0; i < n; ++ i)
+	{
+		x [i] = h;
+		h += d [i];
+	}
+}
+

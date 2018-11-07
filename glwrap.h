@@ -38,3 +38,68 @@ char const * str_from_gl_primitive (GLenum primitive)
 	}
 	return "";
 }
+
+
+void xxgl_layout 
+(
+	uint32_t n, 
+	uint32_t  const index      [],
+	uint32_t  const dim        [],
+	GLenum    const type       [],
+	GLboolean const normalized [],
+	uint32_t  const stride     [],
+	uint32_t  const offset     [],
+	GLenum    const target     [],
+	GLuint    const vbo        []
+)
+{
+	for (uint32_t i = 0; i < n; ++ i)
+	{
+		glBindBuffer (target [i], vbo [i]);
+		glEnableVertexAttribArray (index [i]);
+		glVertexAttribPointer 
+		(
+			(GLuint)         index [i], 
+			(uint32_t)       dim [i], 
+			(GLenum)         type [i], 
+			(GLboolean)      normalized [i], 
+			(GLint)          stride [i], 
+			(GLvoid const *) (uintptr_t) offset [i]
+		);
+		TRACE_F 
+		(
+			"%i %i %i %i %i %i", 
+			(int)index [i], 
+			(int)dim [i], 
+			(int)type [i], 
+			(int)normalized [i], 
+			(int)stride [i], 
+			(int)offset [i]
+		);
+		GL_CHECK_ERROR;
+	}
+}
+
+
+void xxgl_allocate 
+(
+	uint32_t n, 
+	GLenum     const   target [],
+	GLuint     const   vbo    [],
+	uint32_t   const   stride [],
+	void       const * data   [],
+	GLbitfield const   flags  [],
+	uint32_t vn
+)
+{
+	for (uint32_t i = 0; i < n; ++ i)
+	{
+		GLvoid const * data0 = data ? data [i] : data;
+		glBindBuffer (target [i], vbo [i]);
+		glBufferStorage (target [i], stride [i] * vn, data0, flags [i]);
+		GL_CHECK_ERROR;
+	}
+}
+
+
+

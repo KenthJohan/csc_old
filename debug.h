@@ -47,7 +47,7 @@ static void assert_format
 	fprintf (stderr, TCOL (TCOL_BOLD, TCOL_BLACK, TCOL_RED) "[%s]" TCOL_RESET " ", exp);
 	if (scode)
 	{
-		fprintf (stderr, TCOL (TCOL_BOLD, TCOL_BLACK, TCOL_BLUE) "[%i %s]" TCOL_RESET " ", code, scode);
+		fprintf (stderr, TCOL (TCOL_BOLD, TCOL_BLACK, TCOL_YELLOW) "[%i %s]" TCOL_RESET " ", code, scode);
 	}
 	fprintf (stderr, "[%04i:" TCOL (TCOL_BOLD, TCOL_RED , TCOL_DEFAULT) "%s" TCOL_RESET "]: ", errno, strerror (errno));
 	vfprintf (stderr, fmt, list);

@@ -23,7 +23,7 @@ void glVertexAttribPointer_byname
 
 
 
-char const * str_from_gl_primitive (GLenum primitive)
+char const * xxgl_primitive2str (GLenum primitive)
 {
 	switch (primitive)
 	{
@@ -35,6 +35,30 @@ char const * str_from_gl_primitive (GLenum primitive)
 		return "GL_TRIANGLES";
 		case GL_LINE_STRIP:
 		return "GL_LINE_STRIP";
+	}
+	return "";
+}
+
+
+char const * xxgl_type2str (GLenum type)
+{
+	switch (type)
+	{
+		case GL_FLOAT:
+		return "GL_FLOAT";
+	}
+	return "";
+}
+
+
+char const * xxgl_bool2str (GLboolean value)
+{
+	switch (value)
+	{
+		case GL_TRUE:
+		return "GL_TRUE";
+		case GL_FALSE:
+		return "GL_FALSE";
 	}
 	return "";
 }
@@ -68,11 +92,11 @@ void xxgl_layout
 		);
 		TRACE_F 
 		(
-			"%i %i %i %i %i %i", 
+			"index: %02i; dim: %01i; type: %10s; normalized: %8s; stride: %03i; offset: %04i;", 
 			(int)index [i], 
 			(int)dim [i], 
-			(int)type [i], 
-			(int)normalized [i], 
+			xxgl_type2str (type [i]), 
+			xxgl_bool2str (normalized [i]), 
 			(int)stride [i], 
 			(int)offset [i]
 		);

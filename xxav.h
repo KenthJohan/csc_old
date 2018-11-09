@@ -180,8 +180,8 @@ int xxav_next1
 		AVStream * stream = fctx->streams [istream];
 		
 		
-		TRACE_F ("%f", xxav_dts2sec (stream, packet.pts));
-		TRACE_F ("%f", (double)xxav_dts2fnum (stream, packet.pts));
+		TRACE_F ("%f s", xxav_dts2sec (stream, packet.pts));
+		TRACE_F ("%f f", (double)xxav_dts2fnum (stream, packet.pts));
 		
 		//Make sure the packet comes from the correct stream.
 		if (packet.stream_index != istream) {continue;}

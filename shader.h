@@ -205,7 +205,7 @@ void gl_shader_get_state (GLuint shader, struct GL_Shader_State * s)
 	glGetShaderiv (shader, GL_SHADER_SOURCE_LENGTH, &s->source_length);
 	
 	GLsizei l = s->infolog_length;
-	s->log = malloc (sizeof (char) * l);
+	s->log = (char *) malloc (sizeof (char) * l);
 	glGetShaderInfoLog (shader, l, &l, s->log);
 }
 

@@ -41,6 +41,14 @@ void xxav_open
 		//examined packets may be buffered for later processing.
 		int r = avformat_find_stream_info (fctx [i],  NULL);
 		ASSERT_F (r >= 0, "ERROR could not get the stream info %i", r);
+		
+		TRACE_F ("duration            %lli", (long long int)fctx [i]->duration);
+		TRACE_F ("bit_rate            %lli", (long long int)fctx [i]->bit_rate);
+		//TRACE_F ("file_size %lli", (long long int)fctx [i]->file_size);
+		TRACE_F ("max_index_size      %lli", (long long int)fctx [i]->max_index_size);
+		TRACE_F ("packet_size         %lli", (long long int)fctx [i]->packet_size);
+		TRACE_F ("start_time_realtime %lli", (long long int)fctx [i]->start_time_realtime);
+		TRACE_F ("nb_streams          %lli", (long long int)fctx [i]->nb_streams);
 	}
 	for (uint32_t i = 0; i < n; ++ i)
 	{
@@ -150,11 +158,18 @@ double xxav_dts2sec (AVStream * stream, int64_t dts)
     return sec;
 }
 
+
 double xxav_dts2fnum (AVStream * stream, int64_t dts)
 {
 	double fps = av_q2d (stream->avg_frame_rate);
 	double sec = xxav_dts2sec (stream, dts);
     return (double) floor (sec * fps + 0.5);
+}
+
+
+double xxav_dts2norm (AVStream * stream, int64_t dts)
+{
+	return stream->duration / xxav_dts2sec (stream, dts);
 }
 
 
@@ -165,10 +180,10 @@ int xxav_next1
 	int istream,
 	struct SwsContext * wctx,
 	AVFrame * frame0,
-	AVFrame * frame1
+	AVFrame * frame1,
+	int64_t * pts
 )
 {
-
 	while (1)
 	{
 		AVPacket packet;
@@ -177,12 +192,21 @@ int xxav_next1
 		//Check if error or end of file.
 		if (eof != 0) {break;}
 		
+		(*pts) = packet.pts;
+		
 		AVStream * stream = fctx->streams [istream];
-		
-		
-		TRACE_F ("%f s", xxav_dts2sec (stream, packet.pts));
+		/*
+		if (tsec) {*tsec = xxav_dts2sec (stream, packet.pts);}
+		if (fnum) {*fnum = xxav_dts2fnum (stream, packet.pts);}
+		*/
+		///*
+		TRACE_F ("%f s", (double)xxav_dts2sec (stream, packet.pts));
 		TRACE_F ("%f f", (double)xxav_dts2fnum (stream, packet.pts));
-		
+		TRACE_F ("%lli ", (long long int)fctx->duration);
+		TRACE_F ("%lli ", (long long int)stream->duration);
+		TRACE_F ("%lli ", (long long int)packet.pts);
+		TRACE_F ("%f ",  (double)packet.pts / (double)fctx->duration);
+		//*/
 		//Make sure the packet comes from the correct stream.
 		if (packet.stream_index != istream) {continue;}
 		int finnish;
@@ -201,7 +225,7 @@ int xxav_next1
 			frame1->data, 
 			frame1->linesize
 		);
-		av_free_packet (&packet);
+		av_packet_unref (&packet);
 		break;
 	}
 	return 0;
@@ -217,7 +241,8 @@ int xxav_next
 	int istream [],
 	struct SwsContext * wctx [],
 	AVFrame * frame0 [],
-	AVFrame * frame1 []
+	AVFrame * frame1 [],
+	int64_t pts []
 )
 {
 	for (uint32_t i = 0; i < n; ++ i)
@@ -229,7 +254,8 @@ int xxav_next
 			istream [i], 
 			wctx [i], 
 			frame0 [i], 
-			frame1 [i]
+			frame1 [i],
+			pts + i
 		);	
 	}
 	return 0;

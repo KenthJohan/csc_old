@@ -95,3 +95,18 @@ float v4f32_norm2 (float const a [4])
 {
 	return vf32_dot (a, a, 4);
 }
+
+
+void v4f32_repeat (uint32_t n, float * r, float x, float y, float z, float w)
+{
+	while (n--)
+	{
+		TRACE_F ("%i", n);
+		r [0] = x;
+		r [1] = y;
+		r [2] = z;
+		r [3] = w;
+		r += 4;
+	}
+}
+

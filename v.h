@@ -324,6 +324,9 @@ void vf32_setl (float r [], size_t n, ...)
 
 
 
+
+
+
 void vu32_setl (uint32_t r [], size_t n, ...)
 {
 	va_list ap;

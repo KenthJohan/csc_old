@@ -103,5 +103,79 @@ void gen_economic_curve (uint8_t * o, size_t w, size_t h, size_t d)
 }
 
 
+void gen_square_pos (float v [24], float x, float y, float w, float h)
+{
+	float v0 [] =
+	{
+		x,     y + h,   0.0f, 0.0f,
+		x,     y,       0.0f, 0.0f,
+		x + w, y,       0.0f, 0.0f,
+		x,     y + h,   0.0f, 0.0f,
+		x + w, y,       0.0f, 0.0f,
+		x + w, y + h,   0.0f, 0.0f       
+	};
+	memcpy (v, v0, sizeof (v0));
+}
 
 
+void gen_square_pos_gridcell (float v [24], uint32_t x, uint32_t y, uint32_t w, uint32_t h)
+{
+	float dx = 2.0f / (float) w;
+	float dy = 2.0f / (float) h;
+	float xx = (float) x * dx - 1.0f;
+	float yy = (float) y * dy - 1.0f;
+	gen_square_pos (v, xx, yy, dx, dy);
+}
+
+
+void gen_square_tex (float v [24], float l)
+{
+	float v0 [] =
+	{
+		0.0f, 0.0f, l, 0.0f,
+		0.0f, 1.0f, l, 0.0f,
+		1.0f, 1.0f, l, 0.0f,
+		0.0f, 0.0f, l, 0.0f,
+		1.0f, 1.0f, l, 0.0f,
+		1.0f, 0.0f, l, 0.0f       
+	};
+	memcpy (v, v0, sizeof (v0));
+}
+
+
+void gen_square_col (float v [24], float r, float g, float b, float a)
+{
+	float v0 [] =
+	{
+		r, g, b, a,
+		r, g, b, a,
+		r, g, b, a,
+		r, g, b, a,
+		r, g, b, a,
+		r, g, b, a
+	};
+	memcpy (v, v0, sizeof (v0));
+}
+
+
+void gen_pos_line_xy (float v [8], float x0, float y0, float x1, float y1)
+{
+	float v0 [] =
+	{
+		x0,    y0,   0.0f, 0.0f,
+		x1,    y1,   0.0f, 0.0f,
+	};
+	memcpy (v, v0, sizeof (v0));
+}
+
+
+void gen_col (uint32_t vn, float v [], float r, float g, float b, float a)
+{
+	for (uint32_t i = 0; i < vn; i += 4)
+	{
+		v [i+0] = r;
+		v [i+1] = g;
+		v [i+2] = b;
+		v [i+3] = a;
+	}
+}

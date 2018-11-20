@@ -18,7 +18,9 @@ void avgl_TextureArraySub (GLuint tex, uint32_t n, AVFrame * frame [])
 	GLsizei const depth = 1; //Depth means one frame at a time.
 	GLenum const format = GL_RGB;
 	GLenum const type = GL_UNSIGNED_BYTE;
+	TRACE_F ("glBindTexture %i", tex);
 	glBindTexture (target, tex);
+	GL_CHECK_ERROR;
 	for (uint32_t i = 0; i < n; ++ i)
 	{
 		GLsizei const width = frame [i]->width;

@@ -31,3 +31,10 @@ uint32_t pd_cap (struct ProDraw * pd)
 }
 
 
+void pd_draw (struct ProDraw * pd, uint32_t i)
+{
+	ASSERT (pd->primitive + i);
+	ASSERT (pd->offset + i);
+	ASSERT (pd->length + i);
+	glDrawArrays (pd->primitive [i], (GLint)pd->offset [i], (GLsizei)pd->length [i]);
+}

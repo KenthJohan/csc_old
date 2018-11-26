@@ -50,6 +50,7 @@ void gen_mandelbrot_pallete (uint8_t * o, size_t count, size_t depth)
 	}
 }
 
+
 void gen_mandelbrot_pixmap 
 (uint8_t * o, uint8_t const * pallete, size_t w, size_t h, size_t d, size_t max_iteration)
 {
@@ -78,7 +79,6 @@ void gen_mandelbrot_pixmap
 		//TRACE_F ("%i", i);
 	}
 }
-
 
 
 void gen_economic_curve (uint8_t * o, size_t w, size_t h, size_t d)
@@ -179,3 +179,71 @@ void gen_col (uint32_t vn, float v [], float r, float g, float b, float a)
 		v [i+3] = a;
 	}
 }
+
+
+void gen_grid 
+(
+	float v [], 
+	uint32_t r, 
+	uint32_t c, 
+	float x, 
+	float y,
+	float w,
+	float h
+)
+{
+	float const dx = w / (float)c;
+	float const dy = h / (float)r;
+	while (c--)
+	{
+		v [0] = x + dx * c;
+		v [1] = y;
+		v [2] = 0;
+		v [3] = 0;
+		v [4] = x + dx * c;
+		v [5] = y + h;
+		v [6] = 0;
+		v [7] = 0;
+		v += 8;
+	}
+	while (r--)
+	{
+		v [0] = x;
+		v [1] = y + dy * r;
+		v [2] = 0;
+		v [3] = 0;
+		v [4] = x + w;
+		v [5] = y + dy * r;
+		v [6] = 0;
+		v [7] = 0;
+		v += 8;
+	}
+}
+
+
+void gen_randcurve 
+(
+	float v [],
+	uint32_t n,
+	float ymin,
+	float ymax,
+	float x,
+	float w
+)
+{
+	float dy = ymax - ymin;
+	float dx = w / (float) n;
+	while (n--)
+	{
+		float rnd = (float) rand () / (float) RAND_MAX;
+		v [0] = x + n * dx;
+		v [1] = rnd * dy + ymin;
+		TRACE_F ("%f %f", (double)v [0], (double)v [1]);
+		v [2] = 0.0f;
+		v [3] = 0.0f;
+		v += 4;
+	}
+}
+
+
+

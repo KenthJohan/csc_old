@@ -123,6 +123,11 @@ void m4f32_perspective
 }
 
 
+void m4f32_ortho
+()
+{
+
+}
 
 
 // 4x4 matrix inversion (glu version)

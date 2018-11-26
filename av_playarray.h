@@ -48,6 +48,12 @@ void vp_init (struct VideoPlayer * vp)
 }
 
 
+AVStream * vp_getstream (struct VideoPlayer * vp, uint32_t i)
+{
+	return vp->fctx [i]->streams [vp->ivid [i]];
+}
+
+
 /*
 void player_free (struct player * play)
 {

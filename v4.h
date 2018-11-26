@@ -101,7 +101,7 @@ void v4f32_repeat (uint32_t n, float * r, float x, float y, float z, float w)
 {
 	while (n--)
 	{
-		TRACE_F ("%i", n);
+		//TRACE_F ("%i", n);
 		r [0] = x;
 		r [1] = y;
 		r [2] = z;

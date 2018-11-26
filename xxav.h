@@ -200,12 +200,12 @@ int xxav_next1
 		if (fnum) {*fnum = xxav_dts2fnum (stream, packet.pts);}
 		*/
 		///*
-		TRACE_F ("%f s", (double)xxav_dts2sec (stream, packet.pts));
-		TRACE_F ("%f f", (double)xxav_dts2fnum (stream, packet.pts));
-		TRACE_F ("%lli ", (long long int)fctx->duration);
-		TRACE_F ("%lli ", (long long int)stream->duration);
-		TRACE_F ("%lli ", (long long int)packet.pts);
-		TRACE_F ("%f ",  (double)packet.pts / (double)fctx->duration);
+		TRACE_F ("%f", (double)xxav_dts2sec (stream, packet.pts));
+		TRACE_F ("%f", (double)xxav_dts2fnum (stream, packet.pts));
+		TRACE_F ("%f", (double)fctx->duration / (double)AV_TIME_BASE);
+		//TRACE_F ("%lli ", (long long int)stream->duration);
+		//TRACE_F ("%lli ", (long long int)packet.pts);
+		//TRACE_F ("%f ",  (double)packet.pts / (double)fctx->duration);
 		//*/
 		//Make sure the packet comes from the correct stream.
 		if (packet.stream_index != istream) {continue;}
@@ -260,3 +260,23 @@ int xxav_next
 	}
 	return 0;
 }
+
+
+
+
+float xxav_normtime 
+(
+	AVStream * stream,
+	AVFormatContext * fctx,
+	uint64_t pts
+)
+{
+	float t = xxav_dts2sec (stream, pts);
+	float d = (float)fctx->duration / (float)AV_TIME_BASE;
+	//TRACE_F ("%f %f", (double)t, (double)d);
+	return t / d;
+}
+
+
+
+

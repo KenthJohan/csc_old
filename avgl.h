@@ -18,7 +18,7 @@ void avgl_TextureArraySub (GLuint tex, uint32_t n, AVFrame * frame [])
 	GLsizei const depth = 1; //Depth means one frame at a time.
 	GLenum const format = GL_RGB;
 	GLenum const type = GL_UNSIGNED_BYTE;
-	TRACE_F ("glBindTexture %i", tex);
+	//TRACE_F ("glBindTexture %i", tex);
 	glBindTexture (target, tex);
 	GL_CHECK_ERROR;
 	for (uint32_t i = 0; i < n; ++ i)
@@ -55,7 +55,7 @@ void avgl_TextureArrayStorage (GLuint tex, uint32_t n, AVFrame * frame [])
 	GLsizei const layerCount = n;
 	GLsizei const mipLevelCount = 1;
 	glBindTexture (GL_TEXTURE_2D_ARRAY, tex);
-	TRACE_F ("glTexStorage3D %i %i", width, height);
+	//TRACE_F ("glTexStorage3D %i %i", width, height);
 	glTexStorage3D (GL_TEXTURE_2D_ARRAY, mipLevelCount, GL_RGB8, width, height, layerCount);
 	GL_CHECK_ERROR;
 	//Always set reasonable texture parameters

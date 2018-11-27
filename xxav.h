@@ -159,11 +159,17 @@ double xxav_dts2sec (AVStream * stream, int64_t dts)
 }
 
 
-double xxav_dts2fnum (AVStream * stream, int64_t dts)
+int64_t xxav_dts2timebase (AVStream * stream, int64_t dts)
+{
+	return (int64_t)xxav_dts2sec (stream, dts) * AV_TIME_BASE;
+}
+
+
+int64_t xxav_dts2fnum (AVStream * stream, int64_t dts)
 {
 	double fps = av_q2d (stream->avg_frame_rate);
 	double sec = xxav_dts2sec (stream, dts);
-    return (double) floor (sec * fps + 0.5);
+    return (int64_t) floor (sec * fps + 0.5);
 }
 
 
@@ -200,8 +206,8 @@ int xxav_next1
 		if (fnum) {*fnum = xxav_dts2fnum (stream, packet.pts);}
 		*/
 		///*
-		TRACE_F ("sec  %f of %f", (double)xxav_dts2sec (stream, packet.pts), (double)fctx->duration / (double)AV_TIME_BASE);
-		TRACE_F ("fnum %f", (double)xxav_dts2fnum (stream, packet.pts));
+		//TRACE_F ("sec  %f of %f", (double)xxav_dts2sec (stream, packet.pts), (double)fctx->duration / (double)AV_TIME_BASE);
+		//TRACE_F ("fnum %f", (double)xxav_dts2fnum (stream, packet.pts));
 		//TRACE_F ("%lli ", (long long int)stream->duration);
 		//TRACE_F ("%lli ", (long long int)packet.pts);
 		//TRACE_F ("%f ",  (double)packet.pts / (double)fctx->duration);
@@ -212,7 +218,7 @@ int xxav_next1
 		avcodec_decode_video2 (cctx, frame0, &finnish, &packet);
 		//Check if no frame could be decompressed
 		if (finnish == 0) {continue;}
-		xxav_dump_frame (stderr, frame0);
+		//xxav_dump_frame (stderr, frame0);
 		//Use the pixelformat converter (wctx) to convert the decoded frames to our choosing.
 		sws_scale
 		(
@@ -293,5 +299,55 @@ uint64_t xxav_normtime0
 	return t / d;
 }
 */
+
+
+
+
+void xxav_seek 
+(
+	AVFormatContext * fctx, 
+	AVCodecContext  * cctx,
+	int istream,
+	struct SwsContext * wctx,
+	AVFrame * frame0,
+	AVFrame * frame1,
+	int64_t * pts,
+	int64_t ts
+)
+{
+	while (1)
+	{
+		AVPacket packet;
+		//Return the next frame of a stream
+		int eof = av_read_frame (fctx, &packet);
+		//Check if error or end of file.
+		if (eof != 0) {break;}
+		(*pts) = packet.pts;
+		AVStream * stream = fctx->streams [istream];
+		if (packet.stream_index != istream) {continue;}
+		int finnish;
+		avcodec_decode_video2 (cctx, frame0, &finnish, &packet);
+		if (finnish == 0) {continue;}
+		sws_scale
+		(
+			wctx, 
+			(const unsigned char * const*)frame0->data, 
+			frame0->linesize, 
+			0, 
+			frame0->height, 
+			frame1->data, 
+			frame1->linesize
+		);
+		av_packet_unref (&packet);
+		TRACE_F ("%lli %lli %lli", ts, *pts, xxav_dts2timebase (stream, *pts));
+		//TRACE_F ("%lli %lli %lli", ts, xxav_dts2sec (stream, packet.pts), AV_TIME_BASE);
+		if (ts <= xxav_dts2timebase (stream, *pts))
+		{
+			TRACE ("BREAK");
+			break;
+		}
+	}
+}
+
 
 

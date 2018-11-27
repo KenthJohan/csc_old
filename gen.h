@@ -238,7 +238,7 @@ void gen_randcurve
 		float rnd = (float) rand () / (float) RAND_MAX;
 		v [0] = x + n * dx;
 		v [1] = rnd * dy + ymin;
-		TRACE_F ("%f %f", (double)v [0], (double)v [1]);
+		//TRACE_F ("%f %f", (double)v [0], (double)v [1]);
 		v [2] = 0.0f;
 		v [3] = 0.0f;
 		v += 4;

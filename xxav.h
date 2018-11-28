@@ -154,6 +154,7 @@ void xxav_dump_frame (FILE * f, AVFrame const * frame)
 double xxav_dts2sec (AVStream * stream, int64_t dts)
 {
 	double time_base = av_q2d (stream->time_base);
+	TRACE_F ("tb %f", time_base);
 	double sec = (dts - stream->start_time) * time_base;
     return sec;
 }
@@ -161,7 +162,8 @@ double xxav_dts2sec (AVStream * stream, int64_t dts)
 
 int64_t xxav_dts2timebase (AVStream * stream, int64_t dts)
 {
-	return (int64_t)xxav_dts2sec (stream, dts) * AV_TIME_BASE;
+	double x = xxav_dts2sec (stream, dts) * (double)AV_TIME_BASE;
+	return (int64_t)x;
 }
 
 
@@ -339,7 +341,7 @@ void xxav_seek
 			frame1->linesize
 		);
 		av_packet_unref (&packet);
-		TRACE_F ("%lli %lli %lli", ts, *pts, xxav_dts2timebase (stream, *pts));
+		TRACE_F ("%10lli %10lli %10lli", ts, *pts, xxav_dts2timebase (stream, *pts));
 		//TRACE_F ("%lli %lli %lli", ts, xxav_dts2sec (stream, packet.pts), AV_TIME_BASE);
 		if (ts <= xxav_dts2timebase (stream, *pts))
 		{

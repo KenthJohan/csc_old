@@ -5,6 +5,101 @@
 #include <libswscale/swscale.h>
 
 
+int xxav_decode
+(
+	AVFormatContext * fctx, 
+	AVCodecContext  * cctx,
+	int istream,
+	AVFrame * frame0,
+	int64_t * pts
+)
+{
+	int eof;
+	while (1)
+	{
+		AVPacket packet;
+		//Return the next frame of the stream
+		eof = av_read_frame (fctx, &packet);
+		//Check if error or end of file.
+		if (eof != 0) {break;}
+		(*pts) = packet.pts;
+		AVStream * stream = fctx->streams [istream];
+		//Make sure the packet comes from the correct stream.
+		if (packet.stream_index != istream) {continue;}
+		int finnish;
+		avcodec_decode_video2 (cctx, frame0, &finnish, &packet);
+		//Check if no frame could be decompressed
+		if (finnish == 0) {continue;}
+		//Use the pixelformat converter (wctx) to convert the decoded frames to our choosing.
+		av_packet_unref (&packet);
+		break;
+	}
+	return eof;
+}
+
+
+
+int xxav_next1
+(
+	AVFormatContext * fctx, 
+	AVCodecContext  * cctx,
+	int istream,
+	struct SwsContext * wctx,
+	AVFrame * frame0,
+	AVFrame * frame1,
+	int64_t * pts
+)
+{
+	int r;
+	r = xxav_decode (fctx, cctx, istream, frame0, pts);
+	sws_scale
+	(
+		wctx, 
+		(const unsigned char * const*)frame0->data, 
+		frame0->linesize, 
+		0, 
+		frame0->height, 
+		frame1->data, 
+		frame1->linesize
+	);
+	return r;
+}
+
+
+int xxav_next
+(
+	uint32_t n,
+	AVFormatContext * fctx [], 
+	AVCodecContext  * cctx [],
+	int istream [],
+	struct SwsContext * wctx [],
+	AVFrame * frame0 [],
+	AVFrame * frame1 [],
+	int64_t pts []
+)
+{
+	for (uint32_t i = 0; i < n; ++ i)
+	{
+		xxav_next1 
+		(
+			fctx [i], 
+			cctx [i], 
+			istream [i], 
+			wctx [i], 
+			frame0 [i], 
+			frame1 [i],
+			pts + i
+		);	
+	}
+	return 0;
+}
+
+
+
+
+
+
+
 
 
 void xxav_open 
@@ -16,6 +111,7 @@ void xxav_open
 	AVFrame * frame0 [],
 	AVFrame * frame1 [],
 	int ivid [],
+	int64_t * pts,
 	char const * url []
 )
 {
@@ -79,20 +175,11 @@ void xxav_open
 	}
 	for (uint32_t i = 0; i < n; ++ i)
 	{
-		AVPacket packet;
-		int eof = av_read_frame (fctx [i], &packet);
-		ASSERT_F (eof == 0, "%s", "");
 		frame0 [i] = av_frame_alloc ();
-		ASSERT (frame0 [i]);
 		frame1 [i] = av_frame_alloc ();
 		ASSERT (frame0 [i]);
-		int finnish;
-		avcodec_decode_video2 (cctx [i], frame0 [i], &finnish, &packet);
-		ASSERT (finnish != 0);
-		TRACE_F ("avcodec_decode_video2 (%i %i)", frame0 [i]->width, frame0 [i]->height);
-		TRACE_F ("packet (%i)", packet.duration);
-		TRACE_F ("packet (%i)", packet.size);
-		av_free_packet (&packet);
+		ASSERT (frame1 [i]);
+		xxav_decode (fctx [i], cctx [i], ivid [i], frame0 [i], pts + i);
 	}
 	for (uint32_t i = 0; i < n; ++ i)
 	{
@@ -107,6 +194,8 @@ void xxav_open
 	for (uint32_t i = 0; i < n; ++ i)
 	{
 		TRACE_F ("AVPixelFormat: %s", av_get_pix_fmt_name (frame0 [i]->format));
+		TRACE_F ("width: %i", frame0 [i]->width);
+		TRACE_F ("height: %i", frame0 [i]->height);
 		//Create a anyformat to RGB24 converter.
 		//Encoded videos usually uses YUV420p pixelformat.
 		//OpenGL does not support YUV420p but it can use RGB24.
@@ -184,92 +273,11 @@ double xxav_dts2norm (AVStream * stream, int64_t dts)
 }
 
 
-int xxav_next1
-(
-	AVFormatContext * fctx, 
-	AVCodecContext  * cctx,
-	int istream,
-	struct SwsContext * wctx,
-	AVFrame * frame0,
-	AVFrame * frame1,
-	int64_t * pts
-)
-{
-	while (1)
-	{
-		AVPacket packet;
-		//Return the next frame of a stream
-		int eof = av_read_frame (fctx, &packet);
-		//Check if error or end of file.
-		if (eof != 0) {break;}
-		
-		(*pts) = packet.pts;
-		
-		AVStream * stream = fctx->streams [istream];
-		/*
-		if (tsec) {*tsec = xxav_dts2sec (stream, packet.pts);}
-		if (fnum) {*fnum = xxav_dts2fnum (stream, packet.pts);}
-		*/
-		///*
-		//TRACE_F ("sec  %f of %f", (double)xxav_dts2sec (stream, packet.pts), (double)fctx->duration / (double)AV_TIME_BASE);
-		//TRACE_F ("fnum %f", (double)xxav_dts2fnum (stream, packet.pts));
-		//TRACE_F ("%lli ", (long long int)stream->duration);
-		//TRACE_F ("%lli ", (long long int)packet.pts);
-		//TRACE_F ("%f ",  (double)packet.pts / (double)fctx->duration);
-		//*/
-		//Make sure the packet comes from the correct stream.
-		if (packet.stream_index != istream) {continue;}
-		int finnish;
-		avcodec_decode_video2 (cctx, frame0, &finnish, &packet);
-		//Check if no frame could be decompressed
-		if (finnish == 0) {continue;}
-		//xxav_dump_frame (stderr, frame0);
-		//Use the pixelformat converter (wctx) to convert the decoded frames to our choosing.
-		sws_scale
-		(
-			wctx, 
-			(const unsigned char * const*)frame0->data, 
-			frame0->linesize, 
-			0, 
-			frame0->height, 
-			frame1->data, 
-			frame1->linesize
-		);
-		av_packet_unref (&packet);
-		break;
-	}
-	return 0;
-}
 
 
 
-int xxav_next
-(
-	uint32_t n,
-	AVFormatContext * fctx [], 
-	AVCodecContext  * cctx [],
-	int istream [],
-	struct SwsContext * wctx [],
-	AVFrame * frame0 [],
-	AVFrame * frame1 [],
-	int64_t pts []
-)
-{
-	for (uint32_t i = 0; i < n; ++ i)
-	{
-		xxav_next1 
-		(
-			fctx [i], 
-			cctx [i], 
-			istream [i], 
-			wctx [i], 
-			frame0 [i], 
-			frame1 [i],
-			pts + i
-		);	
-	}
-	return 0;
-}
+
+
 
 
 

@@ -69,6 +69,7 @@ void xxav_open
 		ASSERT (ivid [i] >= 0);
 		ASSERT_F (codec != NULL, "ERROR unsupported codec! %s", "");
 		AVStream * stream = fctx [i]->streams [ivid [i]];
+		TRACE_F ("stream_time_base: %f. AV_TIME_BASE: %i.", av_q2d (stream->time_base), AV_TIME_BASE);
 		cctx [i] = stream->codec;
 		//ASSERT (fctx [i]->streams [ivid [i]]->codecpar);
 		//AVCodec * codec = avcodec_find_decoder (cctx->codec_id);
@@ -89,6 +90,8 @@ void xxav_open
 		avcodec_decode_video2 (cctx [i], frame0 [i], &finnish, &packet);
 		ASSERT (finnish != 0);
 		TRACE_F ("avcodec_decode_video2 (%i %i)", frame0 [i]->width, frame0 [i]->height);
+		TRACE_F ("packet (%i)", packet.duration);
+		TRACE_F ("packet (%i)", packet.size);
 		av_free_packet (&packet);
 	}
 	for (uint32_t i = 0; i < n; ++ i)
@@ -313,8 +316,8 @@ void xxav_seek
 	struct SwsContext * wctx,
 	AVFrame * frame0,
 	AVFrame * frame1,
-	int64_t * pts,
-	int64_t ts
+	int64_t * pts, //In unit (stream time_base)
+	int64_t ts //In unit AV_TIME_BASE
 )
 {
 	while (1)
@@ -330,6 +333,10 @@ void xxav_seek
 		int finnish;
 		avcodec_decode_video2 (cctx, frame0, &finnish, &packet);
 		if (finnish == 0) {continue;}
+		av_packet_unref (&packet);
+		TRACE_F ("%10lli %10lli %10lli", ts, *pts, xxav_dts2timebase (stream, *pts));
+		//TRACE_F ("%lli %lli %lli", ts, xxav_dts2sec (stream, packet.pts), AV_TIME_BASE);
+		if (ts >= xxav_dts2timebase (stream, *pts)) {continue;}
 		sws_scale
 		(
 			wctx, 
@@ -340,14 +347,7 @@ void xxav_seek
 			frame1->data, 
 			frame1->linesize
 		);
-		av_packet_unref (&packet);
-		TRACE_F ("%10lli %10lli %10lli", ts, *pts, xxav_dts2timebase (stream, *pts));
-		//TRACE_F ("%lli %lli %lli", ts, xxav_dts2sec (stream, packet.pts), AV_TIME_BASE);
-		if (ts <= xxav_dts2timebase (stream, *pts))
-		{
-			TRACE ("BREAK");
-			break;
-		}
+		break;
 	}
 }
 

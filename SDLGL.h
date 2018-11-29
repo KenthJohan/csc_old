@@ -40,5 +40,34 @@ SDL_GLContext SDL_GL_CreateContext_CC (SDL_Window * window)
 }
 	
 	
-	
+//Convert SDL coordinates to OpenGL -1.0..1.0 coordinate system.
+void SDL_GetOpenGLMouse (SDL_Window * window, SDL_Event * e, float * x, float * y)
+{
+	int w;
+	int h;
+	SDL_GetWindowSize (window, &w, &h);
+	float X = (float)e->motion.x;
+	float Y = (float)e->motion.y;
+	X *= 2.0f / (float)w;
+	Y *= -2.0f / (float)h;
+	X -= 1.0f;
+	Y += 1.0f;
+	//TRACE_F ("%f %f", (double)X, (double)Y);
+	*x = X;
+	*y = Y;
+}
 
+
+
+void SDL_GetOpenGLMouseRel (SDL_Window * window, SDL_Event * e, float * x, float * y)
+{
+	int w;
+	int h;
+	SDL_GetWindowSize (window, &w, &h);
+	float X = (float)e->motion.xrel;
+	float Y = (float)e->motion.yrel;
+	X *= 4.0f / (float)w;
+	Y *= -4.0f / (float)h;
+	*x = X;
+	*y = Y;
+}

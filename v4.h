@@ -10,6 +10,7 @@ struct v4f32_XYZW
 	float w;
 };
 
+
 struct v4f32_XYZW v4f32_XYZW (float x, float y, float z, float w)
 {
 	struct v4f32_XYZW v;
@@ -19,8 +20,6 @@ struct v4f32_XYZW v4f32_XYZW (float x, float y, float z, float w)
 	v.w = w;
 	return v;
 }
-
-
 
 
 struct v4f32_rgba
@@ -39,6 +38,16 @@ struct v4f32_xywh
 	float w;
 	float h;
 };
+
+
+struct v4u32_xywh
+{
+	uint32_t x;
+	uint32_t y;
+	uint32_t w;
+	uint32_t h;
+};
+
 
 
 //static_assert (sizeof (struct v4f32_rgba) == sizeof (float) * 4, "struct v4f32_rgba is not 4 x float size");

@@ -38,70 +38,6 @@ int xxav_decode
 }
 
 
-
-int xxav_next1
-(
-	AVFormatContext * fctx, 
-	AVCodecContext  * cctx,
-	int istream,
-	struct SwsContext * wctx,
-	AVFrame * frame0,
-	AVFrame * frame1,
-	int64_t * pts
-)
-{
-	int r;
-	r = xxav_decode (fctx, cctx, istream, frame0, pts);
-	sws_scale
-	(
-		wctx, 
-		(const unsigned char * const*)frame0->data, 
-		frame0->linesize, 
-		0, 
-		frame0->height, 
-		frame1->data, 
-		frame1->linesize
-	);
-	return r;
-}
-
-
-int xxav_next
-(
-	uint32_t n,
-	AVFormatContext * fctx [], 
-	AVCodecContext  * cctx [],
-	int istream [],
-	struct SwsContext * wctx [],
-	AVFrame * frame0 [],
-	AVFrame * frame1 [],
-	int64_t pts []
-)
-{
-	for (uint32_t i = 0; i < n; ++ i)
-	{
-		xxav_next1 
-		(
-			fctx [i], 
-			cctx [i], 
-			istream [i], 
-			wctx [i], 
-			frame0 [i], 
-			frame1 [i],
-			pts + i
-		);	
-	}
-	return 0;
-}
-
-
-
-
-
-
-
-
-
 void xxav_open 
 (
 	uint32_t n,
@@ -246,7 +182,7 @@ void xxav_dump_frame (FILE * f, AVFrame const * frame)
 double xxav_dts2sec (AVStream * stream, int64_t dts)
 {
 	double time_base = av_q2d (stream->time_base);
-	TRACE_F ("tb %f", time_base);
+	//TRACE_F ("tb %f", time_base);
 	double sec = (dts - stream->start_time) * time_base;
     return sec;
 }
@@ -271,15 +207,6 @@ double xxav_dts2norm (AVStream * stream, int64_t dts)
 {
 	return stream->duration / xxav_dts2sec (stream, dts);
 }
-
-
-
-
-
-
-
-
-
 
 
 float xxav_normtime 
@@ -314,8 +241,6 @@ uint64_t xxav_normtime0
 */
 
 
-
-
 void xxav_seek 
 (
 	AVFormatContext * fctx, 
@@ -328,33 +253,14 @@ void xxav_seek
 	int64_t ts //In unit AV_TIME_BASE
 )
 {
-	while (1)
+	uint32_t n = 100;
+	while (n--)
 	{
-		AVPacket packet;
-		//Return the next frame of a stream
-		int eof = av_read_frame (fctx, &packet);
-		//Check if error or end of file.
-		if (eof != 0) {break;}
-		(*pts) = packet.pts;
-		AVStream * stream = fctx->streams [istream];
-		if (packet.stream_index != istream) {continue;}
-		int finnish;
-		avcodec_decode_video2 (cctx, frame0, &finnish, &packet);
-		if (finnish == 0) {continue;}
-		av_packet_unref (&packet);
-		TRACE_F ("%10lli %10lli %10lli", ts, *pts, xxav_dts2timebase (stream, *pts));
-		//TRACE_F ("%lli %lli %lli", ts, xxav_dts2sec (stream, packet.pts), AV_TIME_BASE);
-		if (ts >= xxav_dts2timebase (stream, *pts)) {continue;}
-		sws_scale
-		(
-			wctx, 
-			(const unsigned char * const*)frame0->data, 
-			frame0->linesize, 
-			0, 
-			frame0->height, 
-			frame1->data, 
-			frame1->linesize
-		);
+		xxav_decode (fctx, cctx, istream, frame0, pts);
+		int64_t ts0 = xxav_dts2timebase (fctx->streams [istream], *pts);
+		//TRACE_F ("%lli %lli %lli", *pts, frame0->pts, frame0->pkt_dts);
+		TRACE_F ("%lli %lli %lli", ts, ts0);
+		if (ts >= ts0) {continue;}
 		break;
 	}
 }

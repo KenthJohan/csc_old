@@ -119,3 +119,41 @@ void v4f32_repeat (uint32_t n, float * r, float x, float y, float z, float w)
 	}
 }
 
+
+void v4f32_repeat4 (uint32_t n, float r [], float x, float y, float z, float w)
+{
+	while (n--)
+	{
+		//TRACE_F ("%i", n);
+		r [0] = x;
+		r [1] = y;
+		r [2] = z;
+		r [3] = w;
+		r += 4;
+	}
+}
+
+
+void v4f32_repeat_random (uint32_t n, float r [])
+{
+	while (n--)
+	{
+		//TRACE_F ("%i", n);
+		r [0] = (float)rand () / (float)RAND_MAX;
+		r [1] = (float)rand () / (float)RAND_MAX;
+		r [2] = (float)rand () / (float)RAND_MAX;
+		r [3] = (float)rand () / (float)RAND_MAX;
+		r += 4;
+	}
+}
+
+
+void v4f32_repeat_channel (uint32_t n, float r [], uint32_t channel, float a)
+{
+	while (n--)
+	{
+		r [channel] = a;
+		r += 4;
+	}
+}
+

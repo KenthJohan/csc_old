@@ -5,6 +5,7 @@
 #include <libswscale/swscale.h>
 
 #include "debug.h"
+#include "xxav.h"
 
 
 //Define everything that is needed to decode videos.
@@ -52,6 +53,24 @@ AVStream * vp_getstream (struct VideoPlayer * vp, uint32_t i)
 {
 	return vp->fctx [i]->streams [vp->ivid [i]];
 }
+
+
+void vp_seek (struct VideoPlayer * vp, uint32_t i, int64_t ts)
+{
+	avformat_seek_file (vp->fctx [i], -1, INT64_MIN, ts, ts, 0);
+	xxav_seek 
+	(
+		vp->fctx [i], //Av Format context array
+		vp->cctx [i], //Av Codec context array
+		vp->ivid [i], //AV Index video array
+		vp->wctx [i], //SWS context array
+		vp->frame0 [i], //Av frame array (video format)
+		vp->frame1 [i], //Av frame array (OpenGL format)
+		vp->pts + i, //
+		ts
+	);
+}
+
 
 
 /*

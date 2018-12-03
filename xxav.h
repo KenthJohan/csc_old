@@ -23,19 +23,46 @@ int xxav_decode
 		//Check if error or end of file.
 		if (eof != 0) {break;}
 		(*pts) = packet.pts;
-		AVStream * stream = fctx->streams [istream];
 		//Make sure the packet comes from the correct stream.
 		if (packet.stream_index != istream) {continue;}
 		int finnish;
 		avcodec_decode_video2 (cctx, frame0, &finnish, &packet);
+		//TRACE_F ("cctx->frame_number %i", cctx->frame_number);
 		//Check if no frame could be decompressed
 		if (finnish == 0) {continue;}
-		//Use the pixelformat converter (wctx) to convert the decoded frames to our choosing.
 		av_packet_unref (&packet);
 		break;
 	}
 	return eof;
 }
+
+
+static void decode
+(
+	AVCodecContext * cctx, 
+	AVFrame * frame, 
+	AVPacket * pkt
+)
+{
+    int ret;
+    ret = avcodec_send_packet(cctx, pkt);
+    if (ret < 0) {
+        fprintf(stderr, "Error sending a packet for decoding\n");
+        exit(1);
+    }
+    while (ret >= 0) {
+        ret = avcodec_receive_frame(cctx, frame);
+        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+            return;
+        else if (ret < 0) {
+            fprintf(stderr, "Error during decoding\n");
+            exit(1);
+        }
+        printf("saving frame %3d\n", cctx->frame_number);
+        fflush(stdout);
+    }
+}
+
 
 
 void xxav_open 
@@ -53,8 +80,9 @@ void xxav_open
 {
 	for (uint32_t i = 0; i < n; ++ i)
 	{
-		fctx [i] = avformat_alloc_context ();
-		ASSERT_F (fctx [i] != NULL, "Could not allocate memory for Format Context %p", fctx [i]);
+		//fctx [i] = avformat_alloc_context ();
+		fctx [i] = NULL;
+		//ASSERT_F (fctx [i] != NULL, "Could not allocate memory for Format Context %p", fctx [i]);
 	}
 	for (uint32_t i = 0; i < n; ++ i)
 	{
@@ -119,19 +147,25 @@ void xxav_open
 	}
 	for (uint32_t i = 0; i < n; ++ i)
 	{
-		frame1 [i]->width = frame0 [i]->width;
-		frame1 [i]->height = frame0 [i]->height;
+		enum AVPixelFormat format = AV_PIX_FMT_RGB24;
+		int width = frame0 [i]->width;
+		int height = frame0 [i]->height;
+		frame1 [i]->width = width;
+		frame1 [i]->height = height;
 		frame1 [i]->format = AV_PIX_FMT_RGB24;
-		int size = avpicture_get_size (frame1 [i]->format, frame1 [i]->width, frame1 [i]->height);
+		//int size = avpicture_get_size (frame1 [i]->format, frame1 [i]->width, frame1 [i]->height);
+		int size = av_image_get_buffer_size (format, width, height, 1);
 		uint8_t * buf = (uint8_t *) av_malloc (size);
 		ASSERT (buf != NULL);
-		avpicture_fill ((AVPicture *)frame1 [i], buf, frame1 [i]->format, frame1 [i]->width, frame1 [i]->height);
+		//avpicture_fill ((AVPicture *)frame1 [i], buf, frame1 [i]->format, frame1 [i]->width, frame1 [i]->height);
+		av_image_fill_arrays (frame1 [i]->data, frame1 [i]->linesize, buf, format, width, height, 1);
 	}
 	for (uint32_t i = 0; i < n; ++ i)
 	{
 		TRACE_F ("AVPixelFormat: %s", av_get_pix_fmt_name (frame0 [i]->format));
 		TRACE_F ("width: %i", frame0 [i]->width);
 		TRACE_F ("height: %i", frame0 [i]->height);
+		TRACE_F ("tb %i %i %f", cctx [i]->time_base.num, cctx [i]->time_base.den, av_q2d (cctx [i]->time_base));
 		//Create a anyformat to RGB24 converter.
 		//Encoded videos usually uses YUV420p pixelformat.
 		//OpenGL does not support YUV420p but it can use RGB24.
@@ -169,7 +203,6 @@ void xxav_open
 void xxav_dump_frame (FILE * f, AVFrame const * frame)
 {
 	fprintf (f, "pts:%08ld ", frame->pts);
-	fprintf (f, "pkt_pts:%08ld ", frame->pkt_pts);
 	fprintf (f, "pkt_dts:%08ld ", frame->pkt_dts);
 	fprintf (f, "width:%04d ", frame->width);
 	fprintf (f, "height:%04d ", frame->height);
@@ -182,7 +215,7 @@ void xxav_dump_frame (FILE * f, AVFrame const * frame)
 double xxav_dts2sec (AVStream * stream, int64_t dts)
 {
 	double time_base = av_q2d (stream->time_base);
-	//TRACE_F ("tb %f", time_base);
+	//TRACE_F ("tb %i %i %f", stream->time_base.num, stream->time_base.den, time_base);
 	double sec = (dts - stream->start_time) * time_base;
     return sec;
 }
@@ -259,7 +292,7 @@ void xxav_seek
 		xxav_decode (fctx, cctx, istream, frame0, pts);
 		int64_t ts0 = xxav_dts2timebase (fctx->streams [istream], *pts);
 		//TRACE_F ("%lli %lli %lli", *pts, frame0->pts, frame0->pkt_dts);
-		TRACE_F ("%lli %lli %lli", ts, ts0);
+		TRACE_F ("%lli %lli %lli", ts, ts0, *pts);
 		if (ts >= ts0) {continue;}
 		break;
 	}

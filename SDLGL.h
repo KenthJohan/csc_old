@@ -64,10 +64,8 @@ void SDL_GetOpenGLMouseRel (SDL_Window * window, SDL_Event * e, float * x, float
 	int w;
 	int h;
 	SDL_GetWindowSize (window, &w, &h);
-	float X = (float)e->motion.xrel;
-	float Y = (float)e->motion.yrel;
-	X *= 4.0f / (float)w;
-	Y *= -4.0f / (float)h;
-	*x = X;
-	*y = Y;
+	*x = (float)e->motion.xrel * 2.0f / (float)w;
+	*y = (float)e->motion.yrel * -2.0f / (float)h;
+	//X *= 4.0f / (float)w;
+	//Y *= -4.0f / (float)h;
 }

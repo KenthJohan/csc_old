@@ -287,15 +287,16 @@ void xxav_seek
 )
 {
 	uint32_t n = 100;
+	int64_t ts0;
 	while (n--)
 	{
 		xxav_decode (fctx, cctx, istream, frame0, pts);
-		int64_t ts0 = xxav_dts2timebase (fctx->streams [istream], *pts);
+		ts0 = xxav_dts2timebase (fctx->streams [istream], *pts);
 		//TRACE_F ("%lli %lli %lli", *pts, frame0->pts, frame0->pkt_dts);
-		TRACE_F ("%lli %lli %lli", ts, ts0, *pts);
 		if (ts >= ts0) {continue;}
 		break;
 	}
+	//TRACE_F ("%lli %lli %lli", ts, ts0, *pts);
 }
 
 

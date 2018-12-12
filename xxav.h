@@ -64,7 +64,6 @@ static void decode
 }
 
 
-
 void xxav_open 
 (
 	uint32_t n,

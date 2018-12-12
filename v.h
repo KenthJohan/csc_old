@@ -24,6 +24,15 @@ struct v4f32_xyuv
 };
 
 
+void vf32_cpy (float des [], float const src [], uint32_t n)
+{
+	while (n--)
+	{
+		des [n] = src [n];
+	}
+}
+
+
 // r := a . b
 float vf32_dot (float const * a, float const * b, size_t n)
 {
@@ -167,16 +176,6 @@ void vf32_mus (float * r, float const * a, float const b, size_t n)
 	for (size_t i = 0; i < n; ++ i)
 	{
 		r [i] = a [i] * b;
-	}
-}
-
-
-// r := a
-void vf32_cpy (float * r, float const * a, size_t n)
-{
-	for (size_t i = 0; i < n; ++ i)
-	{
-		r [i] = a [i];
 	}
 }
 

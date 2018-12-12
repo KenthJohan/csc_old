@@ -43,6 +43,20 @@ void v2f32_sub (float r [2], float const a [2], float const b [2])
 }
 
 
+// r := a - b
+void v2f32_add (float r [2], float const a [2], float const b [2])
+{
+	vf32_add (r, a, b, 2);
+}
+
+
+// r := a - b
+void v2f32_mus (float r [2], float const a [2], float const b)
+{
+	vf32_mus (r, a, b, 2);
+}
+
+
 float v2f32_dot (float const a [2], float const b [2])
 {
 	return vf32_dot (a, b, 2);

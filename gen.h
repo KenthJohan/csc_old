@@ -246,4 +246,41 @@ void gen_randcurve
 }
 
 
+void gen_curve 
+(
+	float v [],
+	uint32_t * n,
+	FILE * f,
+	float ymin,
+	float ymax,
+	float x,
+	float w
+)
+{
+	float * V;
+	float dy = ymax - ymin;
+	uint32_t i = 0;
+	V = v;
+	for (i = 0; i < *n; ++ i)
+	{
+		int r = fscanf (f, "%f", V + 1);
+		//TRACE_F ("%f %f", (double)v [0], (double)v [1]);
+		V [2] = 0.0f;
+		V [3] = 0.0f;
+		V += 4;
+		if (r == EOF) {break;}
+	}
+	*n = i;
+	TRACE_F ("%i", *n);
+	
+	float dx = w / (float) *n;
+	V = v;
+	for (i = 0; i < *n; ++ i)
+	{
+		V [0] = x + i * dx;
+		V += 4;
+	}
+}
+
+
 

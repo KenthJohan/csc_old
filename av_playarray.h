@@ -24,6 +24,9 @@ struct VideoPlayer
 	int                 * ivid;
 	char const         ** url;
 	int64_t             * pts;
+	
+	uint32_t width;
+	uint32_t height;
 };
 
 

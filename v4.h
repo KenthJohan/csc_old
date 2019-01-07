@@ -49,6 +49,15 @@ struct v4u32_xywh
 };
 
 
+struct v4f32_xyuv
+{
+	float x;
+	float y;
+	float u;
+	float v;
+};
+
+
 
 //static_assert (sizeof (struct v4f32_rgba) == sizeof (float) * 4, "struct v4f32_rgba is not 4 x float size");
 //static_assert (sizeof (struct v4f32_xywh) == sizeof (float) * 4, "struct v4f32_xywh is not 4 x float size");
@@ -61,62 +70,42 @@ struct v4u32_xywh
 
 void v4f32_cpy (float r [4], float const a [4])
 {
-	vf32_cpy (r, a, 4);
+	vf32_cpy (4, r, a);
 }
 
 void v4f32_add (float r [4], float const a [4], float const b [4])
 {
-	vf32_add (r, a, b, 4);
+	vf32_add (4, r, a, b);
 }
 
 
 void v4f32_sub (float r [4], float const a [4], float const b [4])
 {
-	vf32_sub (r, a, b, 4);
+	vf32_sub (4, r, a, b);
 }
 
 
-void v4f32_set (float r [4], float const b)
+void v4f32_set1 (float r [4], float const b)
 {
-	vf32_set_scalar (r, b, 4);
-}
-
-
-void v4f32_mul_scalar (float r [4], float const a [4], float const b)
-{
-	vf32_mul_scalar (r, a, b, 4);
+	vf32_set1 (4, r, b);
 }
 
 
 void v4f32_mus (float r [4], float const a [4], float const b)
 {
-	vf32_mul_scalar (r, a, b, 4);
+	vf32_mus (4, r, a, b);
 }
 
 
 void v4f32_normalize (float r [4], float const a [4])
 {
-	vf32_normalize (r, a, 4);
+	vf32_normalize (4, r, a);
 }
 
 
 float v4f32_norm2 (float const a [4])
 {
-	return vf32_dot (a, a, 4);
-}
-
-
-void v4f32_repeat (uint32_t n, float * r, float x, float y, float z, float w)
-{
-	while (n--)
-	{
-		//TRACE_F ("%i", n);
-		r [0] = x;
-		r [1] = y;
-		r [2] = z;
-		r [3] = w;
-		r += 4;
-	}
+	return vf32_dot (4, a, a);
 }
 
 
@@ -136,14 +125,11 @@ void v4f32_repeat4 (uint32_t n, float r [], float x, float y, float z, float w)
 
 void v4f32_repeat_random (uint32_t n, float r [])
 {
+	uint32_t const dim = 4;
 	while (n--)
 	{
-		//TRACE_F ("%i", n);
-		r [0] = (float)rand () / (float)RAND_MAX;
-		r [1] = (float)rand () / (float)RAND_MAX;
-		r [2] = (float)rand () / (float)RAND_MAX;
-		r [3] = (float)rand () / (float)RAND_MAX;
-		r += 4;
+		vf32_random (dim, r);
+		r += dim;
 	}
 }
 

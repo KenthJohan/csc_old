@@ -258,7 +258,7 @@ void gen_curve
 )
 {
 	float * V;
-	float dy = ymax - ymin;
+	//float dy = ymax - ymin;
 	uint32_t i = 0;
 	V = v;
 	for (i = 0; i < *n; ++ i)
@@ -284,3 +284,61 @@ void gen_curve
 
 
 
+void gen4x6_square_pos (float v [24], float x, float y, float w, float h)
+{
+	float v0 [] =
+	{
+		x,     y + h,   0.0f, 0.0f,
+		x,     y,       0.0f, 0.0f,
+		x + w, y,       0.0f, 0.0f,
+		x,     y + h,   0.0f, 0.0f,
+		x + w, y,       0.0f, 0.0f,
+		x + w, y + h,   0.0f, 0.0f       
+	};
+	memcpy (v, v0, sizeof (v0));
+}
+
+
+void gen4x6_square_tex1 (float v [24], float w, float h, float l)
+{
+	float v0 [24] =
+	{
+		0.0f, 0.0f, l, 0.0f,
+		0.0f, h   , l, 0.0f,
+		w   , h   , l, 0.0f,
+		0.0f, 0.0f, l, 0.0f,
+		w   , h   , l, 0.0f,
+		w   , 0.0f, l, 0.0f       
+	};
+	memcpy (v, v0, sizeof (v0));
+}
+
+
+void gen4x6_square_tex (uint32_t n, float v [24], uint8_t const l [])
+{
+	for (uint32_t i = 0; i < n; ++ i)
+	{
+		gen4x6_square_tex1 (v, 1.0f, 1.0f, (float)l [i]);
+		v += 24;
+	}
+}
+
+
+void gen4x6_grid_pos 
+(
+	float v [],
+	uint32_t w,
+	uint32_t h
+)
+{
+	float dx = 2.0f / (float) w;
+	float dy = 2.0f / (float) h;
+	for (uint32_t y = 0; y < w; ++y)
+	for (uint32_t x = 0; x < h; ++x)
+	{
+		float xx = (float)x * dx - 1.0f;
+		float yy = (float)y * dy - 1.0f;
+		gen4x6_square_pos (v, xx, yy, dx, dy);
+		v += 24;
+	}
+}

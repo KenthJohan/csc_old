@@ -15,16 +15,8 @@
 #include <stdarg.h> 
 
 
-struct v4f32_xyuv
-{
-	float x;
-	float y;
-	float u;
-	float v;
-};
 
-
-void vf32_cpy (float des [], float const src [], uint32_t n)
+void vf32_cpy (uint32_t n, float des [], float const src [])
 {
 	while (n--)
 	{
@@ -34,83 +26,94 @@ void vf32_cpy (float des [], float const src [], uint32_t n)
 
 
 // r := a . b
-float vf32_dot (float const * a, float const * b, size_t n)
+float vf32_dot (uint32_t n, float const a [], float const b [])
 {
 	float r = 0;
-	for (size_t i = 0; i < n; ++ i)
+	while (n--)
 	{
-		r += a [i] * b [i];
+		r += a [n] * b [n];
 	}
 	return r;
 }
 
 
 // r := a + b
-void vf32_add (float * r, float const * a, float const * b, size_t n)
+void vf32_add (uint32_t n, float r [], float const a [], float const b [])
 {
-	for (size_t i = 0; i < n; ++ i)
+	while (n--)
 	{
-		r [i] = a [i] + b [i];
+		r [n] = a [n] + b [n];
+	}
+}
+
+
+// r := a + b
+void vf32_add1 (uint32_t n, float r [], float const a [], float const b)
+{
+	while (n--)
+	{
+		r [n] = a [n] + b;
 	}
 }
 
 
 // r := a - b
-void vf32_sub (float * r, float const * a, float const * b, size_t n)
+void vf32_sub (uint32_t n, float r [], float const a [], float const b [])
 {
-	for (size_t i = 0; i < n; ++ i)
+	while (n--)
 	{
-		r [i] = a [i] - b [i];
+		r [n] = a [n] - b [n];
 	}
 }
 
 
 // r := a - b
-void vf32_subs (float * r, float const * a, float const b, size_t n)
+void vf32_sub1 (uint32_t n, float r [], float const a [], float b)
 {
-	for (size_t i = 0; i < n; ++ i)
+	while (n--)
 	{
-		r [i] = a [i] - b;
+		r [n] = a [n] - b;
 	}
 }
 
 
 // r := a < b
-void vf32_lt (float * r, float const * a, float const * b, size_t n)
+void vf32_lt (uint32_t n, float r [], float const a [], float const b [])
 {
-	for (size_t i = 0; i < n; ++ i)
+	while (n--)
 	{
-		r [i] = a [i] < b [i];
+		r [n] = a [n] < b [n];
 	}
 }
 
+
 // r := a > b
-void vf32_gt (float * r, float const * a, float const * b, size_t n)
+void vf32_gt (uint32_t n, float r [], float const a [], float const b [])
 {
-	for (size_t i = 0; i < n; ++ i)
+	while (n--)
 	{
-		r [i] = a [i] > b [i];
+		r [n] = a [n] > b [n];
 	}
 }
 
 
 // ret a > b
-int vf32_gt_all (float const * a, float const * b, size_t n)
+int vf32_gt_all (uint32_t n, float const a [], float const b [])
 {
-	for (size_t i = 0; i < n; ++ i)
+	while (n--)
 	{
-		if (a [i] <= b [i]) {return 0;}
+		if (a [n] <= b [n]) {return 0;}
 	}
 	return 1;
 }
 
 
 // ret a < b
-int vf32_lt_all (float const * a, float const * b, size_t n)
+int vf32_lt_all (uint32_t n, float const a [], float const b [])
 {
-	for (size_t i = 0; i < n; ++ i)
+	while (n--)
 	{
-		if (a [i] <= b [i]) {return 0;}
+		if (a [n] <= b [n]) {return 0;}
 	}
 	return 1;
 }
@@ -118,11 +121,11 @@ int vf32_lt_all (float const * a, float const * b, size_t n)
 
 // Set all element (x) of r to b
 // r := {x | x = ?}
-void vf32_random (float * r, size_t n)
+void vf32_random (uint32_t n, float r [])
 {
-	for (size_t i = 0; i < n; ++ i)
+	while (n--)
 	{
-		r [i] = (float)rand () / (float)RAND_MAX;
+		r [n] = (float)rand () / (float)RAND_MAX;
 		//r [i] = 1.0f;
 	}
 }
@@ -130,87 +133,68 @@ void vf32_random (float * r, size_t n)
 
 // Set all element (x) of r to b
 // r := {x | x = b}
-void vf32_set_scalar (float * r, float const b, size_t n)
+void vf32_set1 (uint32_t n, float r [], float const b)
 {
-	for (size_t i = 0; i < n; ++ i)
+	while (n--)
 	{
-		r [i] = b;
-	}
-}
-
-
-// Set all element (x) of r to b
-// r := {x | x = b}
-void vf32_sets (float * r, float const b, size_t n)
-{
-	for (size_t i = 0; i < n; ++ i)
-	{
-		r [i] = b;
+		r [n] = b;
 	}
 }
 
 
 // r := a * b
-void vf32_mul (float r [], float const a [], float const b [], size_t n)
+void vf32_mul (uint32_t n, float r [], float const a [], float const b [])
 {
-	for (size_t i = 0; i < n; ++ i)
+	while (n--)
 	{
-		r [i] = a [i] * b [i];
+		r [n] = a [n] * b [n];
 	}
 }
 
 
 // r := a * b
-void vf32_mul_scalar (float * r, float const * a, float const b, size_t n)
+void vf32_mus (uint32_t n, float r [], float const a [], float const b)
 {
-	for (size_t i = 0; i < n; ++ i)
+	while (n--)
 	{
-		r [i] = a [i] * b;
-	}
-}
-
-
-// r := a * b
-void vf32_mus (float * r, float const * a, float const b, size_t n)
-{
-	for (size_t i = 0; i < n; ++ i)
-	{
-		r [i] = a [i] * b;
+		r [n] = a [n] * b;
 	}
 }
 
 
 // ret |a|^2
-float vf32_norm2 (float const * a, size_t n)
+float vf32_norm2 (uint32_t n, float const a [])
 {
-	return vf32_dot (a, a, n);
+	return vf32_dot (n, a, a);
 }
 
 
 // ret |a|
-float vf32_norm (float const * a, size_t n)
+float vf32_norm (uint32_t n, float const a [])
 {
-	return sqrtf (vf32_norm2 (a, n));
+	return sqrtf (vf32_norm2 (n, a));
 }
 
 
 // r := a / |a|
-void vf32_normalize (float * r, float const * a, size_t n)
+void vf32_normalize (uint32_t n, float r [], float const a [])
 {
-	float const l = vf32_norm (a, n);
+	float const l = vf32_norm (n, a);
 	float const s = l > 0.0f ? 1.0f / l : 0.0f;
-	vf32_mul_scalar (r, a, s, n);
+	vf32_mus (n, r, a, s);
 }
 
 
-
-
-
-
-
-
-
-
+void vf32_linespace (uint32_t n, float x [], float x1, float x2)
+{
+	float const d = (x2 - x1) / n;
+	float a = x1;
+	while (n--)
+	{
+		x [n] = a;
+		a += d;
+	}
+}
 
 
 int vf32_ray_sphere_intersect 
@@ -218,11 +202,11 @@ int vf32_ray_sphere_intersect
 {
 	//Vector m = p - s.c;
 	float m [3];
-	vf32_sub (p, sc, m, 3);
+	vf32_sub (3, p, sc, m);
 	//float b = Dot(m, d); 
-	float b = vf32_dot (m, d, 3);
+	float b = vf32_dot (3, m, d);
 	//float c = Dot(m, m) - s.r * s.r; 
-	float c = vf32_dot (m, m, 3) - (sr * sr);
+	float c = vf32_dot (3, m, m) - (sr * sr);
 
 	// Exit if r’s origin outside s (c > 0) and r pointing away from s (b > 0) 
 	if (c > 0.0f && b > 0.0f) {return 0;}
@@ -239,19 +223,11 @@ int vf32_ray_sphere_intersect
 	*t = MAX (*t, 0.0f);
 	
 	//q = p + dt;
-	vf32_mul_scalar (q, d, *t, 3);
-	vf32_add (q, p, q, 3);
+	vf32_mus (3, q, d, *t);
+	vf32_add (3, q, p, q);
 	
 	return 1;
 }
-
-
-
-
-
-
-
-
 
 
 void vf32_print (FILE * f, float const x [], size_t n, char const * format)
@@ -269,12 +245,6 @@ void vf32_print (FILE * f, float const x [], size_t n, char const * format)
 }
 
 
-
-
-
-
-
-
 void vf32_print2 (FILE * f, float const x [], size_t n1, size_t n2, char const * format)
 {
 	for (size_t i = 0; i < n1; ++ i)
@@ -284,34 +254,21 @@ void vf32_print2 (FILE * f, float const x [], size_t n1, size_t n2, char const *
 }
 
 
-
-
-
-
-
-
-
-
-
 // r := a - b
 void vf32_sub2 (float r [], float const a [], float const b [], size_t an, size_t bn)
 {
 	for (size_t i = 0; i < an; ++ i)
 	{
-		vf32_sub (r + (i*bn), a + (i*bn), b, bn);
+		vf32_sub (bn, r + (i*bn), a + (i*bn), b);
 	}
 }
 
 
-
-
-
-
-void vf32_setl (float r [], size_t n, ...)
+void vf32_setl (float r [], uint32_t n, ...)
 {
 	va_list ap;
 	va_start (ap, n);
-	for (size_t i = 0; i < n; ++i)
+	for (uint32_t i = 0; i < n; ++i)
 	{
 		r [i] = va_arg (ap, double);
 	}
@@ -319,18 +276,11 @@ void vf32_setl (float r [], size_t n, ...)
 }
 
 
-
-
-
-
-
-
-
-void vu32_setl (uint32_t r [], size_t n, ...)
+void vu32_setl (uint32_t r [], uint32_t n, ...)
 {
 	va_list ap;
 	va_start (ap, n);
-	for (size_t i = 0; i < n; ++i)
+	for (uint32_t i = 0; i < n; ++i)
 	{
 		r [i] = va_arg (ap, uint32_t);
 	}
@@ -340,9 +290,9 @@ void vu32_setl (uint32_t r [], size_t n, ...)
 
 void vu32_set1 (uint32_t n, uint32_t r [], uint32_t v)
 {
-	for (size_t i = 0; i < n; ++ i)
+	while (n--)
 	{
-		r [i] = v;
+		r [n] = v;
 	}
 }
 
@@ -350,10 +300,35 @@ void vu32_set1 (uint32_t n, uint32_t r [], uint32_t v)
 void vu32_ladder (uint32_t n, uint32_t x [], uint32_t const d [])
 {
 	uint32_t h = 0;
+	//Must be forward iteration
 	for (uint32_t i = 0; i < n; ++ i)
 	{
 		x [i] = h;
 		h += d [i];
 	}
 }
+
+
+void vu32_linespace (uint32_t n, uint32_t x [], uint32_t x1, uint32_t x2)
+{
+	float d = ((float)x2 - (float)x1) / n;
+	float a = (float)x1;
+	while (n--)
+	{
+		x [n] = (uint32_t)a;
+		a += d;
+	}
+}
+
+
+void vf32_repeat (uint32_t n, float v [], float value, uint32_t offset, uint32_t stride)
+{
+	v += offset;
+	while (n--)
+	{
+		v [0] = value;
+		v += stride;
+	}
+}
+
 

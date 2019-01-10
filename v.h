@@ -332,3 +332,14 @@ void vf32_repeat (uint32_t n, float v [], float value, uint32_t offset, uint32_t
 }
 
 
+void vf32_weight_ab (uint32_t n, float y [], float a [], float b [], float k)
+{
+	float A = k;
+	float B = 1.0f - k;
+	while (n--)
+	{
+		y [n] = A * a [n] + B * b [n];
+	}
+}
+
+

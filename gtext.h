@@ -4,11 +4,12 @@
 #include FT_FREETYPE_H
 
 //Common simple c functions
-#include "SDLGL.h"
-#include "debug.h"
-#include "debug_gl.h"
-#include "gen.h"
-#include "xxgl.h"
+#include <csc/SDLGL.h>
+#include <csc/debug.h>
+#include <csc/debug_gl.h>
+#include <csc/gen.h>
+#include <csc/xxgl.h>
+#include <csc/xxgl_dr.h>
 
 
 struct gtext_fdim
@@ -140,7 +141,7 @@ void gtext_draw
 (
 	char const * text, 
 	struct gtext_fdim * g,
-	struct xxgl_drawrange * dr,
+	struct xxgl_dr * dr,
 	uint32_t di,
 	
 	float ox,
@@ -149,53 +150,41 @@ void gtext_draw
 	float sy
 )
 {
-	GLenum const vtarget = GL_ARRAY_BUFFER;
-	GLbitfield const vaccess = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT;
-	uint32_t const vdim = 4;
-	uint32_t const vsize = sizeof (float) * vdim;
-	GLintptr const voffset8 = dr->offset [di] * vsize;
-	GLsizeiptr const vlength8 = dr->length [di] * vsize;
-	
 	//Vertex buffer for position, texpos, color.
 	float * v;
 	//Iterator and current character of the text.
 	char const * c;
 	
-	//Set the positions of each character of the text in the position vertex buffer.
-	// vertex buffer: |xyzw, xyzw, xyzw, xyzw, xyzw, xywz|xyzw, xyzw, xyzw, xyzw, xyzw, xywz|
-	// vertex buffer: |triangle1,        triangle2       |triangle1,        triangle2       |
-	// vertex buffer: |square = 24*floats                |square = 24*floats                |
-	glBindBuffer (vtarget, dr->vbo [VBO_POS]);
-	v = glMapBufferRange (vtarget, voffset8, vlength8, vaccess);
-	ASSERT (v);
-	
+	v = xxgl_dr_vf32_map (dr, di, VBO_POS, 4);
 	c = text;
+	uint32_t i = 0;
 	float ax = 0.0f;
-	while (*c)
+	while (1)
 	{
-		uint8_t i = *c;
-		float x = sx * g->x [i] + ox + ax;
-		float y = sy * g->y [i] + oy;
-		float w = sx * g->w [i];
-		float h = sy * g->h [i];
-		gen_square_pos (v, x, y, w, h);
-		v += 24;
-		ax += g->a [i];
+		if (c [0] == '\0') {break;}
+		if (i >= dr->capacity [di]) {break;}
+		uint8_t iglyph = *c;
+		float x = sx * g->x [iglyph] + ox + ax;
+		float y = sy * g->y [iglyph] + oy;
+		float w = sx * g->w [iglyph];
+		float h = sy * g->h [iglyph];
+		gen4x6_square_pos (v, x, y, w, h);
+		v += 4*6;
+		i += 6;
+		ax += g->a [iglyph];
 		c ++;
 	}
-	glUnmapBuffer (vtarget);
+	xxgl_dr_unmap (dr);
+	dr->length [di] = i;
 	
-	
-	glBindBuffer (vtarget, dr->vbo [VBO_TEX]);
-	v = glMapBufferRange (vtarget, voffset8, vlength8, vaccess);
-	ASSERT (v);
+	v = xxgl_dr_vf32_map (dr, di, VBO_TEX, 4);
 	c = text;
 	while (*c)
 	{
-		uint8_t i = *c;
-		gen4x6_square_tex1 (v, g->u [i], g->v [i], i);
-		v += 24;
+		uint8_t iglyph = *c;
+		gen4x6_square_tex1 (v, g->u [iglyph], g->v [iglyph], iglyph);
+		v += 4*6;
 		c ++;
 	}
-	glUnmapBuffer (vtarget);
+	xxgl_dr_unmap (dr);
 }

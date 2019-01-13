@@ -103,7 +103,7 @@ void gen_economic_curve (uint8_t * o, size_t w, size_t h, size_t d)
 }
 
 
-void gen_square_pos (float v [24], float x, float y, float w, float h)
+void gen4x6_square_pos (float v [24], float x, float y, float w, float h)
 {
 	float v0 [] =
 	{
@@ -118,32 +118,17 @@ void gen_square_pos (float v [24], float x, float y, float w, float h)
 }
 
 
-void gen_square_pos_gridcell (float v [24], uint32_t x, uint32_t y, uint32_t w, uint32_t h)
+void gen4x6_square_pos_gridcell (float v [24], uint32_t x, uint32_t y, uint32_t w, uint32_t h)
 {
 	float dx = 2.0f / (float) w;
 	float dy = 2.0f / (float) h;
 	float xx = (float) x * dx - 1.0f;
 	float yy = (float) y * dy - 1.0f;
-	gen_square_pos (v, xx, yy, dx, dy);
+	gen4x6_square_pos (v, xx, yy, dx, dy);
 }
 
 
-void gen_square_tex (float v [24], float l)
-{
-	float v0 [] =
-	{
-		0.0f, 0.0f, l, 0.0f,
-		0.0f, 1.0f, l, 0.0f,
-		1.0f, 1.0f, l, 0.0f,
-		0.0f, 0.0f, l, 0.0f,
-		1.0f, 1.0f, l, 0.0f,
-		1.0f, 0.0f, l, 0.0f       
-	};
-	memcpy (v, v0, sizeof (v0));
-}
-
-
-void gen_square_col (float v [24], float r, float g, float b, float a)
+void gen4x6_square_col (float v [24], float r, float g, float b, float a)
 {
 	float v0 [] =
 	{
@@ -280,22 +265,6 @@ void gen_curve
 		V [0] = x + i * dx;
 		V += 4;
 	}
-}
-
-
-
-void gen4x6_square_pos (float v [24], float x, float y, float w, float h)
-{
-	float v0 [] =
-	{
-		x,     y + h,   0.0f, 0.0f,
-		x,     y,       0.0f, 0.0f,
-		x + w, y,       0.0f, 0.0f,
-		x,     y + h,   0.0f, 0.0f,
-		x + w, y,       0.0f, 0.0f,
-		x + w, y + h,   0.0f, 0.0f       
-	};
-	memcpy (v, v0, sizeof (v0));
 }
 
 

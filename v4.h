@@ -109,6 +109,7 @@ float v4f32_norm2 (float const a [4])
 }
 
 
+//xyzw xyzw xyzw ... n times
 void v4f32_repeat4 (uint32_t n, float r [], float x, float y, float z, float w)
 {
 	while (n--)

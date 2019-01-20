@@ -44,6 +44,18 @@ void gtext_fdim_calloc (struct gtext_fdim * g)
 }
 
 
+void gtext_maxsize (FT_Face face, uint32_t n, uint32_t * w, uint32_t * h)
+{
+	for (uint32_t c = 0; c < n; c++)
+	{
+		int r = FT_Load_Char (face, c, FT_LOAD_RENDER);
+		ASSERT_F (r == 0, "ERROR::FREETYTPE %i: Failed to load Glyph %i", r, c);
+		*w = MAX (*w, face->glyph->bitmap.width);
+		*h = MAX (*h, face->glyph->bitmap.rows);
+	}
+}
+
+
 void gtext_setup 
 (
 	GLuint tex, 
@@ -51,20 +63,32 @@ void gtext_setup
 	struct gtext_fdim * g
 )
 {
+	//TRACE_F ("%i", face->glyph->metrics.width);
+	//TRACE_F ("%i", face->glyph->metrics.height);
 	GLenum const target = GL_TEXTURE_2D_ARRAY;
-	GLsizei const width = 50;
-	GLsizei const height = 50;
-	GLsizei const layerCount = 128;
+	uint32_t width = 0;
+	uint32_t height = 0;
+	gtext_maxsize (face, g->n, &width, &height);
+	TRACE_F ("FREETYPE: max size %i %i", width, height);
+	uint32_t const layerCount = g->n;
 	GLsizei const mipLevelCount = 1;
 	GLenum const internalformat = GL_R8;
 	glBindTexture (target, tex);
-	glTexStorage3D (target, mipLevelCount, internalformat, width, height, layerCount);
+	glTexStorage3D 
+	(
+		target, 
+		mipLevelCount, 
+		internalformat, 
+		(GLsizei)width, 
+		(GLsizei)height, 
+		(GLsizei)layerCount
+	);
 	GL_CHECK_ERROR;
 	
 	//IMPORTANT. Disable byte-alignment restriction.
 	glPixelStorei (GL_UNPACK_ALIGNMENT, 1);
 	
-	for (uint8_t c = 0; c < 128; c++)
+	for (uint32_t c = 0; c < g->n; c++)
 	{
 		{
 			int r = FT_Load_Char (face, c, FT_LOAD_RENDER);
@@ -80,19 +104,23 @@ void gtext_setup
 		g->u [c] = (float)face->glyph->bitmap.width / (float)width;
 		g->v [c] = (float)face->glyph->bitmap.rows / (float)height;
 		
-		GLint xoffset = 0;
-		GLint yoffset = 0;
-		GLint zoffset = c;
+		uint32_t xoffset = 0;
+		uint32_t yoffset = 0;
+		uint32_t zoffset = c;
 		
-		//TRACE_F ("glyph %i %i", face->glyph->bitmap.width, face->glyph->bitmap.rows);
+		//TRACE_F ("glyph %i %i %i %i", c, zoffset, face->glyph->bitmap.width, face->glyph->bitmap.rows);
+		
+		ASSERT (face->glyph->bitmap.width <= width);
+		ASSERT (face->glyph->bitmap.rows <= height);
+		ASSERT (zoffset < layerCount);
 		
 		glTexSubImage3D 
 		(
 			target, 
 			0, 
-			xoffset, 
-			yoffset, 
-			zoffset, 
+			(GLint) xoffset, 
+			(GLint) yoffset, 
+			(GLint) zoffset, 
 			face->glyph->bitmap.width,
 			face->glyph->bitmap.rows,
 			1, 
@@ -147,7 +175,8 @@ void gtext_draw
 	float ox,
 	float oy,
 	float sx,
-	float sy
+	float sy,
+	float sa
 )
 {
 	//Vertex buffer for position, texpos, color.
@@ -171,7 +200,7 @@ void gtext_draw
 		gen4x6_square_pos (v, x, y, w, h);
 		v += 4*6;
 		i += 6;
-		ax += g->a [iglyph];
+		ax += g->a [iglyph] * sa;
 		c ++;
 	}
 	xxgl_dr_unmap (dr);

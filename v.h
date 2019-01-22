@@ -57,6 +57,19 @@ void vf32_add1 (uint32_t n, float r [], float const a [], float const b)
 }
 
 
+// r := a + b
+void vf32_add1max (uint32_t n, float r [], float const a [], float const b, float max)
+{
+	while (n--)
+	{
+		if (r [n] < max) 
+		{	
+			r [n] = a [n] + b;
+		}
+	}
+}
+
+
 // r := a - b
 void vf32_sub (uint32_t n, float r [], float const a [], float const b [])
 {
@@ -295,6 +308,20 @@ void vu32_set1 (uint32_t n, uint32_t r [], uint32_t v)
 		r [n] = v;
 	}
 }
+
+
+// r := a + b
+void vu32_add1max (uint32_t n, uint32_t r [], uint32_t const a [], uint32_t b, uint32_t max)
+{
+	while (n--)
+	{
+		if (r [n] < max) 
+		{	
+			r [n] = a [n] + b;
+		}
+	}
+}
+
 
 
 void vu32_ladder (uint32_t n, uint32_t x [], uint32_t const d [])

@@ -310,12 +310,34 @@ void vu32_set1 (uint32_t n, uint32_t r [], uint32_t v)
 }
 
 
+void vu32_and1 (uint32_t n, uint32_t r [], uint32_t a [], uint32_t b)
+{
+	while (n--)
+	{
+		r [n] = a [n] & b;
+	}
+}
+
+
 // r := a + b
 void vu32_add1max (uint32_t n, uint32_t r [], uint32_t const a [], uint32_t b, uint32_t max)
 {
 	while (n--)
 	{
 		if (r [n] < max) 
+		{	
+			r [n] = a [n] + b;
+		}
+	}
+}
+
+
+// r := a + b
+void vu32_add1min (uint32_t n, uint32_t r [], uint32_t const a [], uint32_t b, uint32_t min)
+{
+	while (n--)
+	{
+		if (r [n] > min) 
 		{	
 			r [n] = a [n] + b;
 		}

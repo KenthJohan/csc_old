@@ -1,0 +1,47 @@
+library project SDL2 is
+
+    for Languages use ("C");
+
+    for Library_Dir use "C:/msys64/mingw64/lib";
+    for Library_Name use "SDL2";
+    for Library_Kind use "static";
+    for Externally_Built use "true";
+    for Object_Dir use "obj";
+
+    for Source_Dirs use
+    (
+     "C:/msys64/mingw64/include",
+     "C:/msys64/mingw64/include/SDL2"
+    );
+
+    package Linker is
+        for Linker_Options use
+        (
+         "-LC:/msys64/mingw64/lib",
+         "-lmingw32",
+         "-lSDL2main",
+         "-lSDL2",
+         "-mwindows",
+         "-lsetupapi",
+         "-Wl,--no-undefined",
+         "-lm",
+         "-ldinput8",
+         "-ldxguid",
+         "-ldxerr8",
+         "-luser32",
+         "-lgdi32",
+         "-lwinmm",
+         "-limm32",
+         "-lole32",
+         "-loleaut32",
+         "-lshell32",
+         "-lversion",
+         "-luuid",
+         "-static-libgcc",
+         "-lopengl32",
+         "-lglu32",
+         "-lm"
+        );
+    end Linker;
+
+end SDL2;

@@ -28,8 +28,12 @@ void str_to_i32_assert (char const * buf, int base, int32_t ret, char e)
 	assert (*buf == e);
 }
 
+
+
+
 int main (int argc, char * argv [])
 {
+	/*
 	test_i32 ("-10101", 2);
 	test_i32 ("+10101", 2);
 	test_i32 ("-90807", 2);
@@ -40,6 +44,15 @@ int main (int argc, char * argv [])
 	str_to_i32_assert ("8", -10, 8, '\0');
 	str_to_i32_assert ("45", -10, -35+1, '\0');
 	str_to_i32_assert ("123", -10, 83, '\0');
+	*/
+
+	//char buf [10];
+	//str_from_imax (buf, 10, 146, -3, '.');
+	//printf ("Hello: %.*s\n", 10, buf);
+
+	char buf [10];
+	strf (buf, 10, "%u32_-2", 44);
+	printf ("Hello: %.*s\n", 10, buf);
 
 	return 0;
 }

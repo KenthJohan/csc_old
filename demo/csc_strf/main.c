@@ -50,9 +50,39 @@ int main (int argc, char * argv [])
 	//str_from_imax (buf, 10, 146, -3, '.');
 	//printf ("Hello: %.*s\n", 10, buf);
 
+
 	char buf [10];
-	strf (buf, 10, "%u32_-2", 44);
-	printf ("Hello: %.*s\n", 10, buf);
+
+	strf (buf, 10, "%i8_10", 44);printf ("Hello: %.*s\n", 10, buf);
+	strf (buf, 10, "%i16_10", 44);printf ("Hello: %.*s\n", 10, buf);
+	strf (buf, 10, "%i32_10", 44);printf ("Hello: %.*s\n", 10, buf);
+	strf (buf, 10, "%i8_10", -44);printf ("Hello: %.*s\n", 10, buf);
+	strf (buf, 10, "%i16_10", -44);printf ("Hello: %.*s\n", 10, buf);
+	strf (buf, 10, "%i32_10", -44);printf ("Hello: %.*s\n", 10, buf);
+	strf (buf, 10, "%u8_10", 44);printf ("Hello: %.*s\n", 10, buf);
+	strf (buf, 10, "%u16_10", 44);printf ("Hello: %.*s\n", 10, buf);
+	strf (buf, 10, "%u32_10", 44);printf ("Hello: %.*s\n", 10, buf);
+
+	strf (buf, 10, "%i8_16", 44);printf ("Hello: %.*s\n", 10, buf);
+	strf (buf, 10, "%i16_16", 44);printf ("Hello: %.*s\n", 10, buf);
+	strf (buf, 10, "%i32_16", 44);printf ("Hello: %.*s\n", 10, buf);
+	strf (buf, 10, "%u8_16", 44);printf ("Hello: %.*s\n", 10, buf);
+	strf (buf, 10, "%u16_16", 44);printf ("Hello: %.*s\n", 10, buf);
+	strf (buf, 10, "%u32_16", 44);printf ("Hello: %.*s\n", 10, buf);
+
+	strf (buf, 10, "%i8_-16", 44);printf ("Hello: %.*s\n", 10, buf);
+	strf (buf, 10, "%i16_-16", 44);printf ("Hello: %.*s\n", 10, buf);
+	strf (buf, 10, "%i32_-16", 44);printf ("Hello: %.*s\n", 10, buf);
+	strf (buf, 10, "%u8_-16", 44);printf ("Hello: %.*s\n", 10, buf);
+	strf (buf, 10, "%u16_-16", 44);printf ("Hello: %.*s\n", 10, buf);
+	strf (buf, 10, "%u32_-16", 44);printf ("Hello: %.*s\n", 10, buf);
+
+
+
+
+	//uint32_t p = 0;
+	//p |= STR_PBASE (-10);
+	//printf ("Hello: %x %i\n", p, (int8_t)STR_UBASE (p));
 
 	return 0;
 }

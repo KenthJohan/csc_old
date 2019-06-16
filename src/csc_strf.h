@@ -175,7 +175,8 @@ int str_from_imax2 (char * o, int n, intmax_t value, int base, char pad)
 
 
 
-
+//format specifier
+//%[width][u,i][size]_[base]
 void str_fmtv (char * o, uint32_t n, char const * f, va_list va)
 {
 	uint32_t flag = 0;
@@ -185,10 +186,14 @@ void str_fmtv (char * o, uint32_t n, char const * f, va_list va)
 	intmax_t value = 0;
 	while (1)
 	{
+		//Look for format specifier starting with '%'
 		switch (*f)
 		{
-		case '\0': goto end;
-		case '%': f ++; break;
+		case '\0':
+			goto end;
+		case '%':
+			f ++;
+			break;
 		default:
 			*o = *f;
 			o ++;
@@ -197,11 +202,14 @@ void str_fmtv (char * o, uint32_t n, char const * f, va_list va)
 			continue;
 		}
 
+		//Look if width is specified
 		if (IN (*f, '0', '9'))
 		{
 			width = str_to_i32 (&f, 10);
 		}
 
+		//Look for signed or unsigned
+		//Look for size
 		switch (*f)
 		{
 		case 'u':

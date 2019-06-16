@@ -5,13 +5,11 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
-#define STR_MAX(a,b) ((a)>(b)?(a):(b))
-#define STR_MIN(a,b) ((a)<(b)?(a):(b))
+#include <csc_basic.h>
+
 #define STR_SET_0Z "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 #define STR_SET_Z0 "ZYXWVUTSRQPONMLKJIHGFEDCBA9876543210"
-#define STR_IN(x, a, b) ((a) <= (x) && (x) <= (b))
-#define STR_INB(x, a, b, base) STR_IN ((x), (a), STR_MIN ((base) + (a), (b)))
-
+#define STR_INB(x, a, b, base) IN ((x), (a), MIN ((base) + (a), (b)))
 #define STR_SIGNED (1 << 0)
 #define STR_UNSIGNED (1 << 1)
 
@@ -70,23 +68,87 @@ uint8_t str_to_u8 (char const ** f, int8_t base)
 	return (uint8_t) v;
 }
 
-
-void str_from_imax (char * o, uint32_t n, intmax_t value, int8_t base, char pad)
+void str_rev (char * o, uint32_t n)
 {
-	assert (base != 0);
+	char * e = o + n;
+	n /= 2;
+	while (n--)
+	{
+		e --;
+		SWAPX (*o, *e);
+		o ++;
+	}
+}
+
+void str_from_imax (char * o, int n, intmax_t value, int8_t base, char pad)
+{
 	assert (o != NULL);
+	assert (base != 0);
+	assert (base < (int8_t)sizeof (STR_SET_0Z));
 	int rem;
 	int negative = 0;
-	assert (base < (int8_t)sizeof (STR_SET_0Z));
-	o += n - 1;
+	if (n == 0) {return;}
+	o += n;
 	if (value < 0)
 	{
-		negative = 1;
 		value = -value;
+		negative = 1;
 	}
 	while (1)
 	{
-		if (n == 0) {return;}
+		if (n == 0) {break;}
+		rem = value % base;
+		value /= base;
+		if (rem < 0)
+		{
+			rem += abs (base);
+			value += 1;
+		}
+		o --;
+		n --;
+		*o = STR_SET_0Z [rem];
+		if (value == 0) {break;}
+	}
+	if (n > 0 && negative)
+	{
+		o --;
+		n --;
+		*o = '-';
+	}
+	while (1)
+	{
+		if (n == 0) {break;}
+		o --;
+		n --;
+		*o = pad;
+	}
+	return;
+}
+
+int str_from_imax2 (char * o, int n, intmax_t value, int8_t base, char pad)
+{
+	assert (o != NULL);
+	assert (base != 0);
+	assert (base < (int8_t)sizeof (STR_SET_0Z));
+	int rem;
+	int m = 0;
+	if (m >= n) {return m;}
+	if (value < 0)
+	{
+		value = -value;
+		*o = '-';
+		o ++;
+		m ++;
+	}
+	else
+	{
+		*o = '+';
+		o ++;
+		m ++;
+	}
+	while (1)
+	{
+		if (m >= n) {break;}
 		rem = value % base;
 		value /= base;
 		if (rem < 0)
@@ -95,36 +157,31 @@ void str_from_imax (char * o, uint32_t n, intmax_t value, int8_t base, char pad)
 			value += 1;
 		}
 		*o = STR_SET_0Z [rem];
-		n --;
-		o --;
+		o ++;
+		m ++;
 		if (value == 0) {break;}
 	}
-	if (n > 0 && negative)
+	str_rev (o-m+1, m-1);
+	while (0)
 	{
-		*o = '-';
-		n --;
-		o --;
-	}
-	while (1)
-	{
-		if (n == 0) {return;}
+		if (m >= n) {break;}
 		*o = pad;
-		n --;
-		o --;
+		o ++;
+		m ++;
 	}
-	return;
+	return m;
 }
 
 
 
-void strf (char * o, uint32_t n, char const * f, ...)
+
+
+void str_fmtv (char * o, uint32_t n, char const * f, va_list va)
 {
-	va_list va;
-	va_start (va, f);
 	uint32_t flag = 0;
 	uint32_t size = 0;
 	uint32_t width = 0;
-	int32_t base = 0;
+	int base;
 	intmax_t value = 0;
 	while (1)
 	{
@@ -177,15 +234,32 @@ void strf (char * o, uint32_t n, char const * f, ...)
 
 		switch (*f)
 		{
-		case '_':
-			f ++;
-			base = str_to_i32 (&f, 10);
-			break;
+		case '_': f ++; base = str_to_i32 (&f, 10); break;
+		default: base = 10; break;
 		}
 
-		str_from_imax (o, n, value, (int8_t) base, '.');
+		int m = str_from_imax2 (o, 7, value, (int8_t) base, '.');
+		o += m;
+		n -= m;
 	}
 end:
-	va_end (va);
 	return;
+}
+
+void str_fmt (char * o, uint32_t n, char const * f, ...)
+{
+	va_list va;
+	va_start (va, f);
+	str_fmtv (o, n, f, va);
+	va_end (va);
+}
+
+void str_printf (char const * f, ...)
+{
+	va_list va;
+	va_start (va, f);
+	char buf [100] = {'\0'};
+	str_fmtv (buf, 100, f, va);
+	puts (buf);
+	va_end (va);
 }

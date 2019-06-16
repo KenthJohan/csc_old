@@ -7,21 +7,21 @@
 #include <csc_strf.h>
 #include <csc_tcol.h>
 
-void test_u32 (char const * buf, int base)
+void test_u32 (char const * buf, int8_t base)
 {
 	printf (TCOL (TCOL_NORMAL, TCOL_MAGENTA, TCOL_WHITE) "%s" TCOL_RST " => ", buf);
 	uint32_t num = str_to_u32 (&buf, base);
 	printf ("%i '%c'\n", (int) num, *buf);
 }
 
-void test_i32 (char const * buf, int base)
+void test_i32 (char const * buf, int8_t base)
 {
 	printf (TCOL (TCOL_NORMAL, TCOL_MAGENTA, TCOL_WHITE) "%s" TCOL_RST " => ", buf);
 	int32_t num = str_to_i32 (&buf, base);
 	printf ("%i '%c'\n", (int) num, *buf);
 }
 
-void str_to_i32_assert (char const * buf, int base, int32_t ret, char e)
+void str_to_i32_assert (char const * buf, int8_t base, int32_t ret, char e)
 {
 	int32_t num = str_to_i32 (&buf, base);
 	assert (num == ret);
@@ -78,8 +78,13 @@ int main (int argc, char * argv [])
 	strf (buf, 10, "%u32_-16", 44);printf ("Hello: %.*s\n", 10, buf);
 
 
-
-
+	/*
+	int64_t a = -1000;
+	uint64_t b = a;
+	int64_t c = b;
+	printf ("%i %u\n", (uint64_t)c, (uint64_t)c);
+	printf ("%i %u\n", (uint64_t)b, (uint64_t)b);
+*/
 	//uint32_t p = 0;
 	//p |= STR_PBASE (-10);
 	//printf ("Hello: %x %i\n", p, (int8_t)STR_UBASE (p));

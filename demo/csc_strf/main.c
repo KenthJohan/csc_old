@@ -3,25 +3,26 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <inttypes.h>
 
 #include <csc_strf.h>
 #include <csc_tcol.h>
 
-void test_u32 (char const * buf, int8_t base)
+void test_u32 (char const * buf, int base)
 {
 	printf (TCOL (TCOL_NORMAL, TCOL_MAGENTA, TCOL_WHITE) "%s" TCOL_RST " => ", buf);
 	uint32_t num = str_to_u32 (&buf, base);
 	printf ("%i '%c'\n", (int) num, *buf);
 }
 
-void test_i32 (char const * buf, int8_t base)
+void test_i32 (char const * buf, int base)
 {
 	printf (TCOL (TCOL_NORMAL, TCOL_MAGENTA, TCOL_WHITE) "%s" TCOL_RST " => ", buf);
 	int32_t num = str_to_i32 (&buf, base);
 	printf ("%i '%c'\n", (int) num, *buf);
 }
 
-void str_to_i32_assert (char const * buf, int8_t base, int32_t ret, char e)
+void str_to_i32_assert (char const * buf, int base, int32_t ret, char e)
 {
 	int32_t num = str_to_i32 (&buf, base);
 	assert (num == ret);
@@ -33,18 +34,17 @@ void str_to_i32_assert (char const * buf, int8_t base, int32_t ret, char e)
 
 int main (int argc, char * argv [])
 {
-	/*
+
 	test_i32 ("-10101", 2);
 	test_i32 ("+10101", 2);
 	test_i32 ("-90807", 2);
 	test_i32 ("+90807", 2);
 	test_i32 ("-7F", 16);
 	test_i32 ("+7F", 16);
-
 	str_to_i32_assert ("8", -10, 8, '\0');
-	str_to_i32_assert ("45", -10, -35+1, '\0');
+	str_to_i32_assert ("45", -10, -35, '\0');
 	str_to_i32_assert ("123", -10, 83, '\0');
-	*/
+
 
 	//char buf [10];
 	//str_from_imax (buf, 10, 146, -3, '.');
@@ -89,8 +89,18 @@ int main (int argc, char * argv [])
 	//p |= STR_PBASE (-10);
 	//printf ("Hello: %x %i\n", p, (int8_t)STR_UBASE (p));
 
-	str_printf ("%i32 : %i16_2 %u8_10", -32, -4, 255);
+	str_printf ("%i32 : %i16_2 %u8_-10", -32, -4, 255);
 
+	/*
+	int32_t a = 56;
+	int32_t b = -56;
+	int64_t d = -56;
+	str_printf ("%i32\n", a);
+	str_printf ("%i32\n", b);
+	printf("%" PRId32 "\n", a);
+	printf("%" PRId32 "\n", b);
+	printf("%" PRId64 "\n", d);
+	*/
 	/*
 	char buf [] = "Hello";
 	str_rev (buf, sizeof (buf)-1);

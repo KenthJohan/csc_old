@@ -13,7 +13,7 @@
 #define STR_SIGNED (1 << 0)
 #define STR_UNSIGNED (1 << 1)
 
-uint32_t str_to_u32 (char const ** f, int8_t base)
+uint32_t str_to_u32 (char const ** f, int base)
 {
 	uint32_t a = 0;
 	int c;
@@ -32,7 +32,7 @@ uint32_t str_to_u32 (char const ** f, int8_t base)
 	return a;
 }
 
-int32_t str_to_i32 (char const ** f, int8_t base)
+int32_t str_to_i32 (char const ** f, int base)
 {
 	int32_t a = 0;
 	int c;
@@ -56,13 +56,13 @@ int32_t str_to_i32 (char const ** f, int8_t base)
 	else {return a;}
 }
 
-int8_t str_to_i8 (char const ** f, int8_t base)
+int8_t str_to_i8 (char const ** f, int base)
 {
 	int32_t v = str_to_i32 (f, base);
 	return (int8_t) v;
 }
 
-uint8_t str_to_u8 (char const ** f, int8_t base)
+uint8_t str_to_u8 (char const ** f, int base)
 {
 	uint32_t v = str_to_u32 (f, base);
 	return (uint8_t) v;
@@ -80,7 +80,7 @@ void str_rev (char * o, uint32_t n)
 	}
 }
 
-void str_from_imax (char * o, int n, intmax_t value, int8_t base, char pad)
+void str_from_imax (char * o, int n, intmax_t value, int base, char pad)
 {
 	assert (o != NULL);
 	assert (base != 0);
@@ -125,7 +125,7 @@ void str_from_imax (char * o, int n, intmax_t value, int8_t base, char pad)
 	return;
 }
 
-int str_from_imax2 (char * o, int n, intmax_t value, int8_t base, char pad)
+int str_from_imax2 (char * o, int n, intmax_t value, int base, char pad)
 {
 	assert (o != NULL);
 	assert (base != 0);
@@ -180,7 +180,7 @@ void str_fmtv (char * o, uint32_t n, char const * f, va_list va)
 {
 	uint32_t flag = 0;
 	uint32_t size = 0;
-	uint32_t width = 0;
+	int width = -1;
 	int base;
 	intmax_t value = 0;
 	while (1)
@@ -189,7 +189,17 @@ void str_fmtv (char * o, uint32_t n, char const * f, va_list va)
 		{
 		case '\0': goto end;
 		case '%': f ++; break;
-		default: *o = *f; o ++; n --; f ++; continue;
+		default:
+			*o = *f;
+			o ++;
+			n --;
+			f ++;
+			continue;
+		}
+
+		if (IN (*f, '0', '9'))
+		{
+			width = str_to_i32 (&f, 10);
 		}
 
 		switch (*f)
@@ -234,7 +244,7 @@ void str_fmtv (char * o, uint32_t n, char const * f, va_list va)
 
 		switch (*f)
 		{
-		case '_': f ++; base = str_to_i32 (&f, 10); break;
+		case '_': f ++; base = (int) str_to_i32 (&f, 10); break;
 		default: base = 10; break;
 		}
 

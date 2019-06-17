@@ -266,16 +266,16 @@ void str_fmtv (char * o, uint32_t n, char const * f, va_list va)
 			break;
 		}
 
-		uint32_t m = str_from_imax2 (o, n, value, base);
+		uint32_t m = str_from_imax2 (o, MIN (n, width), value, base);
 		o += m;
 		n -= m;
 		if (width > m)
 		{
 			width = MIN (n, width - m);
+			str_rep (o, width, '.');
+			o += width;
+			n -= width;
 		}
-		str_rep (o, width, '.');
-		o += width;
-		n -= width;
 	}
 end:
 	return;

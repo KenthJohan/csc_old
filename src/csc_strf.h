@@ -80,7 +80,16 @@ void str_rev (char * o, uint32_t n)
 	}
 }
 
-void str_from_imax (char * o, int n, intmax_t value, int base, char pad)
+void str_rep (char * o, uint32_t n, char pad)
+{
+	while (n--)
+	{
+		*o = pad;
+		o ++;
+	}
+}
+
+void str_from_imax (char * o, uint32_t n, intmax_t value, int base, char pad)
 {
 	assert (o != NULL);
 	assert (base != 0);
@@ -125,13 +134,13 @@ void str_from_imax (char * o, int n, intmax_t value, int base, char pad)
 	return;
 }
 
-int str_from_imax2 (char * o, int n, intmax_t value, int base, char pad)
+uint32_t str_from_imax2 (char * o, uint32_t n, intmax_t value, int base)
 {
 	assert (o != NULL);
 	assert (base != 0);
 	assert (base < (int8_t)sizeof (STR_SET_0Z));
 	int rem;
-	int m = 0;
+	uint32_t m = 0;
 	if (m >= n) {return m;}
 	if (value < 0)
 	{
@@ -162,13 +171,6 @@ int str_from_imax2 (char * o, int n, intmax_t value, int base, char pad)
 		if (value == 0) {break;}
 	}
 	str_rev (o-m+1, m-1);
-	while (0)
-	{
-		if (m >= n) {break;}
-		*o = pad;
-		o ++;
-		m ++;
-	}
 	return m;
 }
 
@@ -181,7 +183,7 @@ void str_fmtv (char * o, uint32_t n, char const * f, va_list va)
 {
 	uint32_t flag = 0;
 	uint32_t size = 0;
-	int width = -1;
+	uint32_t width = 0;
 	int base;
 	intmax_t value = 0;
 	while (1)
@@ -205,7 +207,7 @@ void str_fmtv (char * o, uint32_t n, char const * f, va_list va)
 		//Look if width is specified
 		if (IN (*f, '0', '9'))
 		{
-			width = str_to_i32 (&f, 10);
+			width = str_to_u32 (&f, 10);
 		}
 
 		//Look for signed or unsigned
@@ -215,13 +217,16 @@ void str_fmtv (char * o, uint32_t n, char const * f, va_list va)
 		case 'u':
 			f ++;
 			flag |= STR_UNSIGNED;
-			size = str_to_u32 (&f, 10);
 			break;
 		case 'i':
 			f ++;
 			flag |= STR_SIGNED;
-			size = str_to_u32 (&f, 10);
 			break;
+		}
+
+		if (IN (*f, '0', '9'))
+		{
+			size = str_to_u32 (&f, 10);
 		}
 
 		assert (sizeof (uint8_t) <= sizeof (unsigned));
@@ -252,13 +257,25 @@ void str_fmtv (char * o, uint32_t n, char const * f, va_list va)
 
 		switch (*f)
 		{
-		case '_': f ++; base = (int) str_to_i32 (&f, 10); break;
-		default: base = 10; break;
+		case '_':
+			f ++;
+			base = (int) str_to_i32 (&f, 10);
+			break;
+		default:
+			base = 10;
+			break;
 		}
 
-		int m = str_from_imax2 (o, 7, value, (int8_t) base, '.');
+		uint32_t m = str_from_imax2 (o, n, value, base);
 		o += m;
 		n -= m;
+		if (width > m)
+		{
+			width = MIN (n, width - m);
+		}
+		str_rep (o, width, '.');
+		o += width;
+		n -= width;
 	}
 end:
 	return;

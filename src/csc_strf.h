@@ -12,6 +12,9 @@
 #define STR_INB(x, a, b, base) IN ((x), (a), MIN ((base) + (a), (b)))
 #define STR_SIGNED (1 << 0)
 #define STR_UNSIGNED (1 << 1)
+#define STR_ALIGN_LEFT (1 << 2)
+#define STR_ALIGN_RIGHT (1 << 3)
+#define STR_ALIGN_MIDDLE (1 << 4)
 
 uint32_t str_to_u32 (char const ** f, int base)
 {
@@ -207,6 +210,7 @@ void str_fmtv (char * o, uint32_t n, char const * f, va_list va)
 		//Look if width is specified
 		if (IN (*f, '0', '9'))
 		{
+			flag |= STR_ALIGN_RIGHT;
 			width = str_to_u32 (&f, 10);
 		}
 
@@ -223,6 +227,8 @@ void str_fmtv (char * o, uint32_t n, char const * f, va_list va)
 			flag |= STR_SIGNED;
 			break;
 		}
+
+		if (*f == 'l') {flag |= STR_ALIGN_LEFT;}
 
 		if (IN (*f, '0', '9'))
 		{
@@ -266,9 +272,12 @@ void str_fmtv (char * o, uint32_t n, char const * f, va_list va)
 			break;
 		}
 
+
 		uint32_t m = str_from_imax2 (o, MIN (n, width), value, base);
 		o += m;
 		n -= m;
+
+		//Apply padding
 		if (width > m)
 		{
 			width = MIN (n, width - m);

@@ -89,7 +89,9 @@ int main (int argc, char * argv [])
 	//p |= STR_PBASE (-10);
 	//printf ("Hello: %x %i\n", p, (int8_t)STR_UBASE (p));
 
+	printf ("%-20i : %6i %3i\n", -32, -4, 255);
 	str_printf ("%20i32 : %6i16_2 %3u8_-10", -32, -4, 255);
+	str_printf ("%20i32_2 : %20i32_2", STR_SIGNED, STR_UNSIGNED);
 
 	/*
 	int32_t a = 56;

@@ -33,6 +33,7 @@ void XSDL_DestroyWindows (SDL_Window * window [], uint32_t n)
 
 int main (int argc, char * argv[])
 {
+
 	struct Application a = {0};
 	a.n = 1;
 
@@ -85,6 +86,7 @@ int main (int argc, char * argv[])
 
 	XSDL_DestroyWindows (a.window, a.n);
 	SDL_Quit();
+
 
 	return 0;
 }

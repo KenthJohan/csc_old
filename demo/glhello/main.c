@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <assert.h>
+#include <assert.h>
 #include <csc_debug.h>
 
 #define WIN_X SDL_WINDOWPOS_UNDEFINED
@@ -29,20 +30,25 @@ void XSDL_DestroyWindows (SDL_Window * window [], uint32_t n)
 
 #define XSDL_Init(x) ASSERT_F(SDL_Init((x)) == 0, "There was an error initializing the SDL library: %s\n", SDL_GetError())
 #define XSDL_WaitEvent(x) ASSERT_F(SDL_WaitEvent((x)) == 0, "There was an error while waiting for events: %s\n", SDL_GetError())
-#define XSDL_ASSERT_CreateWindow(x) ASSERT_F((x) != NULL, "Could not create window: %s\n", SDL_GetError())
+#define XSDL_ASSERT_CreateWindow(win, title, x, y, w, h, flags)\
+	ASSERT((win) == NULL);\
+	(win) = SDL_CreateWindow ((title), (x), (y), (w), (h), (flags));\
+	ASSERT_F((win) != NULL, "Could not create window: %s\n", SDL_GetError())
+
 
 int main (int argc, char * argv[])
 {
+	ASSERT (argc);
+	ASSERT (argv);
 
 	struct Application a = {0};
-	a.n = 1;
 
 	uint32_t flags = 0;
 	XSDL_Init (SDL_INIT_VIDEO);
+	//a.window [0] = 1;
 
-
-	a.window [0] = SDL_CreateWindow (WIN_TITLE, WIN_X, WIN_Y, WIN_W, WIN_H, SDL_WINDOW_OPENGL);
-	XSDL_ASSERT_CreateWindow (a.window [0]);
+	XSDL_ASSERT_CreateWindow (a.window [a.n], WIN_TITLE, WIN_X, WIN_Y, WIN_W, WIN_H, SDL_WINDOW_OPENGL);
+	a.n ++;
 
 
 	SDL_Event event;
@@ -51,21 +57,39 @@ int main (int argc, char * argv[])
 		if (flags & APP_QUIT) {break;}
 		SDL_WaitEvent (&event);
 		//XSDL_WaitEvent (&event);
+		//TRACE_F ("%i", event.type);
 		switch (event.type)
 		{
+		case SDL_WINDOWEVENT:
+			switch (event.window.event)
+			{
+			case SDL_WINDOWEVENT_CLOSE:
+				SDL_DestroyWindow (SDL_GetWindowFromID (event.window.windowID));
+				a.n --;
+				a.window [a.n] = NULL;
+				break;
+			case SDL_WINDOWEVENT_SIZE_CHANGED:
+				break;
+			}
+			break;
 		case SDL_KEYDOWN:
 			switch (event.key.keysym.sym)
 			{
 			case SDLK_ESCAPE:
-				flags |= APP_QUIT;
+				SDL_DestroyWindow (SDL_GetWindowFromID (event.window.windowID));
+				a.n --;
+				a.window [a.n] = NULL;
 				break;
 
 			case SDLK_c:
 				printf ("SDL_CreateWindow\n");
 				if (a.n < WIN_N)
 				{
-					a.window [a.n] = SDL_CreateWindow (WIN_TITLE, WIN_X, WIN_Y, WIN_W, WIN_H, SDL_WINDOW_OPENGL);
+
+					XSDL_ASSERT_CreateWindow (a.window [a.n], WIN_TITLE, WIN_X, WIN_Y, WIN_W, WIN_H, SDL_WINDOW_OPENGL);
 					a.n ++;
+					//TRACE_F ("id:%i", SDL_GetWindowID (a.window [0]));
+					//TRACE_F ("id:%i", SDL_GetWindowID (a.window [a.n]));
 				}
 				break;
 
@@ -79,7 +103,7 @@ int main (int argc, char * argv[])
 			break;
 
 		case SDL_MOUSEMOTION:
-			printf ("%i %i\n", event.motion.x, event.motion.y);
+			//printf ("%i %i\n", event.motion.x, event.motion.y);
 			break;
 		}
 	}

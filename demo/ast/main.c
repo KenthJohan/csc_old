@@ -9,251 +9,230 @@
 #include <csc_debug.h>
 #include <csc_tcol.h>
 
-enum ast_kind
+
+enum ast_state
 {
-	AST_ERROR = -1,
-	AST_UNDEFINED = -2,
-	AST_INVALID_TOKEN = -3,
-	AST_EXPECTED_NUMBER = -4,
-	AST_EXPECTED_TOKEN = -5,
-	AST_UNEXPECTED_FACTOR = -6,
-	AST_OK = 0,
-	AST_PLUS,
-	AST_MINUS,
-	AST_MUL,
-	AST_DIV,
-	AST_UNARYMINUS,
-	AST_NUMBER,
-	AST_EOF,
-	AST_OPENP,
-	AST_CLOSEP
+	AST_ERROR,
+	AST_START,
+	AST_GLOBAL_IDENTIFIER,
+	AST_GLOBAL_PTR,
+	AST_GLOBAL_ASSIGN,
+	AST_FUNCTION_NAME,
+	AST_FARG_IDENTIFIER,
+	AST_FARG_PTR,
+	AST_FARG_NAME,
+	AST_LOCAL_IDENTIFIER
 };
 
-char const * ast_kind_tostr (enum ast_kind kind)
+
+char const * ast_state_tostr (enum ast_state state)
 {
-	switch (kind)
+	switch (state)
 	{
 	case AST_ERROR: return "AST_ERROR";
-	case AST_UNDEFINED: return "AST_UNDEFINED";
-	case AST_INVALID_TOKEN: return "AST_INVALID_TOKEN";
-	case AST_EXPECTED_NUMBER: return "AST_EXPECTED_NUMBER";
-	case AST_EXPECTED_TOKEN: return "AST_EXPECTED_TOKEN";
-	case AST_UNEXPECTED_FACTOR: return "AST_UNEXPECTED_FACTOR";
-	case AST_OK: return "AST_OK";
-	case AST_PLUS: return "AST_PLUS";
-	case AST_MINUS: return "AST_MINUS";
-	case AST_MUL: return "AST_MUL";
-	case AST_DIV: return "AST_DIV";
-	case AST_UNARYMINUS: return "AST_UNARYMINUS";
-	case AST_NUMBER: return "AST_NUMBER";
-	case AST_EOF: return "AST_EOF";
-	case AST_OPENP: return "AST_OPENP";
-	case AST_CLOSEP: return "AST_CLOSEP";
+	case AST_START: return "AST_START";
+	case AST_GLOBAL_IDENTIFIER: return "AST_GLOBAL_IDENTIFIER";
+	case AST_GLOBAL_PTR: return "AST_GLOBAL_PTR";
+	case AST_GLOBAL_ASSIGN: return "AST_GLOBAL_ASSIGN";
+	case AST_FUNCTION_NAME: return "AST_FUNCTION_NAME";
+	case AST_FARG_IDENTIFIER: return "AST_FARG_IDENTIFIER";
+	case AST_FARG_PTR: return "AST_FARG_PTR";
+	case AST_FARG_NAME: return "AST_FARG_NAME";
+	case AST_LOCAL_IDENTIFIER: return "AST_LOCAL_IDENTIFIER";
 	}
 }
 
-struct ast_node;
-struct ast_node
+
+struct ast_table
 {
-	enum ast_kind kind;
-	struct ast_node * left;
-	struct ast_node * right;
+	char * a;
+	char * b;
 };
 
-
-
-struct ast_token
+void ast_skip (char const ** p, int (*f)(int))
 {
-	enum ast_kind kind;
-	double value;
-	char * p;
-};
-
-
-void ast_skip (char ** p, int (*f)(int))
-{
-	while (f (**p)) {(*p) ++;}
+	while (f (**p)) {(*p)++;}
 }
 
-
-void ast_get_number (char const * text, struct ast_token * token)
+int ast_isalphadigit (int c)
 {
-	token->kind = AST_NUMBER;
-	ast_skip (&token->p, isspace);
-	char * p = token->p;
-	ast_skip (&token->p, isdigit);
-	if (token->p [0] == '.') {token->p ++;}
-	ast_skip (&token->p, isdigit);
-	if(p == token->p)
-	{
-		token->kind = AST_EXPECTED_NUMBER;
-		return;
-	}
-	token->value = atof (p);
+	return isalpha (c) && isdigit (c);
 }
 
-void ast_next (char const * text, struct ast_token * token)
+int ast_next_indentifer (char const ** p)
 {
-	ast_skip (&token->p, isspace);
-	token->value = 0;
-	if (token->p [0] == 0)
-	{
-		token->kind = AST_EOF;
-		return;
-	}
-	if (isdigit (token->p [0]))
-	{
-		ast_get_number (text, token);
-		return;
-	}
-	switch (token->p [0])
-	{
-	case '+': token->kind = AST_PLUS; break;
-	case '-': token->kind = AST_MINUS; break;
-	case '*': token->kind = AST_MUL; break;
-	case '/': token->kind = AST_DIV; break;
-	case '(': token->kind = AST_OPENP; break;
-	case ')': token->kind = AST_CLOSEP; break;
-	default:
-	token->kind = AST_INVALID_TOKEN;
-	return;
-	}
-	token->p ++;
+	char const * q;
+	q = (*p);
+	ast_skip (p, isalpha);
+	ast_skip (p, ast_isalphadigit);
+	if (q == (*p)) {return 0;}
+	return 1;
 }
 
-void ast_expression (char const * text, struct ast_token * token);
-
-void ast_match (char const * text, struct ast_token * token, char expected)
+int ast_next_cmp (char const ** p, char const * str)
 {
-	if (token->kind < 0) {return;}
-	if (token->p [-1] == expected)
+	unsigned l = strlen (str);
+	int diff = strncmp (*p, str, l);
+	if (diff == 0)
 	{
-		ast_next (text, token);
+		(*p) += l;
+		return l;
 	}
-	else
-	{
-		token->kind = AST_EXPECTED_TOKEN;
-	}
+	return 0;
 }
 
-void ast_factor (char const * text, struct ast_token * token)
+int ast_peek_cmp (char const * p, char const * str)
 {
-	if (token->kind < 0) {return;}
-	switch(token->kind)
+	ast_skip (&p, isspace);
+	unsigned l = strlen (str);
+	int diff = strncmp (p, str, l);
+	if (diff == 0)
 	{
-	case AST_OPENP:
-	ast_next (text, token);
-	ast_expression (text, token);
-	ast_match (text, token, ')');
+		return l;
+	}
+	return 0;
+}
+
+void ast_next (enum ast_state * state, char const ** p, char const ** a, char const ** b)
+{
+	switch (*state)
+	{
+	case AST_START:
+	ast_skip (p, isspace);
+	*a = *p;
+	if (0) {}
+	else if (ast_next_indentifer (p))
+	{
+		(*state) = AST_GLOBAL_IDENTIFIER;
+	}
+	*b = *p;
+	ast_skip (p, isspace);
 	break;
 
-	case AST_MINUS:
-	ast_next (text, token);
-	ast_factor (text, token);
-	break;
-
-	case AST_NUMBER:
-	ast_next (text, token);
-	break;
-
-	default:
-	token->kind = AST_UNEXPECTED_FACTOR;
-	}
-}
-
-void ast_term1 (char const * text, struct ast_token * token)
-{
-	if (token->kind < 0) {return;}
-	switch (token->kind)
+	case AST_GLOBAL_PTR:
+	case AST_GLOBAL_IDENTIFIER:
+	ast_skip (p, isspace);
+	*a = *p;
+	if (0) {}
+	else if (ast_next_cmp (p, "*"))
 	{
-	case AST_MUL:
-	ast_next (text, token);
-	ast_factor (text, token);
-	ast_term1 (text, token);
-	break;
-	case AST_DIV:
-	ast_next (text, token);
-	ast_factor (text, token);
-	ast_term1 (text, token);
-	break;
-	default:
-	break;
+		(*state) = AST_GLOBAL_PTR;
 	}
-}
-
-void ast_term (char const * text, struct ast_token * token)
-{
-	if (token->kind < 0) {return;}
-	ast_factor (text, token);
-	ast_term1 (text, token);
-}
-
-void ast_expression1 (char const * text, struct ast_token * token)
-{
-	if (token->kind < 0) {return;}
-	switch(token->kind)
+	else if (ast_next_indentifer (p))
 	{
-	case AST_PLUS:
-	ast_next (text, token);
-	ast_term (text, token);
-	ast_expression1(text, token);
-	break;
-
-	case AST_MINUS:
-	ast_next (text, token);
-	ast_term (text, token);
-	ast_expression1(text, token);
-	break;
-
-	default:
-	break;
+		(*state) = AST_GLOBAL_IDENTIFIER;
+		if (ast_peek_cmp (*p, "("))
+		{
+			(*state) = AST_FUNCTION_NAME;
+		}
 	}
-}
-
-void ast_expression (char const * text, struct ast_token * token)
-{
-	if (token->kind < 0) {return;}
-	ast_term (text, token);
-	ast_expression1 (text, token);
-}
-
-
-void parse (char const * text)
-{
-	struct ast_token token = {0};
-	token.p = text;
-	ast_next (text, &token);
-	ast_expression (text, &token);
-	if (token.kind < 0)
+	else if (ast_next_cmp (p, "="))
 	{
-		fprintf (stderr, "%s : %s %c(%c)%c\n", text, ast_kind_tostr (token.kind), token.p [-1], token.p [0], token.p [1]);
+		*state = AST_GLOBAL_ASSIGN;
+	}
+	*b = *p;
+	ast_skip (p, isspace);
+	break;
+
+	case AST_FUNCTION_NAME:
+	ast_skip (p, isspace);
+	ast_next_cmp (p, "(");
+	*a = *p;
+	if (0) {}
+	else if (ast_next_indentifer (p))
+	{
+		(*state) = AST_FARG_IDENTIFIER;
+	}
+	*b = *p;
+	break;
+
+
+	case AST_FARG_NAME:
+	ast_skip (p, isspace);
+	if (0) {}
+	else if (ast_next_cmp (p, ","))
+	{
+
+	}
+	else if (ast_next_cmp (p, ")"))
+	{
+		ast_skip (p, isspace);
+		if (ast_next_cmp (p, "{"))
+		{
+			(*state) = AST_LOCAL_IDENTIFIER;
+		}
+	}
+	case AST_FARG_PTR:
+	case AST_FARG_IDENTIFIER:
+	ast_skip (p, isspace);
+	*a = *p;
+	if (0) {}
+	else if (ast_next_cmp (p, "*"))
+	{
+	(*state) = AST_FARG_PTR;
+	}
+	else if (ast_next_indentifer (p))
+	{
+	(*state) = AST_FARG_IDENTIFIER;
+	if (ast_peek_cmp (*p, ",")||ast_peek_cmp (*p, ")"))
+	{
+	(*state) = AST_FARG_NAME;
+	}
+	}
+	*b = *p;
+	ast_skip (p, isspace);
+	break;
+
+	case AST_LOCAL_IDENTIFIER:
+	ast_skip (p, isspace);
+	*a = *p;
+	if (0) {}
+	else if (ast_next_indentifer (p))
+	{
+		(*state) = AST_LOCAL_IDENTIFIER;
+	}
+	*b = *p;
+	ast_skip (p, isspace);
+	break;
+
 	}
 }
+
+void check (enum ast_state state, char const * code, char const * p, char const * a, char const * b)
+{
+	printf ("%4i %10.*s  %s\n", p - code, b - a, a, ast_state_tostr (state));
+}
+
+
+
 
 
 int main (int argc, char * argv [])
 {
-	parse ("1+2+3+4");
-	parse ("1*2*3*4");
-	parse ("1-2-3-4");
-	parse ("1/2/3/4");
-	parse ("1*2+3*4");
-	parse ("1+2*3+4");
-	parse ("(1+2)*(3+4)");
-	parse ("1+(2*3)*(4+5)");
-	parse ("1+(2*3)/4+5");
-	parse ("5/(4+3)/2");
-	parse ("1 + 2.5");
-	parse ("125");
-	parse ("-1");
-	parse ("-1+(-2)");
-	parse ("-1+(-2.0)");
-	parse ("   1*2,5");
-	parse ("   1*2.5e2");
-	parse ("M1 + 2.5");
-	parse ("1 + 2&5");
-	parse ("1 * 2.5.6");
-	parse ("1 ** 2.5");
-	parse ("*1 / 2.5");
+	ASSERT (argc);
+	ASSERT (argv);
+	setbuf (stdout, NULL);
+	char const code [] =
+	"void * const foo (int a, int b, int c)\n"
+	"{\n"
+	"int localvar;"
+	"}\n";
+	char const * p = code;
+	char const * a;
+	char const * b;
+	uint32_t state = AST_START;
+	ast_next (&state, &p, &a, &b);check (state, code, p, a, b);
+	ast_next (&state, &p, &a, &b);check (state, code, p, a, b);
+	ast_next (&state, &p, &a, &b);check (state, code, p, a, b);
+	ast_next (&state, &p, &a, &b);check (state, code, p, a, b);
+	ast_next (&state, &p, &a, &b);check (state, code, p, a, b);
+	ast_next (&state, &p, &a, &b);check (state, code, p, a, b);
+	ast_next (&state, &p, &a, &b);check (state, code, p, a, b);
+	ast_next (&state, &p, &a, &b);check (state, code, p, a, b);
+	ast_next (&state, &p, &a, &b);check (state, code, p, a, b);
+	ast_next (&state, &p, &a, &b);check (state, code, p, a, b);
+	ast_next (&state, &p, &a, &b);check (state, code, p, a, b);
+	ast_next (&state, &p, &a, &b);check (state, code, p, a, b);
+	ast_next (&state, &p, &a, &b);check (state, code, p, a, b);
 	return 0;
 }

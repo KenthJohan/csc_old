@@ -12,77 +12,45 @@
 #include <csc_debug.h>
 #include <csc_tcol.h>
 
-
-enum lex_toktype
+enum tok_type
 {
-	LEX_DEFAULT,
-	LEX_SPACE,
-	LEX_TAB,
-	LEX_LF,
-	LEX_VOID,
-	LEX_MULPTR,
-	LEX_CONST,
-	LEX_PARENOPEN,
-	LEX_PARENCLOSE,
-	LEX_BRACOPEN,
-	LEX_BRACCLOSE,
-	LEX_COMMA,
-	LEX_IDENTIFIER,
-	LEX_INT,
-	LEX_SEMICOLON
+	TOK_VOID = 256,
+	TOK_CONST,
+	TOK_INT,
+	TOK_IDENTIFIER,
+	TOK_LITERAL_INTEGER
 };
 
-char const * ast_toktype_tostr (enum lex_toktype t)
+char const * tok_type_tostr (int t)
 {
 	switch (t)
 	{
-	case LEX_DEFAULT: return "AST_DEFAULT";
-	case LEX_SPACE: return "AST_SPACE";
-	case LEX_TAB: return "AST_TAB";
-	case LEX_LF: return "AST_LF";
-	case LEX_VOID: return "AST_VOID";
-	case LEX_MULPTR: return "AST_MULPTR";
-	case LEX_CONST: return "AST_CONST";
-	case LEX_PARENOPEN: return "AST_PARENOPEN";
-	case LEX_PARENCLOSE: return "AST_PARENCLOSE";
-	case LEX_BRACOPEN: return "AST_BRACOPEN";
-	case LEX_BRACCLOSE: return "AST_BRACCLOSE";
-	case LEX_COMMA: return "AST_COMMA";
-	case LEX_IDENTIFIER: return "AST_IDENTIFIER";
-	case LEX_INT: return "AST_INT";
-	case LEX_SEMICOLON: return "AST_SEMICOLON";
+	case '\0': return "<EOF>";
+	case '\r':  return "<CR>";
+	case '\n': return "<LF>";
+	case '{': return "{";
+	case '}': return "}";
+	case '(': return "(";
+	case ')': return ")";
+	case '*': return "*";
+	case ':': return ":";
+	case ',': return ",";
+	case '?': return "?";
+	case '+': return "+";
+	case '-': return "-";
+	case '/': return "/";
+	case '<': return "<";
+	case '>': return ">";
+	case '|': return "|";
+	case TOK_VOID: return "AST_VOID";
+	case TOK_CONST: return "AST_CONST";
+	case TOK_IDENTIFIER: return "AST_IDENTIFIER";
+	case TOK_INT: return "AST_INT";
+	case TOK_LITERAL_INTEGER: return "TOK_LITERAL_INTEGER";
 	}
+	return NULL;
 }
 
-void lex_skip (char const ** p, int (*f)(int))
-{
-	while (f (**p)) {(*p)++;}
-}
-
-int lex_isalphadigit (int c)
-{
-	return isalpha (c) && isdigit (c);
-}
-
-int lex_next_strchr (char const ** p, int * line, int * col, char const * str)
-{
-	int n = 0;
-	while (strchr (str, **p))
-	{
-		if ((**p) == '\n')
-		{
-			(*col) = 0;
-			(*line) ++;
-		}
-		else
-		{
-			(*col) ++;
-		}
-		n ++;
-		(*p) ++;
-	}
-	return n;
-}
 
 int lex_next_cmp (char const ** p, int * col, char const * str)
 {
@@ -97,6 +65,16 @@ int lex_next_cmp (char const ** p, int * col, char const * str)
 	return 0;
 }
 
+int lex_isalphadigit (int c)
+{
+	return isalpha (c) || isdigit (c);
+}
+
+void lex_skip (char const ** p, int (*f)(int))
+{
+	while (f (**p)) {(*p)++;}
+}
+
 int lex_next_indentifer (char const ** p, int * col)
 {
 	char const * q = (*p);
@@ -107,154 +85,205 @@ int lex_next_indentifer (char const ** p, int * col)
 	return n;
 }
 
-void ast_next (enum lex_toktype * t, char const ** p, char const ** a, char const ** b, int * line, int * col)
+int lex_next_literal (char const ** p, int * col)
 {
-	(*a) = (*p);
-	if (lex_next_strchr (p, line, col, " "))
+	char const * q = (*p);
+	lex_skip (p, isdigit);
+	int n = (*p) - q;
+	(*col) += n;
+	return n;
+}
+
+
+int tok_next (char const ** p, int * line, int * col)
+{
+again:
+	switch (**p)
 	{
-		(*t) = LEX_SPACE;
+	case '\0': return 0;
+	case ' ':
+		(*col) ++;
+		(*p) ++;
+		goto again;
+	case '\r':
+		(*p) ++;
+		goto again;
+	case '\n':
+		(*col) = 0;
+		(*line) ++;
+		(*p) ++;
+		goto again;
+	case '{':
+	case '}':
+	case '(':
+	case ')':
+	case '*':
+	case ':':
+	case ',':
+	case '?':
+	case '+':
+	case '-':
+	case '/':
+	case '<':
+	case '>':
+		(*p) ++;
+		(*col) ++;
+		return (*p) [-1];
 	}
-	else if (lex_next_strchr (p, line, col, "\n"))
+	if (0) {}
+	else if (lex_next_literal (p, col))
 	{
-		(*t) = LEX_LF;
+		return TOK_LITERAL_INTEGER;
 	}
 	else if (lex_next_cmp (p, col, "void"))
 	{
-		(*t) = LEX_VOID;
-	}
-	else if (lex_next_cmp (p, col, "int"))
-	{
-		(*t) = LEX_INT;
-	}
-	else if (lex_next_cmp (p, col, "*"))
-	{
-		(*t) = LEX_MULPTR;
-	}
+	return TOK_CONST;
+}
 	else if (lex_next_cmp (p, col, "const"))
 	{
-		(*t) = LEX_CONST;
-	}
-	else if (lex_next_cmp (p, col, "("))
-	{
-		(*t) = LEX_PARENOPEN;
-	}
-	else if (lex_next_cmp (p, col, ")"))
-	{
-		(*t) = LEX_PARENCLOSE;
-	}
-	else if (lex_next_cmp (p, col, "{"))
-	{
-		(*t) = LEX_BRACOPEN;
-	}
-	else if (lex_next_cmp (p, col, "}"))
-	{
-		(*t) = LEX_BRACCLOSE;
-	}
-	else if (lex_next_cmp (p, col, ","))
-	{
-		(*t) = LEX_COMMA;
-	}
-	else if (lex_next_cmp (p, col, ";"))
-	{
-		(*t) = LEX_SEMICOLON;
-	}
+	return TOK_VOID;
+}
 	else if (lex_next_indentifer (p, col))
 	{
-		(*t) = LEX_IDENTIFIER;
-	}
-	else
-	{
-		(*t) = LEX_DEFAULT;
-	}
-	(*b) = (*p);
+	return TOK_IDENTIFIER;
 }
-
-void escape (char des [100], const char * a, const char * b)
-{
-	char * d = des;
-	while (1)
+	else if (lex_next_indentifer (p, col))
 	{
-		*d = *a;
-		if (*a == *b) {break;}
-		if (*a == '\n')
-		{
-			strcpy (d, "<LF>");
-			d += 4;
-		}
-		else
-		{
-			d ++;
-		}
-		a ++;
-	}
+	return TOK_INT;
 }
-
-void print_token (enum lex_toktype t, char const * code, char const * p, char const * a, char const * b, int line, int col)
-{
-	//char aa [100] = {0};
-	//escape (aa, a, b-1);
-	if (t == LEX_LF)
-	{
-		printf ("%4i %4i %4i:%-4i %10.*s %s", a - code, b - code - 1, line, col, b - a, "", ast_toktype_tostr (t));
-	}
-	else
-	{
-		printf ("%4i %4i %4i:%-4i %10.*s %s", a - code, b - code - 1, line, col, b - a, a, ast_toktype_tostr (t));
-	}
-	//printf ("%4i %4i %4i:%-4i %10s %s", a - code, b - code - 1, line, col, aa, ast_toktype_tostr (t));
-	printf ("\n");
+	return 0;
 }
 
 enum ast_nodetype
 {
 	AST_START,
-	AST_DECLERATION
+	AST_DECLERATION,
+	AST_FUNCARGUMENTS,
+	AST_CALLARGUMENTS,
+	AST_IDENTIFIER,
+	AST_IDENTIFIER_VARIABLE,
+	AST_IDENTIFIER_FUNCTION,
+	AST_LITERAL,
+	AST_LITERAL_INTEGER,
+	AST_LITERAL_STRING,
+
+
 };
+
+enum ast_action
+{
+	AST_ADD_BRANCH,
+	AST_ADD_LEAF,
+	AST_ADD_BASE,
+	AST_BRANCH,
+	AST_LEAF
+};
+
 
 struct ast_node;
 struct ast_node
 {
 	enum ast_nodetype nodetype;
-	enum lex_toktype toktype;
+	int token;
 	struct ast_node * prev;
 	struct ast_node * next;
 	struct ast_node * base;
 	struct ast_node * branch;
 	int i;
+	int id;
+	char const * text;
+	char const * a;
 };
 
-void ast_insert (struct ast_node * node, struct ast_node * nextnode, enum lex_toktype tok)
+void ast_insert
+(
+enum ast_action action,
+struct ast_node ** nodep,
+struct ast_node * node,
+struct ast_node * newnode
+)
 {
-	if (node->nodetype == AST_START && tok == LEX_VOID)
+	switch (action)
 	{
-		nextnode->nodetype = AST_DECLERATION;
-		node->branch = nextnode;
-		nextnode->base = node;
+	case AST_ADD_BRANCH:
+		printf ("%1.1s <> %1.1s\n", node->a, newnode->a);
+		node->branch = newnode;
+		newnode->base = node;
+		*nodep = newnode;
+		break;
+	case AST_ADD_LEAF:
+		printf ("%1.1s <> %1.1s\n", node->a, newnode->a);
+		node->next = newnode;
+		newnode->prev = node;
+		newnode->base = node->base;
+		*nodep = newnode;
+		break;
+	case AST_ADD_BASE:
+		printf ("%1.1s <> %1.1s\n", node->a, newnode->a);
+		newnode->base = node->base;
+		node->base->branch = newnode;
+		newnode->next = node;
+		*nodep = node;
+		break;
 	}
-	else if (node->nodetype == AST_DECLERATION && tok == LEX_MULPTR)
+}
+
+void ast_insert2 (struct ast_node ** nodep, struct ast_node * node, struct ast_node * newnode)
+{
+	if (newnode->token == TOK_LITERAL_INTEGER)
 	{
-		nextnode->i ++;
-		nextnode->nodetype = AST_DECLERATION;
-		nextnode->prev = node;
-		nextnode->base = node->base;
-		node->next = nextnode;
+		ast_insert (AST_ADD_LEAF, nodep, node, newnode);
+	}
+	else if (newnode->token == '+')
+	{
+		ast_insert (AST_ADD_BASE, nodep, node, newnode);
+	}
+	else if (newnode->token == '*')
+	{
+		ast_insert (AST_ADD_BASE, nodep, node, newnode);
 	}
 }
 
 
-void add_node (Ihandle * h, struct ast_node * node, enum lex_toktype t, char const * code, char const * p, char const * a, char const * b, int line, int col)
+void print_node (struct ast_node * node, enum ast_action mode)
 {
-	char text [100] = {0};
-	memccpy (text, a, *b, 100);
-	if (node->branch)
+	static int idc = 0;
+	if (!node) {return;}
+	node->id = idc;
+	idc ++;
+	switch (mode)
 	{
-		IupSetAttribute (h, "ADDBRANCH", text);
+	case AST_BRANCH:
+		printf ("Branch: %1.1s %s\n", node->a, tok_type_tostr (node->token));
+		break;
+	case AST_LEAF:
+		printf ("Leaf:   %1.1s %s\n", node->a, tok_type_tostr (node->token));
+		break;
 	}
-	else
-	{
-		IupSetAttribute (h, "ADDLEAF", text);
-	}
+
+	print_node (node->branch, AST_BRANCH);
+	print_node (node->next, AST_LEAF);
+
 }
+
+void iup_ast (Ihandle * h, struct ast_node * node, enum ast_action mode)
+{
+	if (!node) {return;}
+	switch (mode)
+	{
+	case AST_BRANCH:
+		printf ("Branch: %04i %1.1s %s\n", node->id, node->a, tok_type_tostr (node->token));
+		IupSetAttributeId (h, "ADDBRANCH", node->id, tok_type_tostr (node->token));
+		break;
+	case AST_LEAF:
+		printf ("Leaf:   %04i %1.1s %s\n", node->id, node->a, tok_type_tostr (node->token));
+		IupSetAttributeId (h, "ADDLEAF", node->id, tok_type_tostr (node->token));
+		break;
+	}
+	iup_ast (h, node->branch, AST_BRANCH);
+	iup_ast (h, node->next, AST_LEAF);
+}
+
 
 
 int main (int argc, char * argv [])
@@ -263,19 +292,34 @@ int main (int argc, char * argv [])
 	ASSERT (argv);
 	setbuf (stdout, NULL);
 	char const code [] =
-	"void *    const foo (int a, int b, int c)\n"
-	"{\n"
-	"int localvar;"
-	"}\n";
+	" 3  + 2 \n*  7";
 	char const * p = code;
-	char const * a;
-	char const * b;
 	int line = 0;
 	int col = 0;
-	enum lex_toktype t = LEX_DEFAULT;
-	struct ast_node nodeast = {0};
-	nodeast.nodetype = AST_START;
+	int tok;
+	struct ast_node ast = {0};
+	ast.token = 0;
+	ast.base = &ast;
+	struct ast_node * node = &ast;
 
+	struct ast_node * newnode = calloc (1, sizeof (struct ast_node));
+	newnode->token = 0;
+	ast_insert (AST_ADD_BRANCH, &node, node, newnode);
+
+	for (int i = 0; i < 10; ++i)
+	{
+		tok = tok_next (&p, &line, &col);
+		printf ("Token: %s\n", tok_type_tostr (tok));
+		struct ast_node * newnode = calloc (1, sizeof (struct ast_node));
+		newnode->text = tok_type_tostr (tok);
+		newnode->token = tok;
+		newnode->a = p-1;
+		ast_insert2 (&node, node, newnode);
+	}
+
+	printf ("\n");
+	print_node (&ast, AST_BRANCH);
+	printf ("\n");
 
 	IupOpen (&argc, &argv);
 	Ihandle * tree = IupTree();
@@ -287,33 +331,7 @@ int main (int argc, char * argv [])
 	IupSetAttribute(box, "MARGIN", "200x200");
 	IupShowXY (dlg, IUP_CENTER,IUP_CENTER);
 
-
-	struct ast_node * node = &nodeast;
-	for (int i = 0; i < 10; ++i)
-	{
-		ast_next (&t, &p, &a, &b, &line, &col);
-		int pass = (t == LEX_VOID) || (t == LEX_MULPTR);
-		if (!pass) {continue;}
-		print_token (t, code, p, a, b, line, col);
-		struct ast_node * nextnode = calloc (1, sizeof (struct ast_node));
-		ast_insert (node, nextnode, t);
-		add_node (tree, node, t, code, p, a, b, line, col);
-	}
-
-
-	/*
-	IupSetAttribute(tree, "ADDBRANCH","3D");
-	IupSetAttribute(tree, "ADDBRANCH","2D");
-	IupSetAttribute(tree, "ADDLEAF","test");
-	IupSetAttribute(tree, "ADDBRANCH1","parallelogram");
-	IupSetAttribute(tree, "ADDLEAF2","diamond");
-	IupSetAttribute(tree, "ADDLEAF2","square");
-	IupSetAttribute(tree, "ADDBRANCH1","triangle");
-	IupSetAttribute(tree, "ADDLEAF2","scalenus");
-	IupSetAttribute(tree, "ADDLEAF2","isoceles");
-	IupSetAttribute(tree, "ADDLEAF2","equilateral");
-	IupSetAttribute(tree, "VALUE","6");
-	*/
+	iup_ast(tree, &ast, AST_BRANCH);
 
 	IupMainLoop();
 	IupClose();

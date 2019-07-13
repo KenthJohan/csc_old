@@ -95,9 +95,10 @@ int lex_next_literal (char const ** p, int * col)
 }
 
 
-int tok_next (char const ** p, int * line, int * col)
+int tok_next (char const ** p, int * line, int * col, char const ** a)
 {
 again:
+	(*a) = (*p);
 	switch (**p)
 	{
 	case '\0': return 0;
@@ -137,20 +138,20 @@ again:
 	}
 	else if (lex_next_cmp (p, col, "void"))
 	{
-	return TOK_CONST;
-}
+		return TOK_CONST;
+	}
 	else if (lex_next_cmp (p, col, "const"))
 	{
-	return TOK_VOID;
-}
+		return TOK_VOID;
+	}
 	else if (lex_next_indentifer (p, col))
 	{
-	return TOK_IDENTIFIER;
-}
+		return TOK_IDENTIFIER;
+	}
 	else if (lex_next_indentifer (p, col))
 	{
-	return TOK_INT;
-}
+		return TOK_INT;
+	}
 	return 0;
 }
 
@@ -189,11 +190,18 @@ struct ast_node
 	struct ast_node * next;
 	struct ast_node * base;
 	struct ast_node * branch;
-	int i;
-	int id;
-	char const * text;
 	char const * a;
+	char const * p;
 };
+
+
+/*
+2+3*7
+
+e
++2
+
+*/
 
 void ast_insert
 (
@@ -221,8 +229,11 @@ struct ast_node * newnode
 	case AST_ADD_BASE:
 		printf ("%1.1s <> %1.1s\n", node->a, newnode->a);
 		newnode->base = node->base;
+		newnode->next = node->next;
+		newnode->prev = node->prev;
+		newnode->branch = node;
 		node->base->branch = newnode;
-		newnode->next = node;
+		node->base = newnode;
 		*nodep = node;
 		break;
 	}
@@ -245,93 +256,117 @@ void ast_insert2 (struct ast_node ** nodep, struct ast_node * node, struct ast_n
 }
 
 
-void print_node (struct ast_node * node, enum ast_action mode)
+void iup_ast (Ihandle * h, struct ast_node * node, int depth)
 {
-	static int idc = 0;
+	char buf [10] = {0};
 	if (!node) {return;}
-	node->id = idc;
-	idc ++;
-	switch (mode)
+	memccpy (buf, node->a, *node->p, 10);
+	if (node->branch)
 	{
-	case AST_BRANCH:
-		printf ("Branch: %1.1s %s\n", node->a, tok_type_tostr (node->token));
-		break;
-	case AST_LEAF:
-		printf ("Leaf:   %1.1s %s\n", node->a, tok_type_tostr (node->token));
-		break;
+		printf ("Branch: %04i %1.1s %s\n", depth, buf, tok_type_tostr (node->token));
+		IupSetAttributeId (h, "ADDBRANCH", depth, buf);
 	}
-
-	print_node (node->branch, AST_BRANCH);
-	print_node (node->next, AST_LEAF);
-
-}
-
-void iup_ast (Ihandle * h, struct ast_node * node, enum ast_action mode)
-{
-	if (!node) {return;}
-	switch (mode)
+	else
 	{
-	case AST_BRANCH:
-		printf ("Branch: %04i %1.1s %s\n", node->id, node->a, tok_type_tostr (node->token));
-		IupSetAttributeId (h, "ADDBRANCH", node->id, tok_type_tostr (node->token));
-		break;
-	case AST_LEAF:
-		printf ("Leaf:   %04i %1.1s %s\n", node->id, node->a, tok_type_tostr (node->token));
-		IupSetAttributeId (h, "ADDLEAF", node->id, tok_type_tostr (node->token));
-		break;
+		printf ("Leaf:   %04i %1.1s %s\n", depth, buf, tok_type_tostr (node->token));
+		IupSetAttributeId (h, "ADDLEAF", depth, buf);
 	}
-	iup_ast (h, node->branch, AST_BRANCH);
-	iup_ast (h, node->next, AST_LEAF);
+	iup_ast (h, node->branch, depth + 1);
+	iup_ast (h, node->next, depth);
 }
 
 
+void test (Ihandle * h)
+{
+	struct ast_node ast = {0};
+	struct ast_node * newnode;
+	ast.a = "e";
+	newnode = calloc (1, sizeof (struct ast_node));
+	newnode->a = "+";
+	ast.branch = newnode;
+	newnode = calloc (1, sizeof (struct ast_node));
+	newnode->a = "2";
+	ast.branch->branch = newnode;
+	newnode = calloc (1, sizeof (struct ast_node));
+	newnode->a = "*";
+	ast.branch->branch->next = newnode;
+	newnode = calloc (1, sizeof (struct ast_node));
+	newnode->a = "3";
+	ast.branch->branch->next->branch = newnode;
+	newnode = calloc (1, sizeof (struct ast_node));
+	newnode->a = "7";
+	ast.branch->branch->next->branch->next = newnode;
+	newnode = calloc (1, sizeof (struct ast_node));
+	newnode->a = "6";
+	ast.branch->next = newnode;
+	iup_ast (h, &ast, 0);
+}
+
+int function (Ihandle *ih, int id, int status)
+{
+	printf("%i\n", id);
+	return IUP_DEFAULT;
+}
+
+void test2 (struct ast_node * node)
+{
+	Ihandle * tree = IupTree();
+	IupSetAttribute (tree, "SHOWRENAME", "YES");
+	IupSetCallback(tree, "SELECTION_CB", (Icallback) function);
+	IupSetAttribute (tree, "TITLE","AST");
+	Ihandle * dlg = IupDialog(IupVbox(tree, NULL));
+	IupShow (dlg);
+	iup_ast (tree, node, 0);
+}
 
 int main (int argc, char * argv [])
 {
 	ASSERT (argc);
 	ASSERT (argv);
 	setbuf (stdout, NULL);
+	IupOpen (&argc, &argv);
+	Ihandle* box = IupVbox (IupButton("test", NULL), NULL);
+	Ihandle* dlg = IupDialog (box);
+	IupSetAttribute (dlg, "TITLE", "IupTree");
+	IupSetAttribute (box, "MARGIN", "100x100");
+	IupShowXY (dlg, IUP_CENTER, IUP_CENTER);
+
 	char const code [] =
-	" 3  + 2 \n*  7";
+	"3+5*";
 	char const * p = code;
+	char const * a;
 	int line = 0;
 	int col = 0;
 	int tok;
 	struct ast_node ast = {0};
 	ast.token = 0;
 	ast.base = &ast;
+	ast.a = code;
+	ast.p = code + 4;
 	struct ast_node * node = &ast;
 
 	struct ast_node * newnode = calloc (1, sizeof (struct ast_node));
 	newnode->token = 0;
+	newnode->a = "e";
+	newnode->p = newnode->a;
 	ast_insert (AST_ADD_BRANCH, &node, node, newnode);
 
-	for (int i = 0; i < 10; ++i)
+	for (int i = 0; i < 4; ++i)
 	{
-		tok = tok_next (&p, &line, &col);
-		printf ("Token: %s\n", tok_type_tostr (tok));
+		tok = tok_next (&p, &line, &col, &a);
+		printf ("Token: %s %s\n", tok_type_tostr (tok), a);
 		struct ast_node * newnode = calloc (1, sizeof (struct ast_node));
-		newnode->text = tok_type_tostr (tok);
 		newnode->token = tok;
-		newnode->a = p-1;
+		newnode->a = a;
+		newnode->p = p-1;
 		ast_insert2 (&node, node, newnode);
+		test2 (&ast);
 	}
 
-	printf ("\n");
-	print_node (&ast, AST_BRANCH);
-	printf ("\n");
 
-	IupOpen (&argc, &argv);
-	Ihandle * tree = IupTree();
-	IupSetAttribute(tree, "SHOWRENAME", "YES");
-	IupSetAttribute(tree, "TITLE","AST");
-	Ihandle* box = IupVbox(IupHbox(tree, IupButton("test", NULL), NULL), NULL);
-	Ihandle* dlg = IupDialog(box);
-	IupSetAttribute(dlg, "TITLE", "IupTree");
-	IupSetAttribute(box, "MARGIN", "200x200");
-	IupShowXY (dlg, IUP_CENTER,IUP_CENTER);
 
-	iup_ast(tree, &ast, AST_BRANCH);
+
+	//iup_ast (tree, &ast, 0);
 
 	IupMainLoop();
 	IupClose();

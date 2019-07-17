@@ -43,6 +43,7 @@ char const * tok_type_tostr (int t)
 	case '<': return "<";
 	case '>': return ">";
 	case '|': return "|";
+	case '^': return "^";
 	case TOK_VOID: return "AST_VOID";
 	case TOK_CONST: return "AST_CONST";
 	case TOK_IDENTIFIER: return "AST_IDENTIFIER";
@@ -128,6 +129,7 @@ again:
 	case '/':
 	case '<':
 	case '>':
+	case '^':
 		(*p) ++;
 		(*col) ++;
 		return (*p) [-1];
@@ -182,6 +184,18 @@ enum ast_action
 };
 
 
+int ast_precedence (int t)
+{
+	switch (t)
+	{
+	case '*': return 3;
+	case '+': return 2;
+	case '^': return 9;
+	}
+	return 0;
+}
+
+
 struct ast_node;
 struct ast_node
 {
@@ -196,14 +210,6 @@ struct ast_node
 	char const * p;
 };
 
-
-/*
-2+3*7
-
-e
-+2
-
-*/
 
 struct ast_node * ast_insert
 (
@@ -247,14 +253,26 @@ struct ast_node * newnode
 
 struct ast_node * ast_insert2 (struct ast_node * node, struct ast_node * newnode)
 {
+	int p0;
+	int p1;
 	switch (newnode->token)
 	{
 	case TOK_LITERAL_INTEGER:
 	return ast_insert (AST_ADD_LEAF, node, newnode);
 	case '+':
-	return ast_insert (AST_ADD_BASE, node, newnode);
 	case '*':
-	return ast_insert (AST_ADD_BASE, node, newnode);
+	case '^':
+	p0 = ast_precedence (node->base->token);
+	p1 = ast_precedence (newnode->token);
+	if (node->base && (p0 > p1))
+	{
+		node = node->base;
+		return ast_insert (AST_ADD_BASE, node, newnode);
+	}
+	else
+	{
+		return ast_insert (AST_ADD_BASE, node, newnode);
+	}
 	}
 }
 
@@ -354,7 +372,7 @@ int main (int argc, char * argv [])
 
 
 	char const code [] =
-	"3 + 4 * 7";
+	"2 ^ 3 * 4 + 5 ^ 6";
 	char const * p = code;
 	char const * a;
 	int line = 0;
@@ -363,7 +381,7 @@ int main (int argc, char * argv [])
 	struct ast_node * ast = ast_create ("AST");
 	struct ast_node * node = ast;
 	node = ast_insert (AST_ADD_BRANCH, node, ast_create ("E"));
-	for (int i = 0; i < 5; ++i)
+	for (int i = 0; i < 9; ++i)
 	{
 		tok = tok_next (&p, &line, &col, &a);
 		printf ("Token: %20s %4.*s\n", tok_type_tostr (tok), p-a, a);
@@ -372,9 +390,9 @@ int main (int argc, char * argv [])
 		newnode->a = a;
 		newnode->p = p;
 		node = ast_insert2 (node, newnode);
-		test2 (ast);
 	}
 
+	test2 (ast);
 
 	//test3 ();
 

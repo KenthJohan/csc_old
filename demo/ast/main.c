@@ -234,7 +234,7 @@ void bitree2_add_parent (struct bitree2 * node, struct bitree2 * newnode)
 	newnode->prev = node->prev;
 	if (node->next) {node->next->prev = newnode;}
 	if (node->prev) {node->prev->next = newnode;}
-	//if (node->base) {node->base->branch = newnode;}
+	//if (node->parent) {node->parent->child = newnode;}
 	node->parent = newnode;
 	node->next = NULL;
 	node->prev = NULL;
@@ -294,7 +294,7 @@ struct ast_node * ast_add_child (struct ast_node * node, struct ast_node * newno
 
 void ast_iuptree (Ihandle * h, struct bitree2 * node, int depth, int leaf)
 {
-	//Traverse inorder (next, root, branch) because it works well with IupTree.
+	//Traverse inorder (next, root, child) because it works well with IupTree.
 	if (!node) {return;}
 	ast_iuptree (h, node->next, depth, leaf + 1);
 	char buf [40] = {0};
@@ -314,7 +314,7 @@ void ast_iuptree (Ihandle * h, struct bitree2 * node, int depth, int leaf)
 
 void ast_print (struct bitree2 * node, int depth, int leaf)
 {
-	//Traverse preorder (root, branch, next).
+	//Traverse preorder (root, child, next).
 	if (!node) {return;}
 	char buf [40] = {0};
 	struct ast_node * n = container_of (node, struct ast_node, tree);
@@ -365,7 +365,7 @@ int main (int argc, char * argv [])
 	IupOpen (&argc, &argv);
 
 	char const code [] =
-	"2 ^ 3 * 4 + 5 ^ 6 * 7 + 9";
+	"2 ^ 3 * 4 + 5 ^ 6 * 7 + 9 + 1";
 	char const * p = code;
 	char const * a;
 	int line = 0;
@@ -373,12 +373,13 @@ int main (int argc, char * argv [])
 	int tok;
 	struct ast_node * ast = ast_create (code);
 	struct ast_node * node1 = ast;
-	node1 = ast_add_child (node1, ast_create ("E"));
-	node1 = ast_add_child (node1, ast_create ("E"));
+	//node1 = ast_add_child (node1, ast_create ("E"));
+	//node1 = ast_add_child (node1, ast_create ("E"));
 
-	for (int i = 0; i < 13; ++i)
+	for (int i = 0; i < 40; ++i)
 	{
 		tok = tok_next (&p, &line, &col, &a);
+		if (tok == 0) {break;}
 		//printf ("Token: %20s %4.*s\n", tok_type_tostr (tok), p-a, a);
 		struct ast_node * newnode = calloc (1, sizeof (struct ast_node));
 		newnode->token = tok;

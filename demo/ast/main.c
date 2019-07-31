@@ -234,7 +234,7 @@ void bitree2_add_parent (struct bitree2 * node, struct bitree2 * newnode)
 	newnode->prev = node->prev;
 	if (node->next) {node->next->prev = newnode;}
 	if (node->prev) {node->prev->next = newnode;}
-	//if (node->parent) {node->parent->child = newnode;}
+	if (node->parent && (node->parent->child == node)) {node->parent->child = newnode;}
 	node->parent = newnode;
 	node->next = NULL;
 	node->prev = NULL;

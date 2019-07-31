@@ -9,6 +9,7 @@
 #include <wchar.h>
 #include <fcntl.h>
 #include <io.h>
+#include <stddef.h>
 
 #include <iup.h>
 #include <iupcontrols.h>
@@ -16,6 +17,8 @@
 #include <csc_debug.h>
 #include <csc_tcol.h>
 #include <csc_basic.h>
+
+#define container_of(ptr, type, member) ((type *)(void *)((char *)(ptr) - offsetof(type, member)))
 
 enum tok_type
 {
@@ -200,95 +203,104 @@ int ast_precedence (int t)
 }
 
 
+//https://en.wikipedia.org/wiki/Left-child_right-sibling_binary_tree
+struct bitree2;
+struct bitree2
+{
+	struct bitree2 * prev;
+	struct bitree2 * next;
+	struct bitree2 * parent;
+	struct bitree2 * child;
+};
+
+void bitree2_add_child (struct bitree2 * parent, struct bitree2 * child)
+{
+	parent->child = child;
+	child->parent = parent;
+}
+
+void bitree2_add_sibling (struct bitree2 * sibling0, struct bitree2 * sibling1)
+{
+	sibling0->next = sibling1;
+	sibling1->prev = sibling0;
+	sibling1->parent = sibling0->parent;
+}
+
+void bitree2_add_parent (struct bitree2 * node, struct bitree2 * newnode)
+{
+	newnode->child = node;
+	newnode->parent = node->parent;
+	newnode->next = node->next;
+	newnode->prev = node->prev;
+	if (node->next) {node->next->prev = newnode;}
+	if (node->prev) {node->prev->next = newnode;}
+	//if (node->base) {node->base->branch = newnode;}
+	node->parent = newnode;
+	node->next = NULL;
+	node->prev = NULL;
+}
+
+
+
 struct ast_node;
 struct ast_node
 {
 	enum ast_nodetype nodetype;
 	enum ast_action action;
 	int token;
-	struct ast_node * prev;
-	struct ast_node * next;
-	struct ast_node * base;
-	struct ast_node * branch;
 	char const * a;
 	char const * p;
+	struct bitree2 tree;
 };
 
 
-struct ast_node * ast_insert (enum ast_action action, struct ast_node * node, struct ast_node * newnode)
-{
-	newnode->action = action;
-	switch (action)
-	{
-	case AST_ADD_BRANCH:
-		//printf ("%1.1s <> %1.1s\n", node->a, newnode->a);
-		node->branch = newnode;
-		newnode->base = node;
-		return newnode;
-	case AST_ADD_LEAF:
-		//printf ("%1.1s <> %1.1s\n", node->a, newnode->a);
-		node->next = newnode;
-		newnode->prev = node;
-		newnode->base = node->base;
-		return newnode;
-	case AST_ADD_BASE:
-		//printf ("%1.1s <> %1.1s\n", node->a, newnode->a);
-		newnode->branch = node;
-		newnode->base = node->base;
-		newnode->next = node->next;
-		newnode->prev = node->prev;
-		if (node->next) {node->next->prev = newnode;}
-		if (node->prev) {node->prev->next = newnode;}
-		//if (node->base) {node->base->branch = newnode;}
-		node->base = newnode;
-		node->next = NULL;
-		node->prev = NULL;
-		return node;
-	}
-	return NULL;
-}
-
-struct ast_node * ast_insert2 (struct ast_node * node, struct ast_node * newnode)
+struct ast_node * ast_add (struct ast_node * node, struct ast_node * newnode)
 {
 	switch (newnode->token)
 	{
 	case TOK_LITERAL_INTEGER:
-	//if (node->base || node->prev)
-	{
-		return ast_insert (AST_ADD_LEAF, node, newnode);
-	}
-	//else
-	{
-		//return ast_insert (AST_ADD_BRANCH, node, newnode);
-	}
+	bitree2_add_sibling (&(node->tree), &(newnode->tree));
+	return newnode;
+
 	case '-':
 	case '+':
 	case '*':
 	case '^':
-	if (node->base)
+	if (node->tree.parent)
 	{
-		int p0;
-		int p1;
-		p0 = ast_precedence (node->base->token);
-		p1 = ast_precedence (newnode->token);
+		struct ast_node * parent = container_of (node->tree.parent, struct ast_node, tree);
+		int p0 = ast_precedence (parent->token);
+		int p1 = ast_precedence (newnode->token);
 		if (p0 > p1)
 		{
-			node = node->base;
+			bitree2_add_parent (node->tree.parent, &(newnode->tree));
+			return parent;
 		}
 	}
-	return ast_insert (AST_ADD_BASE, node, newnode);
+	bitree2_add_parent (&(node->tree), &(newnode->tree));
+	return node;
 	}
 	return NULL;
 }
 
-void iup_ast (Ihandle * h, struct ast_node * node, int depth, int leaf)
+
+struct ast_node * ast_add_child (struct ast_node * node, struct ast_node * newnode)
+{
+	bitree2_add_child (&(node->tree), &(newnode->tree));
+	return newnode;
+}
+
+
+
+void ast_iuptree (Ihandle * h, struct bitree2 * node, int depth, int leaf)
 {
 	//Traverse inorder (next, root, branch) because it works well with IupTree.
 	if (!node) {return;}
-	iup_ast (h, node->next, depth, leaf + 1);
+	ast_iuptree (h, node->next, depth, leaf + 1);
 	char buf [40] = {0};
-	snprintf (buf, sizeof (buf), "%02i %02i, %2.*s", depth, leaf, node->p - node->a, node->a);
-	if (node->branch)
+	struct ast_node * n = container_of (node, struct ast_node, tree);
+	snprintf (buf, sizeof (buf), "%02i %02i, %2.*s", depth, leaf, n->p - n->a, n->a);
+	if (node->child)
 	{
 		IupSetAttributeId (h, "ADDBRANCH", depth, buf);
 	}
@@ -296,44 +308,26 @@ void iup_ast (Ihandle * h, struct ast_node * node, int depth, int leaf)
 	{
 		IupSetAttributeId (h, "ADDLEAF", depth, buf);
 	}
-	iup_ast (h, node->branch, depth + 1, 0);
+	ast_iuptree (h, node->child, depth + 1, 0);
 }
 
 
-void ast_print (struct ast_node * node, int depth, int leaf)
+void ast_print (struct bitree2 * node, int depth, int leaf)
 {
 	//Traverse preorder (root, branch, next).
 	if (!node) {return;}
 	char buf [40] = {0};
-	snprintf (buf, sizeof (buf), "%02i %02i, %2.*s", depth, leaf, node->p - node->a, node->a);
+	struct ast_node * n = container_of (node, struct ast_node, tree);
+	snprintf (buf, sizeof (buf), "%02i %02i, %2.*s", depth, leaf, n->p - n->a, n->a);
 	for (int i = 0; i < depth; i ++)
 	{
 		printf("| ");
 	}
-	if (node->branch)
-	{
-
-	}
-	else
-	{
-	}
-	printf ("%c\n", *node->a);
-	ast_print (node->branch, depth + 1, 0);
+	printf ("%c\n", *n->a);
+	ast_print (node->child, depth + 1, 0);
 	ast_print (node->next, depth, leaf + 1);
 }
 
-
-void iup_astidtext (Ihandle * h)
-{
-	int n = IupGetInt (h, "COUNT");
-	for (int i = 0; i < n; ++i)
-	{
-		char buf [20];
-		char * b = IupGetAttributeId (h, "TITLE", i);
-		snprintf (buf, 20, "%i: %s", i, b);
-		IupSetAttributeId (h, "TITLE", i, buf);
-	}
-}
 
 struct ast_node * ast_create (char const * name)
 {
@@ -345,48 +339,10 @@ struct ast_node * ast_create (char const * name)
 
 int function (Ihandle *ih, int id, int status)
 {
-	printf("%i\n", id);
+	printf("%i %i\n", status, id);
 	return IUP_DEFAULT;
 }
 
-/*
-void test ()
-{
-	struct ast_node * node;
-	node = ast_create ("+");
-	node->branch = ast_create ("+");
-	node->branch->branch = ast_create ("2");
-	node->branch->branch->next = ast_create ("*");
-	node->branch->branch->next->branch = ast_create ("3");
-	node->branch->branch->next->branch->next = ast_create ("7");
-	node->branch->next = ast_create ("6");
-	Ihandle * tree = IupTree();
-	IupSetAttribute (tree, "SHOWRENAME", "YES");
-	IupSetCallback(tree, "SELECTION_CB", (Icallback) function);
-	IupSetAttribute (tree, "TITLE","AST");
-	Ihandle * dlg = IupDialog(IupVbox(tree, NULL));
-	IupShow (dlg);
-	iup_ast (tree, node, 0, 0, 0);
-}
-
-void test3 ()
-{
-	struct ast_node * ast = ast_create ("e");
-	ast->base = ast;
-	struct ast_node * node = ast;
-	node = ast_insert (AST_ADD_BRANCH, node, ast_create ("3"));
-	node = ast_insert (AST_ADD_BASE, node, ast_create ("+"));
-	node = ast_insert (AST_ADD_LEAF, node, ast_create ("4"));
-	node = ast_insert (AST_ADD_BASE, node, ast_create ("*"));
-	Ihandle * tree = IupTree ();
-	IupSetAttribute (tree, "SHOWRENAME", "YES");
-	IupSetCallback (tree, "SELECTION_CB", (Icallback) function);
-	IupSetAttribute (tree, "TITLE","AST");
-	Ihandle * dlg = IupDialog (IupVbox(tree, NULL));
-	IupShow (dlg);
-	iup_ast (tree, ast, 0, 0, 0);
-}
-*/
 
 void showast (struct ast_node * node)
 {
@@ -394,13 +350,11 @@ void showast (struct ast_node * node)
 	IupSetAttribute (tree, "SHOWRENAME", "YES");
 	IupSetCallback(tree, "SELECTION_CB", (Icallback) function);
 	IupSetAttribute (tree, "TITLE","AST");
-
 	IupSetAttribute (tree, "FONT","Courier, 14");
-
 	Ihandle * dlg = IupDialog(IupVbox(tree, NULL));
 	IupShow (dlg);
-	iup_ast (tree, node, 0, 0);
-	//iup_astidtext (tree);
+	ast_print (&(node->tree), 0, 0);
+	ast_iuptree (tree, &(node->tree), 0, 0);
 }
 
 int main (int argc, char * argv [])
@@ -409,42 +363,31 @@ int main (int argc, char * argv [])
 	ASSERT (argv);
 	setbuf (stdout, NULL);
 	IupOpen (&argc, &argv);
-	/*
-	Ihandle* box = IupVbox (IupButton("test", NULL), NULL);
-	Ihandle* dlg = IupDialog (box);
-	IupSetAttribute (dlg, "TITLE", "IupTree");
-	IupSetAttribute (box, "MARGIN", "100x100");
-	IupShowXY (dlg, IUP_CENTER, IUP_CENTER);
-	*/
-
 
 	char const code [] =
-	"2 ^ 3 * 4 + 5 ^ 6 * 7";
+	"2 ^ 3 * 4 + 5 ^ 6 * 7 + 9";
 	char const * p = code;
 	char const * a;
 	int line = 0;
 	int col = 0;
 	int tok;
 	struct ast_node * ast = ast_create (code);
-	struct ast_node * node = ast;
-	node = ast_insert (AST_ADD_BRANCH, node, ast_create ("E"));
-	//node = ast_insert (AST_ADD_BRANCH, node, ast_create ("E"));
-	for (int i = 0; i < 11; ++i)
+	struct ast_node * node1 = ast;
+	node1 = ast_add_child (node1, ast_create ("E"));
+	node1 = ast_add_child (node1, ast_create ("E"));
+
+	for (int i = 0; i < 13; ++i)
 	{
 		tok = tok_next (&p, &line, &col, &a);
-		printf ("Token: %20s %4.*s\n", tok_type_tostr (tok), p-a, a);
+		//printf ("Token: %20s %4.*s\n", tok_type_tostr (tok), p-a, a);
 		struct ast_node * newnode = calloc (1, sizeof (struct ast_node));
 		newnode->token = tok;
 		newnode->a = a;
 		newnode->p = p;
-		node = ast_insert2 (node, newnode);
+		node1 = ast_add (node1, newnode);
 	}
 
-	ast_print (ast, 0, 0);
 	showast (ast);
-
-
-	//test3 ();
 
 	IupMainLoop ();
 	IupClose ();

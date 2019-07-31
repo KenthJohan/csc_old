@@ -5,6 +5,10 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <ctype.h>
+#include <locale.h>
+#include <wchar.h>
+#include <fcntl.h>
+#include <io.h>
 
 #include <iup.h>
 #include <iupcontrols.h>
@@ -217,20 +221,18 @@ struct ast_node * ast_insert (enum ast_action action, struct ast_node * node, st
 	switch (action)
 	{
 	case AST_ADD_BRANCH:
-		printf ("%1.1s <> %1.1s\n", node->a, newnode->a);
+		//printf ("%1.1s <> %1.1s\n", node->a, newnode->a);
 		node->branch = newnode;
 		newnode->base = node;
 		return newnode;
-		break;
 	case AST_ADD_LEAF:
-		printf ("%1.1s <> %1.1s\n", node->a, newnode->a);
+		//printf ("%1.1s <> %1.1s\n", node->a, newnode->a);
 		node->next = newnode;
 		newnode->prev = node;
 		newnode->base = node->base;
 		return newnode;
-		break;
 	case AST_ADD_BASE:
-		printf ("%1.1s <> %1.1s\n", node->a, newnode->a);
+		//printf ("%1.1s <> %1.1s\n", node->a, newnode->a);
 		newnode->branch = node;
 		newnode->base = node->base;
 		newnode->next = node->next;
@@ -242,58 +244,84 @@ struct ast_node * ast_insert (enum ast_action action, struct ast_node * node, st
 		node->next = NULL;
 		node->prev = NULL;
 		return node;
-		break;
 	}
+	return NULL;
 }
 
 struct ast_node * ast_insert2 (struct ast_node * node, struct ast_node * newnode)
 {
-	int p0;
-	int p1;
 	switch (newnode->token)
 	{
 	case TOK_LITERAL_INTEGER:
-	return ast_insert (AST_ADD_LEAF, node, newnode);
+	//if (node->base || node->prev)
+	{
+		return ast_insert (AST_ADD_LEAF, node, newnode);
+	}
+	//else
+	{
+		//return ast_insert (AST_ADD_BRANCH, node, newnode);
+	}
 	case '-':
 	case '+':
 	case '*':
 	case '^':
-	p0 = ast_precedence (node->base->token);
-	p1 = ast_precedence (newnode->token);
-	if (node->base && (p0 > p1))
+	if (node->base)
 	{
-		node = node->base;
+		int p0;
+		int p1;
+		p0 = ast_precedence (node->base->token);
+		p1 = ast_precedence (newnode->token);
+		if (p0 > p1)
+		{
+			node = node->base;
+		}
 	}
 	return ast_insert (AST_ADD_BASE, node, newnode);
 	}
+	return NULL;
 }
 
-
-void iup_ast (Ihandle * h, struct ast_node * node, int * id, int depth, int leaf)
+void iup_ast (Ihandle * h, struct ast_node * node, int depth, int leaf)
 {
-	char buf [20] = {0};
+	//Traverse inorder (next, root, branch) because it works well with IupTree.
 	if (!node) {return;}
-	(*id) ++;
-	//strncpy (buf, node->a, MIN (node->p-node->a, 10));
-	//snprintf (buf, 10, "%2.*s : %i", node->p-node->a, node->a, leaf);
-	snprintf (buf, 20, "%02i %02i %02i, %2.*s", *id, depth, leaf, node->p-node->a, node->a);
+	iup_ast (h, node->next, depth, leaf + 1);
+	char buf [40] = {0};
+	snprintf (buf, sizeof (buf), "%02i %02i, %2.*s", depth, leaf, node->p - node->a, node->a);
 	if (node->branch)
 	{
-		//printf ("Branch: %04i %1.1s %s\n", depth, buf, tok_type_tostr (node->token));
 		IupSetAttributeId (h, "ADDBRANCH", depth, buf);
-		//if (leaf == 0)IupSetAttributeId (h, "ADDBRANCH", depth, buf);
-		//else IupSetAttributeId (h, "INSERTBRANCH", depth, buf);
 	}
 	else
 	{
-		//printf ("Leaf:   %04i %1.1s %s\n", depth, buf, tok_type_tostr (node->token));
 		IupSetAttributeId (h, "ADDLEAF", depth, buf);
-		//if (leaf == 0)IupSetAttributeId (h, "ADDLEAF", depth, buf);
-		//else IupSetAttributeId (h, "INSERTLEAF", depth, buf);
 	}
-	iup_ast (h, node->branch, id, depth + 1, 0);
-	iup_ast (h, node->next, id, depth, leaf + 1);
+	iup_ast (h, node->branch, depth + 1, 0);
 }
+
+
+void ast_print (struct ast_node * node, int depth, int leaf)
+{
+	//Traverse preorder (root, branch, next).
+	if (!node) {return;}
+	char buf [40] = {0};
+	snprintf (buf, sizeof (buf), "%02i %02i, %2.*s", depth, leaf, node->p - node->a, node->a);
+	for (int i = 0; i < depth; i ++)
+	{
+		printf("| ");
+	}
+	if (node->branch)
+	{
+
+	}
+	else
+	{
+	}
+	printf ("%c\n", *node->a);
+	ast_print (node->branch, depth + 1, 0);
+	ast_print (node->next, depth, leaf + 1);
+}
+
 
 void iup_astidtext (Ihandle * h)
 {
@@ -371,8 +399,7 @@ void showast (struct ast_node * node)
 
 	Ihandle * dlg = IupDialog(IupVbox(tree, NULL));
 	IupShow (dlg);
-	int id = 0;
-	iup_ast (tree, node, &id, 0, 0);
+	iup_ast (tree, node, 0, 0);
 	//iup_astidtext (tree);
 }
 
@@ -382,15 +409,17 @@ int main (int argc, char * argv [])
 	ASSERT (argv);
 	setbuf (stdout, NULL);
 	IupOpen (&argc, &argv);
+	/*
 	Ihandle* box = IupVbox (IupButton("test", NULL), NULL);
 	Ihandle* dlg = IupDialog (box);
 	IupSetAttribute (dlg, "TITLE", "IupTree");
 	IupSetAttribute (box, "MARGIN", "100x100");
 	IupShowXY (dlg, IUP_CENTER, IUP_CENTER);
+	*/
 
 
 	char const code [] =
-	"2 ^ 3 * 4 + 5 ^ 6";
+	"2 ^ 3 * 4 + 5 ^ 6 * 7";
 	char const * p = code;
 	char const * a;
 	int line = 0;
@@ -399,7 +428,8 @@ int main (int argc, char * argv [])
 	struct ast_node * ast = ast_create (code);
 	struct ast_node * node = ast;
 	node = ast_insert (AST_ADD_BRANCH, node, ast_create ("E"));
-	for (int i = 0; i < 9; ++i)
+	//node = ast_insert (AST_ADD_BRANCH, node, ast_create ("E"));
+	for (int i = 0; i < 11; ++i)
 	{
 		tok = tok_next (&p, &line, &col, &a);
 		printf ("Token: %20s %4.*s\n", tok_type_tostr (tok), p-a, a);
@@ -410,6 +440,7 @@ int main (int argc, char * argv [])
 		node = ast_insert2 (node, newnode);
 	}
 
+	ast_print (ast, 0, 0);
 	showast (ast);
 
 

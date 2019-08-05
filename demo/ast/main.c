@@ -63,13 +63,13 @@ char const * tok_type_tostr (int t)
 
 int lex_next_cmp (char const ** p, int * col, char const * str)
 {
-	unsigned l = strlen (str);
+	size_t l = strlen (str);
 	int diff = strncmp (*p, str, l);
 	if (diff == 0)
 	{
 		(*p) += l;
 		(*col) += l;
-		return l;
+		return (int) l;
 	}
 	return 0;
 }
@@ -89,18 +89,18 @@ int lex_next_indentifer (char const ** p, int * col)
 	char const * q = (*p);
 	lex_skip (p, isalpha);
 	lex_skip (p, lex_isalphadigit);
-	int n = (*p) - q;
+	ptrdiff_t n = (*p) - q;
 	(*col) += n;
-	return n;
+	return (int)n;
 }
 
 int lex_next_literal (char const ** p, int * col)
 {
 	char const * q = (*p);
 	lex_skip (p, isdigit);
-	int n = (*p) - q;
+	ptrdiff_t n = (*p) - q;
 	(*col) += n;
-	return n;
+	return (int)n;
 }
 
 
@@ -177,17 +177,6 @@ enum ast_nodetype
 	AST_LITERAL,
 	AST_LITERAL_INTEGER,
 	AST_LITERAL_STRING,
-
-
-};
-
-enum ast_action
-{
-	AST_ADD_BRANCH,
-	AST_ADD_LEAF,
-	AST_ADD_BASE,
-	AST_BRANCH,
-	AST_LEAF
 };
 
 
@@ -198,6 +187,8 @@ int ast_precedence (int t)
 	case '*': return 3;
 	case '+': return 2;
 	case '^': return 9;
+	//case TOK_IDENTIFIER: return 100;
+	//case '(': return 100;
 	}
 	return 0;
 }
@@ -245,8 +236,7 @@ void bitree2_add_parent (struct bitree2 * node, struct bitree2 * newnode)
 struct ast_node;
 struct ast_node
 {
-	enum ast_nodetype nodetype;
-	enum ast_action action;
+	enum ast_nodetype kind;
 	int token;
 	char const * a;
 	char const * p;
@@ -254,33 +244,82 @@ struct ast_node
 };
 
 
-struct ast_node * ast_add (struct ast_node * node, struct ast_node * newnode)
+void ast_add (struct ast_node * node, char const * code)
 {
-	switch (newnode->token)
-	{
-	case TOK_LITERAL_INTEGER:
-	bitree2_add_sibling (&(node->tree), &(newnode->tree));
-	return newnode;
+	char const * p = code;
+	char const * a;
+	int line = 0;
+	int col = 0;
+	int tok;
+	struct ast_node * newnode = NULL;
 
-	case '-':
-	case '+':
-	case '*':
-	case '^':
-	if (node->tree.parent)
+	tok = tok_next (&p, &line, &col, &a);
+	if (tok == 0) {return;}
+
+	while (1)
 	{
-		struct ast_node * parent = container_of (node->tree.parent, struct ast_node, tree);
-		int p0 = ast_precedence (parent->token);
-		int p1 = ast_precedence (newnode->token);
-		if (p0 > p1)
+		//printf ("Token: %20s %4.*s\n", tok_type_tostr (tok), p-a, a);
+		switch (tok)
 		{
-			bitree2_add_parent (node->tree.parent, &(newnode->tree));
-			return parent;
-		}
-	}
-	bitree2_add_parent (&(node->tree), &(newnode->tree));
-	return node;
-	}
-	return NULL;
+		case TOK_LITERAL_INTEGER:
+		case TOK_IDENTIFIER:
+			newnode = calloc (1, sizeof (struct ast_node));
+			newnode->token = tok;
+			newnode->a = a;
+			newnode->p = p;
+			if (node->kind == AST_IDENTIFIER_FUNCTION)
+			{
+				bitree2_add_child (&(node->tree), &(newnode->tree));
+			}
+			else
+			{
+				bitree2_add_sibling (&(node->tree), &(newnode->tree));
+			}
+			node = newnode;
+			tok = tok_next (&p, &line, &col, &a);
+			if (tok == 0) {return;}
+			break;
+
+		case '-':
+		case '+':
+		case '*':
+		case '^':
+			if (node->tree.parent)
+			{
+				struct ast_node * parent = container_of (node->tree.parent, struct ast_node, tree);
+				int p0 = ast_precedence (parent->token);
+				int p1 = ast_precedence (tok);
+				if (p0 > p1)
+				{
+					//bitree2_add_parent (node->tree.parent, &(newnode->tree));
+					node = parent;
+					break;
+				}
+			}
+			newnode = calloc (1, sizeof (struct ast_node));
+			newnode->token = tok;
+			newnode->a = a;
+			newnode->p = p;
+			bitree2_add_parent (&(node->tree), &(newnode->tree));
+			tok = tok_next (&p, &line, &col, &a);
+			if (tok == 0) {return;}
+			break;
+
+
+		case '(':
+			if (node->token == TOK_IDENTIFIER)
+			{
+				node->kind = AST_IDENTIFIER_FUNCTION;
+			}
+			break;
+
+		case ')':
+			node = container_of (node->tree.parent, struct ast_node, tree);
+			break;
+
+
+		}// END switch
+	}// END while
 }
 
 
@@ -339,6 +378,7 @@ struct ast_node * ast_create (char const * name)
 
 int function (Ihandle *ih, int id, int status)
 {
+	ASSERT (ih);
 	printf("%i %i\n", status, id);
 	return IUP_DEFAULT;
 }
@@ -365,28 +405,14 @@ int main (int argc, char * argv [])
 	IupOpen (&argc, &argv);
 
 	char const code [] =
-	"2 ^ 3 * 4 + 5 ^ 6 * 7 + 9 + 1";
-	char const * p = code;
-	char const * a;
-	int line = 0;
-	int col = 0;
-	int tok;
+	"0 + 1 ^ 2 * 3 ^ 4 + 5";
+
 	struct ast_node * ast = ast_create (code);
-	struct ast_node * node1 = ast;
 	//node1 = ast_add_child (node1, ast_create ("E"));
 	//node1 = ast_add_child (node1, ast_create ("E"));
 
-	for (int i = 0; i < 40; ++i)
-	{
-		tok = tok_next (&p, &line, &col, &a);
-		if (tok == 0) {break;}
-		//printf ("Token: %20s %4.*s\n", tok_type_tostr (tok), p-a, a);
-		struct ast_node * newnode = calloc (1, sizeof (struct ast_node));
-		newnode->token = tok;
-		newnode->a = a;
-		newnode->p = p;
-		node1 = ast_add (node1, newnode);
-	}
+	ast_add (ast, code);
+
 
 	showast (ast);
 

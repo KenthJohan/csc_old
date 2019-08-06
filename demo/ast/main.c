@@ -342,10 +342,12 @@ void ast_iuptree (Ihandle * h, struct bitree2 * node, int depth, int leaf)
 	if (node->child)
 	{
 		IupSetAttributeId (h, "ADDBRANCH", depth, buf);
+		printf ("ADDBRANCH%i %s\n", depth, buf);
 	}
 	else
 	{
 		IupSetAttributeId (h, "ADDLEAF", depth, buf);
+		printf ("ADDLEAF%i %s\n", depth, buf);
 	}
 	ast_iuptree (h, node->child, depth + 1, 0);
 }

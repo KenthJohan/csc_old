@@ -18,7 +18,7 @@
 #include <csc_tcol.h>
 #include <csc_basic.h>
 
-#define container_of(ptr, type, member) ((type *)(void *)((char *)(ptr) - offsetof(type, member)))
+
 
 enum tok_type
 {
@@ -338,7 +338,7 @@ void ast_iuptree (Ihandle * h, struct bitree2 * node, int depth, int leaf)
 	ast_iuptree (h, node->next, depth, leaf + 1);
 	char buf [40] = {0};
 	struct ast_node * n = container_of (node, struct ast_node, tree);
-	snprintf (buf, sizeof (buf), "%02i %02i, %2.*s", depth, leaf, n->p - n->a, n->a);
+	snprintf (buf, sizeof (buf), "%02i %02i, %2.*s", depth, leaf, (int)(n->p - n->a), n->a);
 	if (node->child)
 	{
 		IupSetAttributeId (h, "ADDBRANCH", depth, buf);
@@ -359,7 +359,7 @@ void ast_print (struct bitree2 * node, int depth, int leaf)
 	if (!node) {return;}
 	char buf [40] = {0};
 	struct ast_node * n = container_of (node, struct ast_node, tree);
-	snprintf (buf, sizeof (buf), "%02i %02i, %2.*s", depth, leaf, n->p - n->a, n->a);
+	snprintf (buf, sizeof (buf), "%02i %02i, %2.*s", depth, leaf, (int)(n->p - n->a), n->a);
 	for (int i = 0; i < depth; i ++)
 	{
 		printf("| ");

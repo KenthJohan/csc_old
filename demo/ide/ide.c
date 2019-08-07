@@ -19,6 +19,7 @@
 #include <csc_debug_uv.h>
 #include <csc_malloc_file.h>
 #include <csc_fspath.h>
+#include <csc_basic.h>
 
 #include "ide_images.h"
 
@@ -207,10 +208,9 @@ static int btn_prop_action (Ihandle* ih)
 }
 
 
-void list1 (Ihandle * ih, char * dir0)
+void list1 (Ihandle * ih, char * dir0, int id)
 {
 	struct _finddata_t fileinfo;
-	int i = IupGetInt (ih, "LASTADDNODE");
 	intptr_t handle;
 	char star [MAX_PATH];
 	snprintf (star, MAX_PATH, "%s/*", dir0);
@@ -226,12 +226,12 @@ void list1 (Ihandle * ih, char * dir0)
 	while (1)
 	{
 		if(strcmp(fileinfo.name, ".") == 0 || strcmp(fileinfo.name, "..") == 0){}
-		else if (fpath_hidden2 (fileinfo.name)){}
+		else if (csc_fspath_ishidden (fileinfo.name)){}
 		else if ((fileinfo.attrib & _A_SUBDIR) == 0)
 		{
 			snprintf (star, MAX_PATH, "%s/%s", dir0, fileinfo.name);
 			//printf ("F %x %s\n", fileinfo.attrib, star);
-			IupSetAttributeId (ih, "ADDLEAF", i, star);
+			IupSetAttributeId (ih, "ADDLEAF", id, star);
 			char * ext = strrchr (fileinfo.name, '.');
 			if (ext && (strcmp (ext, ".a") == 0))
 			{
@@ -258,8 +258,8 @@ void list1 (Ihandle * ih, char * dir0)
 		{
 			snprintf (star, MAX_PATH, "%s/%s", dir0, fileinfo.name);
 			//printf ("D %x %s\n", fileinfo.attrib, star);
-			IupSetAttributeId (ih, "ADDBRANCH", i, star);
-			list1 (ih, star);
+			IupSetAttributeId (ih, "ADDBRANCH", id, star);
+			list1 (ih, star, IupGetInt (ih, "LASTADDNODE"));
 		}
 		int r = _findnext (handle, &fileinfo);
 		if (r != 0)
@@ -271,7 +271,11 @@ void list1 (Ihandle * ih, char * dir0)
 }
 
 
-
+void list1_refresh (Ihandle * ih, char * dir0, int id)
+{
+	IupSetAttributeId (ih, "DELNODE", id, "CHILDREN");
+	list1 (ih, dir0, id);
+}
 
 
 int iupfs_on_execute (Ihandle *ih, int id)
@@ -287,13 +291,66 @@ int iupfs_on_execute (Ihandle *ih, int id)
 	return IUP_DEFAULT;
 }
 
+int iupfs_on_refresh (void)
+{
+	int id = IupGetInt (gih_tree, "VALUE");
+	//IupSetAttributeId (gih_tree, "DELNODE", id, "CHILDREN");
+	char * dir = IupGetAttributeId (gih_tree, "TITLE", id);
+	printf ("iupfs_on_refresh %s\n", dir);
+	list1_refresh (gih_tree, dir, id);
+	return IUP_DEFAULT;
+}
+
+int iupfs_on_rclick (Ihandle* h, int id)
+{
+	char * kind = IupGetAttributeId (h, "KIND", id);
+	ASSERT (kind);
+	if (strcmp (kind, "BRANCH") == 0)
+	{
+		IupSetInt (h, "VALUE", id);
+		Ihandle *popup_menu = IupMenu
+		(
+		IupItem ("Refresh", "refresh"),
+		NULL
+		);
+		IupSetFunction ("refresh", (Icallback) iupfs_on_refresh);
+		IupPopup (popup_menu, IUP_MOUSEPOS, IUP_MOUSEPOS);
+		IupDestroy (popup_menu);
+	}
+
+	if (strcmp (kind, "LEAF") == 0)
+	{
+		IupSetInt (h, "VALUE", id);
+		Ihandle *popup_menu = IupMenu
+		(
+		IupItem ("update", "update"),
+		NULL
+		);
+		//IupSetFunction ("refresh", (Icallback) iupfs_on_refresh);
+		IupPopup (popup_menu, IUP_MOUSEPOS, IUP_MOUSEPOS);
+		IupDestroy (popup_menu);
+	}
+
+	return IUP_DEFAULT;
+}
 
 
 
+void IupGetGlobal_MONITORSINFO (int * x, int * y, int * w, int * h)
+{
+	char * si = IupGetGlobal ("MONITORSINFO");
+	ASSERT (si);
+	sscanf (si, "%i %i %i %i", x, y, w, h);
+	printf ("%s\n", si);
+}
 
-
-
-
+void IupGetGlobal_SCREENSIZE (int * w, int * h)
+{
+	char * si = IupGetGlobal ("SCREENSIZE");
+	ASSERT (si);
+	sscanf (si, "%ix%i", w, h);
+	printf ("%s\n", si);
+}
 
 
 int main(int argc, char* argv[])
@@ -302,6 +359,7 @@ int main(int argc, char* argv[])
 	setbuf (stderr, NULL);
 	IupOpen (&argc, &argv);
 	ide_images_load ();
+	IupSetGlobal ("UTF8MODE", "No");
 
 	{
 		Ihandle * btn_open = IupButton ("open", NULL);
@@ -320,16 +378,22 @@ int main(int argc, char* argv[])
 
 	{
 		gih_tree = IupTree ();
-		IupSetCallback(gih_tree, "EXECUTELEAF_CB", (Icallback)iupfs_on_execute);
-		IupShow(IupDialog(IupVbox(gih_tree, NULL)));
+		IupSetCallback (gih_tree, "EXECUTELEAF_CB", (Icallback)iupfs_on_execute);
+		IupSetCallback (gih_tree, "RIGHTCLICK_CB", (Icallback) iupfs_on_rclick);
+		int w, h;
+		IupGetGlobal_SCREENSIZE (&w, &h);
+		//printf ("%i %i\n",w/2,h/2);
+		Ihandle * dlg = IupDialog (IupVbox(gih_tree, NULL));
+		IupSetStrf (dlg, "RASTERSIZE", "%ix%i", w/2, h/2);
+		IupShowXY (dlg, 0, h/2);
 		IupSetAttributeId (gih_tree, "TITLE", 0, "..");
-		list1 (gih_tree, "..");
+		list1 (gih_tree, "..", 0);
 	}
 
 	{
 		IupScintillaOpen();
-		IupSetGlobal("UTF8MODE", "No");
 		gih_sci = IupScintilla();
+
 		//  IupSetAttribute(sci, "VISIBLECOLUMNS", "80");
 		//  IupSetAttribute(sci, "VISIBLELINES", "40");
 		//IupSetAttribute(sci, "SCROLLBAR", "NO");
@@ -339,6 +403,7 @@ int main(int argc, char* argv[])
 		IupSetCallback(gih_sci, "MARGINCLICK_CB", (Icallback)marginclick_cb);
 		IupSetCallback(gih_sci, "HOTSPOTCLICK_CB", (Icallback)hotspotclick_cb);
 		IupSetCallback(gih_sci, "BUTTON_CB", (Icallback)button_cb);
+
 		//IupSetCallback(handle_sci, "MOTION_CB", (Icallback)motion_cb);
 		IupSetCallback(gih_sci, "K_ANY", (Icallback)k_any);
 		IupSetCallback(gih_sci, "CARET_CB", (Icallback)caret_cb);
@@ -346,11 +411,12 @@ int main(int argc, char* argv[])
 		IupSetCallback(gih_sci, "ACTION", (Icallback)action_cb);
 
 		Ihandle *dlg = IupDialog(IupVbox(gih_sci, NULL));
-		IupSetAttribute(dlg, "TITLE", "IupScintilla");
-		IupSetAttribute(dlg, "RASTERSIZE", "700x500");
-		IupSetAttribute(dlg, "MARGIN", "10x10");
-		IupSetAttribute(dlg, "RASTERSIZE", NULL);
-		IupShow(dlg);
+		int w, h;
+		IupGetGlobal_SCREENSIZE (&w, &h);
+		IupSetAttribute (dlg, "TITLE", "IupScintilla");
+		IupSetStrf (dlg, "RASTERSIZE", "%ix%i", w/2, h/2);
+		IupSetAttribute (dlg, "MARGIN", "10x10");
+		IupShowXY (dlg, w/2, h/2);
 
 		IupSetAttribute(gih_sci, "CLEARALL", "");
 		IupSetAttribute(gih_sci, "LEXERLANGUAGE", "cpp");

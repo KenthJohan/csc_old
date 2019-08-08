@@ -7,7 +7,7 @@ CONFIG -= qt
 QMAKE_CFLAGS += -fprofile-arcs -ftest-coverage
 LIBS += --coverage
 
-SOURCES += ide.c
+SOURCES += ide2.c
 
 HEADERS += $$PWD/../../iup-3.27_Win64_mingw6_lib/include/iup.h
 HEADERS += $$PWD/../../cd-5.12_Win64_mingw6_lib/include/cd.h
@@ -16,8 +16,7 @@ HEADERS += $$PWD/../../src/csc_debug_uv.h
 HEADERS += $$PWD/../../src/csc_malloc_file.h
 HEADERS += $$PWD/../../src/csc_fspath.h
 HEADERS += $$PWD/../../src/csc_str.h
-HEADERS += $$PWD/../../src/csc_iup.h
-HEADERS += img.h
+HEADERS += ide_images.h
 HEADERS += sci.h
 
 INCLUDEPATH += "C:/msys64/mingw64/include"

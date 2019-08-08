@@ -494,25 +494,40 @@ int main(int argc, char* argv[])
 	ide_images_load ();
 	IupSetGlobal ("UTF8MODE", "No");
 
+	Ihandle * dlg = NULL;
+
+
+
 	{
+		/*
 		Ihandle * btn_open = IupButton ("open", NULL);
 		Ihandle * btn_next = IupButton ("next", NULL);
 		Ihandle * btn_prop = IupButton ("IupElementPropertiesDialog", NULL);
 		IupSetCallback(btn_open, "ACTION", (Icallback)btn_open_action);
 		IupSetCallback(btn_next, "ACTION", (Icallback)btn_next_action);
 		IupSetCallback(btn_prop, "ACTION", (Icallback)btn_prop_action);
-		Ihandle * dlg = IupDialog(IupVbox(btn_open, btn_next, btn_prop, NULL));
-		IupSetAttribute(dlg, "TITLE", "IupScintilla");
-		IupSetAttribute(dlg, "RASTERSIZE", "700x500");
-		IupSetAttribute(dlg, "MARGIN", "10x10");
-		IupSetAttribute(dlg, "RASTERSIZE", NULL);
-		IupShow(dlg);
+		 */
+		Ihandle * tools = IupMenu
+		(
+		IupItem("Open", NULL),
+		IupItem("Next", NULL),
+		IupItem("IupElementPropertiesDialog", NULL),
+		NULL
+		);
+		Ihandle * menu = IupMenu (IupSubmenu ("Tools", tools));
+		IupSetAttributeHandle (dlg, "MENU", menu);
 	}
+
+
+
+
 
 	{
 		gih_tree = IupTree ();
 		IupSetCallback (gih_tree, "EXECUTELEAF_CB", (Icallback)iupfs_on_execute);
 		IupSetCallback (gih_tree, "RIGHTCLICK_CB", (Icallback) iupfs_on_rclick);
+
+		/*
 		int w, h;
 		IupGetGlobal_SCREENSIZE (&w, &h);
 		//printf ("%i %i\n",w/2,h/2);
@@ -521,6 +536,9 @@ int main(int argc, char* argv[])
 		IupShowXY (dlg, 0, h/2);
 		IupSetAttributeId (gih_tree, "TITLE", 0, "..");
 		fstree_build (gih_tree, "..", 0);
+		*/
+
+
 	}
 
 	{
@@ -542,7 +560,9 @@ int main(int argc, char* argv[])
 		IupSetCallback(gih_sci, "CARET_CB", (Icallback)caret_cb);
 		IupSetCallback(gih_sci, "VALUECHANGED_CB", (Icallback)valuechanged_cb);
 		IupSetCallback(gih_sci, "ACTION", (Icallback)action_cb);
+	}
 
+	/*
 		Ihandle *dlg = IupDialog(IupVbox(gih_sci, NULL));
 		int w, h;
 		IupGetGlobal_SCREENSIZE (&w, &h);
@@ -550,7 +570,21 @@ int main(int argc, char* argv[])
 		IupSetStrf (dlg, "RASTERSIZE", "%ix%i", w/2, h/2);
 		IupSetAttribute (dlg, "MARGIN", "10x10");
 		IupShowXY (dlg, w/2, h/2);
+	*/
 
+	{
+		Ihandle * dlg = IupDialog (IupHbox (gih_tree, gih_sci, NULL));
+		IupSetAttribute (dlg, "TITLE", "gcovenant");
+		IupSetAttribute (dlg, "RASTERSIZE", "700x500");
+		IupSetAttribute (dlg, "MARGIN", "10x10");
+		IupSetAttribute (dlg, "RASTERSIZE", NULL);
+		IupShow (dlg);
+	}
+
+	fstree_build (gih_tree, "..", 0);
+
+
+	{
 		IupSetAttribute(gih_sci, "CLEARALL", "");
 		IupSetAttribute(gih_sci, "LEXERLANGUAGE", "cpp");
 		IupSetAttribute(gih_sci, "KEYWORDS0", "void struct union enum char short int long double float signed unsigned const static extern auto register volatile bool class private protected public friend inline template virtual asm explicit typename mutable"
@@ -621,6 +655,8 @@ int main(int argc, char* argv[])
 		IupSetAttribute(gih_sci, "MARKERDEFINE", "FOLDERTAIL=EMPTY");
 		IupSetAttribute(gih_sci, "FOLDFLAGS", "LINEAFTER_CONTRACTED");
 	}
+
+
 
 	IupMainLoop();
 	IupClose();

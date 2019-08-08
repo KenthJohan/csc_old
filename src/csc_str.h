@@ -25,6 +25,7 @@ SOFTWARE.
 #pragma once
 #include <string.h>
 
+#define CSC_STRNCMP_LITERAL(str1,str2) strncmp ((str1), (str2), sizeof (str2)-1)
 
 /*
 returns positive when (str1) contains substring of (str2) seperated by (delimiters).
@@ -62,6 +63,7 @@ size_t csc_str_contains1 (char const * str1, char const * str2, char const * del
 /*
 eg:
 	char * ext1 = strrchr ("C:/docs/hello.txt", '.');
-	char * ext0 = strrchr (ext1, '/');
+	char * ext0 = strrchr ("C:/docs/hello.txt", '/');
 */
+
 

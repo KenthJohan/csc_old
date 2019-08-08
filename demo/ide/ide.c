@@ -195,9 +195,10 @@ static int btn_next_action (Ihandle* ih)
 	IupSetStrf (handle_sci, "INDICATORFILLRANGE", "%d:%d", pos, len);
 	*/
 	static int line = 0;
-	IupSetIntId (gih_sci, "MARKERDELETE", line, 8);
+	//IupSetIntId (gih_sci, "MARKERDELETE", line, 8);
 	line ++;
 	IupSetIntId (gih_sci, "MARKERADD", line, 8);
+	IupSetAttribute (gih_sci, "APPEND", "APPEND");
 	return IUP_DEFAULT;
 }
 
@@ -214,6 +215,7 @@ Build directory tree in IupTree.
 */
 void fstree_build (Ihandle * ih, char * dir0, int id)
 {
+	//Set to NO to add many items to the tree without updating the display. Default: "YES".
 	IupSetAttribute(ih, "AUTOREDRAW", "No");
 	struct _finddata_t fileinfo;
 	intptr_t handle;
@@ -297,14 +299,15 @@ void fstree_refresh (Ihandle * ih, int id)
 
 void fstree_label (Ihandle * ih, char const * str1)
 {
+	//Set to NO to add many items to the tree without updating the display. Default: "YES".
 	IupSetAttribute(ih, "AUTOREDRAW", "No");
 	char const * ext1 = strrchr (str1, '.');
 	if (ext1 == NULL) {return;}
 	char const * ext0 = strrchr (str1, '/');
 	if (ext0 == NULL) {ext0 = str1;}
 	else {ext0 ++;}
-	char name [100] = {0};
-	strncpy (name, ext0, (unsigned) MIN (ext1-ext0, 100));
+	char name [MAX_PATH] = {0};
+	strncpy (name, ext0, (unsigned) MIN (ext1-ext0, MAX_PATH));
 	printf ("%s\n", name);
 
 	int i = 0;
@@ -375,9 +378,7 @@ int iupfs_on_execute (Ihandle *ih, int id)
 
 
 /*
-Use right click on IupTree node.
-A menu pops up.
-Use left click on refresh button.
+User left clicks on refresh button from fstree right click menu.
 */
 int iupfs_on_refresh (void)
 {
@@ -393,6 +394,43 @@ int iupfs_on_gcov (void)
 	return IUP_DEFAULT;
 }
 
+int app_seegcov (void)
+{
+	IupSetAttribute (gih_sci, "APPENDNEWLINE", "No");
+	IupSetAttribute (gih_sci, "CLEARALL", NULL);
+	int id = IupGetInt (gih_tree, "VALUE");
+	char * title = IupGetAttributeId (gih_tree, "TITLE", id);
+	char line [2048] = {0};
+	printf ("%s\n", title);
+	FILE * f = fopen (title, "r");
+	if (f == NULL) {return IUP_DEFAULT;}
+	while (fgets(line, 2048, f))
+	{
+		int l = IupGetInt (gih_sci, "LINECOUNT");
+		if (CSC_STRNCMP_LITERAL (line, "        -:    0:") == 0) {continue;}
+		IupSetAttribute (gih_sci, "APPEND", line+16);
+		if (CSC_STRNCMP_LITERAL (line, "    #####") == 0)
+		{
+			IupSetIntId (gih_sci, "MARKERADD", l-1, 8);
+		}
+		else if (CSC_STRNCMP_LITERAL (line, "        -:") == 0)
+		{
+
+		}
+		else
+		{
+			IupSetIntId (gih_sci, "MARKERADD", l-1, 9);
+		}
+	}
+	fclose (f);
+
+	return IUP_DEFAULT;
+}
+
+/*
+User right click on the fstree.
+Node (id) is the closest to mouse pointer.
+*/
 int iupfs_on_rclick (Ihandle* h, int id)
 {
 	char * kind = IupGetAttributeId (h, "KIND", id);
@@ -418,9 +456,10 @@ int iupfs_on_rclick (Ihandle* h, int id)
 		Ihandle *popup_menu = IupMenu
 		(
 		IupItem ("update", "update"),
+		IupItem ("see gcov", "app_seegcov"),
 		NULL
 		);
-		//IupSetFunction ("refresh", (Icallback) iupfs_on_refresh);
+		IupSetFunction ("app_seegcov", (Icallback) app_seegcov);
 		IupPopup (popup_menu, IUP_MOUSEPOS, IUP_MOUSEPOS);
 		IupDestroy (popup_menu);
 	}
@@ -561,6 +600,9 @@ int main(int argc, char* argv[])
 
 		IupSetAttributeId(gih_sci, "MARKERBGCOLOR", 8, "255 0 0");
 		IupSetAttributeId(gih_sci, "MARKERALPHA", 8, "80");
+
+		IupSetAttributeId(gih_sci, "MARKERBGCOLOR", 9, "0 255 0");
+		IupSetAttributeId(gih_sci, "MARKERALPHA", 9, "80");
 
 		IupSetAttribute(gih_sci, "PROPERTY", "fold=1");
 		IupSetAttribute(gih_sci, "PROPERTY", "fold.compact=0");

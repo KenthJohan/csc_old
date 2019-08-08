@@ -214,6 +214,7 @@ Build directory tree in IupTree.
 */
 void fstree_build (Ihandle * ih, char * dir0, int id)
 {
+	IupSetAttribute(ih, "AUTOREDRAW", "No");
 	struct _finddata_t fileinfo;
 	intptr_t handle;
 	char star [MAX_PATH];
@@ -276,6 +277,7 @@ void fstree_build (Ihandle * ih, char * dir0, int id)
 		}
 	}
 	_findclose(handle);
+	IupSetAttribute(ih, "AUTOREDRAW", "Yes");
 }
 
 
@@ -292,13 +294,53 @@ void fstree_refresh (Ihandle * ih, int id)
 }
 
 
+
+void fstree_label (Ihandle * ih, char const * str1)
+{
+	IupSetAttribute(ih, "AUTOREDRAW", "No");
+	char const * ext1 = strrchr (str1, '.');
+	if (ext1 == NULL) {return;}
+	char const * ext0 = strrchr (str1, '/');
+	if (ext0 == NULL) {ext0 = str1;}
+	else {ext0 ++;}
+	char name [100] = {0};
+	strncpy (name, ext0, (unsigned) MIN (ext1-ext0, 100));
+	printf ("%s\n", name);
+
+	int i = 0;
+	while (1)
+	{
+		char * title = IupGetAttributeId (ih, "TITLE", i);
+		if (title == NULL) {break;}
+		if (strstr (title, name))
+		{
+			IupSetAttributeId (ih, "COLOR", i, "0 120 0");
+			IupSetAttributeId (ih, "TITLEFONTSTYLE", i, "Bold");
+		}
+		i ++;
+	}
+	IupSetAttribute (ih, "AUTOREDRAW", "Yes");
+}
+
 /*
 Find all gcov files in the IupTree (ih) starting from node (id)
 */
 void fstree_find_gcov (Ihandle * ih, int id)
 {
-	int d = IupGetInt (ih, "DEPTH");
-	int i = id;
+	int i;
+
+	i = 0;
+	while (1)
+	{
+		char * title = IupGetAttributeId (ih, "TITLE", i);
+		if (title == NULL) {break;}
+		IupSetAttributeId (ih, "COLOR", i, "0 0 0");
+		IupSetAttributeId (ih, "TITLEFONTSTYLE", i, "Normal");
+		//IupSetAttributeId (ih, "NODEVISIBLE", i, "No");
+		i ++;
+	}
+
+	i = id;
 	while (1)
 	{
 		char * title = IupGetAttributeId (ih, "TITLE", i);
@@ -306,7 +348,8 @@ void fstree_find_gcov (Ihandle * ih, int id)
 		char * ext = strrchr (title, '.');
 		if (ext && strcmp (ext, ".gcov") == 0)
 		{
-			printf ("title %i %s\n", i, title);
+			fstree_label (ih, title);
+			//printf ("title %i %s\n", i, title);
 		}
 		i ++;
 	}

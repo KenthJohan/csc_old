@@ -4,7 +4,16 @@
 #include <ctype.h> //isalpha
 
 
-int fpath_hidden (char const * s)
+
+int csc_fspath_ishidden (char const * s)
+{
+	if (*s != '.') {return 0;}
+	s ++;
+	if (isalpha (*s) || isdigit (*s)) {return 1;}
+	return 0;
+}
+
+int csc_fspath_ishidden2 (char const * s)
 {
 	while (1)
 	{
@@ -13,13 +22,5 @@ int fpath_hidden (char const * s)
 		s += 2;
 		if (isalpha (*s) || isdigit (*s)) {return 1;}
 	}
-	return 0;
-}
-
-int fpath_hidden2 (char const * s)
-{
-	if (*s != '.') {return 0;}
-	s ++;
-	if (isalpha (*s) || isdigit (*s)) {return 1;}
 	return 0;
 }

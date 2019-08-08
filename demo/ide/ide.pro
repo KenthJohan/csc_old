@@ -4,7 +4,8 @@ CONFIG -= app_bundle
 CONFIG -= qt
 
 
-#QMAKE_CFLAGS += -fprofile-arcs -ftest-coverage
+QMAKE_CFLAGS += -fprofile-arcs -ftest-coverage
+LIBS += --coverage
 
 SOURCES += ide.c
 
@@ -14,6 +15,7 @@ HEADERS += $$PWD/../../src/csc_debug.h
 HEADERS += $$PWD/../../src/csc_debug_uv.h
 HEADERS += $$PWD/../../src/csc_malloc_file.h
 HEADERS += $$PWD/../../src/csc_fspath.h
+HEADERS += $$PWD/../../src/csc_str.h
 HEADERS += ide_images.h
 
 INCLUDEPATH += "C:/msys64/mingw64/include"
@@ -28,4 +30,4 @@ LIBS += -liup_scintilla -liup -liupcontrols -liupcd -lcd -limm32 -lcdim -lcdgl -
 
 LIBS += -L"C:\msys64\mingw64\lib"
 LIBS += -luv
-#LIBS += --coverage
+

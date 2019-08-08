@@ -20,6 +20,7 @@
 #include <csc_malloc_file.h>
 #include <csc_fspath.h>
 #include <csc_basic.h>
+#include <csc_str.h>
 
 #include "ide_images.h"
 
@@ -207,8 +208,11 @@ static int btn_prop_action (Ihandle* ih)
 	return IUP_DEFAULT;
 }
 
-
-void list1 (Ihandle * ih, char * dir0, int id)
+/*
+Walk directory recursive.
+Build directory tree in IupTree.
+*/
+void fstree_build (Ihandle * ih, char * dir0, int id)
 {
 	struct _finddata_t fileinfo;
 	intptr_t handle;
@@ -225,14 +229,14 @@ void list1 (Ihandle * ih, char * dir0, int id)
 
 	while (1)
 	{
+		char * ext = strrchr (fileinfo.name, '.');
 		if(strcmp(fileinfo.name, ".") == 0 || strcmp(fileinfo.name, "..") == 0){}
 		else if (csc_fspath_ishidden (fileinfo.name)){}
-		else if ((fileinfo.attrib & _A_SUBDIR) == 0)
+		else if ((fileinfo.attrib & _A_SUBDIR) == 0 && csc_str_contains1 (ext, ".c .h .gcov", " "))
 		{
 			snprintf (star, MAX_PATH, "%s/%s", dir0, fileinfo.name);
 			//printf ("F %x %s\n", fileinfo.attrib, star);
 			IupSetAttributeId (ih, "ADDLEAF", id, star);
-			char * ext = strrchr (fileinfo.name, '.');
 			if (ext && (strcmp (ext, ".a") == 0))
 			{
 				IupSetAttributeHandleId (ih, "IMAGE", IupGetInt (ih, "LASTADDNODE"), gih_img_lib);
@@ -253,13 +257,17 @@ void list1 (Ihandle * ih, char * dir0, int id)
 			{
 				IupSetAttributeHandleId (ih, "IMAGE", IupGetInt (ih, "LASTADDNODE"), gih_img_cpp);
 			}
+			else if (ext && (strcmp (ext, ".gcov") == 0))
+			{
+				IupSetAttributeHandleId (ih, "IMAGE", IupGetInt (ih, "LASTADDNODE"), gih_img_gcov);
+			}
 		}
 		else if (fileinfo.attrib & _A_SUBDIR)
 		{
 			snprintf (star, MAX_PATH, "%s/%s", dir0, fileinfo.name);
 			//printf ("D %x %s\n", fileinfo.attrib, star);
 			IupSetAttributeId (ih, "ADDBRANCH", id, star);
-			list1 (ih, star, IupGetInt (ih, "LASTADDNODE"));
+			fstree_build (ih, star, IupGetInt (ih, "LASTADDNODE"));
 		}
 		int r = _findnext (handle, &fileinfo);
 		if (r != 0)
@@ -271,13 +279,44 @@ void list1 (Ihandle * ih, char * dir0, int id)
 }
 
 
-void list1_refresh (Ihandle * ih, char * dir0, int id)
+/*
+Update directories and file names for.
+Using globals (gih_tree)
+*/
+void fstree_refresh (Ihandle * ih, int id)
 {
+	char * dir = IupGetAttributeId (gih_tree, "TITLE", id);
+	printf ("list1_refresh %s\n", dir);
 	IupSetAttributeId (ih, "DELNODE", id, "CHILDREN");
-	list1 (ih, dir0, id);
+	fstree_build (ih, dir, id);
 }
 
 
+/*
+Find all gcov files in the IupTree (ih) starting from node (id)
+*/
+void fstree_find_gcov (Ihandle * ih, int id)
+{
+	int d = IupGetInt (ih, "DEPTH");
+	int i = id;
+	while (1)
+	{
+		char * title = IupGetAttributeId (ih, "TITLE", i);
+		if (IupGetAttributeId (ih, "NEXT", i) == NULL) {return;}
+		char * ext = strrchr (title, '.');
+		if (ext && strcmp (ext, ".gcov") == 0)
+		{
+			printf ("title %i %s\n", i, title);
+		}
+		i ++;
+	}
+}
+
+
+/*
+Action generated when a leaf is to be executed.
+This action occurs when the user double clicks a leaf, or hits Enter on a leaf.
+*/
 int iupfs_on_execute (Ihandle *ih, int id)
 {
 	char const * title = IupGetAttributeId (ih, "TITLE", id);
@@ -291,13 +330,23 @@ int iupfs_on_execute (Ihandle *ih, int id)
 	return IUP_DEFAULT;
 }
 
+
+/*
+Use right click on IupTree node.
+A menu pops up.
+Use left click on refresh button.
+*/
 int iupfs_on_refresh (void)
 {
 	int id = IupGetInt (gih_tree, "VALUE");
-	//IupSetAttributeId (gih_tree, "DELNODE", id, "CHILDREN");
-	char * dir = IupGetAttributeId (gih_tree, "TITLE", id);
-	printf ("iupfs_on_refresh %s\n", dir);
-	list1_refresh (gih_tree, dir, id);
+	fstree_refresh (gih_tree, id);
+	return IUP_DEFAULT;
+}
+
+int iupfs_on_gcov (void)
+{
+	int id = IupGetInt (gih_tree, "VALUE");
+	fstree_find_gcov (gih_tree, id);
 	return IUP_DEFAULT;
 }
 
@@ -311,9 +360,11 @@ int iupfs_on_rclick (Ihandle* h, int id)
 		Ihandle *popup_menu = IupMenu
 		(
 		IupItem ("Refresh", "refresh"),
+		IupItem ("gcov", "gcov"),
 		NULL
 		);
 		IupSetFunction ("refresh", (Icallback) iupfs_on_refresh);
+		IupSetFunction ("gcov", (Icallback) iupfs_on_gcov);
 		IupPopup (popup_menu, IUP_MOUSEPOS, IUP_MOUSEPOS);
 		IupDestroy (popup_menu);
 	}
@@ -387,7 +438,7 @@ int main(int argc, char* argv[])
 		IupSetStrf (dlg, "RASTERSIZE", "%ix%i", w/2, h/2);
 		IupShowXY (dlg, 0, h/2);
 		IupSetAttributeId (gih_tree, "TITLE", 0, "..");
-		list1 (gih_tree, "..", 0);
+		fstree_build (gih_tree, "..", 0);
 	}
 
 	{

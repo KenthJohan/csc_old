@@ -8,6 +8,7 @@ static Ihandle * gih_img_c = 0;
 static Ihandle * gih_img_cpp = 0;
 static Ihandle * gih_img_h = 0;
 static Ihandle * gih_img_hpp = 0;
+static Ihandle * gih_img_gcov = 0;
 
 static void ide_images_load (void)
 {
@@ -159,6 +160,36 @@ static void ide_images_load (void)
 		IupSetAttribute(image, "4", "000 000 255");
 		IupSetAttribute(image, "5", "0 0 0");
 		gih_img_hpp = image;
+	}
+
+	{
+		unsigned char data [TEST_IMAGE_SIZE*TEST_IMAGE_SIZE] =
+		{
+		5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+		5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,
+		5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,
+		5,0,0,0,1,1,1,1,1,1,1,1,0,0,0,5,
+		5,0,0,0,1,1,1,1,1,1,1,0,0,0,0,5,
+		5,0,0,0,1,1,0,0,0,0,1,1,0,0,0,5,
+		5,0,0,0,1,1,0,0,0,0,1,1,0,0,0,5,
+		5,0,0,0,1,1,1,1,1,1,1,1,0,0,0,5,
+		5,0,0,0,0,1,1,1,1,1,1,1,0,0,0,5,
+		5,0,0,0,0,0,0,0,0,0,1,1,0,0,0,5,
+		5,0,0,0,1,1,0,0,0,1,1,1,0,0,0,5,
+		5,0,0,0,1,1,1,1,1,1,1,1,0,0,0,5,
+		5,0,0,0,0,1,1,1,1,1,1,0,0,0,0,5,
+		5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,
+		5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,
+		5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+		};//g
+		Ihandle* image = IupImage (TEST_IMAGE_SIZE, TEST_IMAGE_SIZE, data);
+		IupSetAttribute(image, "0", "BGCOLOR");
+		IupSetAttribute(image, "1", "000 180 000");
+		IupSetAttribute(image, "2", "000 000 000");
+		IupSetAttribute(image, "3", "000 000 255");
+		IupSetAttribute(image, "4", "000 000 255");
+		IupSetAttribute(image, "5", "0 0 0");
+		gih_img_gcov = image;
 	}
 }
 

@@ -28,8 +28,15 @@
 
 
 
-static Ihandle * gih_sci = NULL;
-static Ihandle * gih_tree = NULL;
+static struct
+{
+	Ihandle * dlg;
+	Ihandle * sci;
+	Ihandle * tree1;
+	Ihandle * tree2;
+	Ihandle * zbox;
+} gapp;
+
 
 
 static int k_any (Ihandle *ih, int c)
@@ -110,24 +117,35 @@ static int caret_cb (Ihandle *self, int lin, int col, int pos)
 	return IUP_DEFAULT;
 }
 
-static int valuechanged_cb(Ihandle *self)
+static int valuechanged_cb (Ihandle *self)
 {
 	printf("VALUECHANGED_CB\n");
 	(void)self;
 	return IUP_DEFAULT;
 }
 
-static int action_cb(Ihandle *self, int insert, int pos, int length, char* text)
+static int action_cb (Ihandle *self, int insert, int pos, int length, char* text)
 {
 	printf("ACTION = insert: %d, pos: %d, lenght:%d, text: %s\n", insert, pos, length, text);
 	(void)self;
 	return IUP_IGNORE;
 }
 
-static int btn_open_action (Ihandle* ih)
+static int gapp_view_tree2 (Ihandle * h)
 {
-	(void)ih;
-	printf ("btn_open_action!\n");
+	(void)h;
+	Ihandle * zbox = IupGetHandle ("zbox");
+	ASSERT (zbox);
+	IupSetAttribute (zbox, "VALUE", "tree2");
+	return IUP_DEFAULT;
+}
+
+static int gapp_view_tree1 (Ihandle * h)
+{
+	(void)h;
+	Ihandle * zbox = IupGetHandle ("zbox");
+	ASSERT (zbox);
+	IupSetAttribute (zbox, "VALUE", "tree1");
 	return IUP_DEFAULT;
 }
 
@@ -138,14 +156,14 @@ static int btn_next_action (Ihandle* ih)
 	static int line = 0;
 	//IupSetIntId (gih_sci, "MARKERDELETE", line, 8);
 	line ++;
-	IupSetIntId (gih_sci, "MARKERADD", line, 8);
-	IupSetAttribute (gih_sci, "APPEND", "APPEND");
+	IupSetIntId (gapp.sci, "MARKERADD", line, 8);
+	IupSetAttribute (gapp.sci, "APPEND", "APPEND");
 	return IUP_DEFAULT;
 }
 
 static int btn_prop_action (Ihandle* ih)
 {
-	IupShow (IupElementPropertiesDialog (gih_sci));
+	IupShow (IupElementPropertiesDialog (gapp.sci));
 	(void)ih;
 	return IUP_DEFAULT;
 }
@@ -154,8 +172,9 @@ static int btn_prop_action (Ihandle* ih)
 Walk directory recursive.
 Build directory tree in IupTree.
 */
-void fstree_build (Ihandle * ih, char * dir0, int id)
+void fstree_build (Ihandle * ih, char * dir0, int ref)
 {
+	//printf ("%i %s\n", id, dir0);
 	//Set to NO to add many items to the tree without updating the display. Default: "YES".
 	IupSetAttribute(ih, "AUTOREDRAW", "No");
 	struct _finddata_t fileinfo;
@@ -178,16 +197,25 @@ void fstree_build (Ihandle * ih, char * dir0, int id)
 		else if (csc_fspath_ishidden (fileinfo.name)){}
 		else if ((fileinfo.attrib & _A_SUBDIR) == 0 && csc_str_contains1 (ext, ".c .h .gcov", " "))
 		{
+			char buf [MAX_PATH];
 			snprintf (star, MAX_PATH, "%s/%s", dir0, fileinfo.name);
+			snprintf (buf, MAX_PATH, "%i %s/%s", ref, dir0, fileinfo.name);
+			//puts (buf);
 			//printf ("F %x %s\n", fileinfo.attrib, star);
-			IupSetAttributeId (ih, "ADDLEAF", id, star);
+			IupSetAttributeId (ih, "ADDLEAF", ref, star);
+			//IupSetAttributeId (ih, "USERDATA", IupGetInt(ih, "LASTADDNODE"), "Leaf");
 		}
 		else if (fileinfo.attrib & _A_SUBDIR)
 		{
+			char buf [MAX_PATH];
 			snprintf (star, MAX_PATH, "%s/%s", dir0, fileinfo.name);
+			//snprintf (buf, MAX_PATH, "%i %s/%s", ref, dir0, fileinfo.name);
+			snprintf (buf, MAX_PATH, "Hej %s", fileinfo.name);
+			//puts (buf);
 			//printf ("D %x %s\n", fileinfo.attrib, star);
-			IupSetAttributeId (ih, "ADDBRANCH", id, star);
-			fstree_build (ih, star, IupGetInt (ih, "LASTADDNODE"));
+			IupSetAttributeId (ih, "ADDBRANCH", ref, star);
+			//IupSetAttributeId (ih, "USERDATA", IupGetInt(ih, "LASTADDNODE"), buf);
+			fstree_build (ih, star, ref + 1);
 		}
 		int r = _findnext (handle, &fileinfo);
 		if (r != 0)
@@ -205,7 +233,10 @@ void fstree_icon (Ihandle * ih)
 	int i = 0;
 	while (1)
 	{
+		//IupSetAttributeId (ih, "USERDATA", i, "Hej");
 		char * title = IupGetAttributeId (ih, "TITLE", i);
+		char * ud = IupGetAttributeId (ih, "USERDATA", i);
+		printf ("%s %s\n", title, ud);
 		if (title == NULL) {break;}
 		char * ext = strrchr (title, '.');
 		if (ext == NULL) {}
@@ -244,7 +275,7 @@ Using globals (gih_tree)
 */
 void fstree_refresh_id (Ihandle * ih, int id)
 {
-	char * dir = IupGetAttributeId (gih_tree, "TITLE", id);
+	char * dir = IupGetAttributeId (gapp.tree1, "TITLE", id);
 	printf ("list1_refresh %s\n", dir);
 	IupSetAttributeId (ih, "DELNODE", id, "CHILDREN");
 	fstree_build (ih, dir, id);
@@ -356,10 +387,10 @@ int sci_load_filename (Ihandle * h, char const * filename)
 
 int sci_load (Ihandle * h)
 {
-	int id = IupGetInt (gih_tree, "VALUE");
-	char * title = IupGetAttributeId (gih_tree, "TITLE", id);
+	int id = IupGetInt (gapp.tree1, "VALUE");
+	char * title = IupGetAttributeId (gapp.tree1, "TITLE", id);
 	if (title == NULL) {return IUP_DEFAULT;}
-	sci_load_filename (gih_sci, title);
+	sci_load_filename (gapp.sci, title);
 	return IUP_DEFAULT;
 }
 
@@ -371,7 +402,9 @@ int fstree_execute (Ihandle *ih, int id)
 {
 	char const * title = IupGetAttributeId (ih, "TITLE", id);
 	if (title == NULL) {return IUP_DEFAULT;}
-	sci_gcov_filename (gih_sci, title);
+	char const * ud = IupGetAttributeId (ih, "USERDATA", id);
+	if (ud) {puts (ud);}
+	sci_gcov_filename (gapp.sci, title);
 	return IUP_DEFAULT;
 }
 
@@ -382,15 +415,15 @@ User left clicks on refresh button from fstree right click menu.
 */
 int fstree_refresh (void)
 {
-	int id = IupGetInt (gih_tree, "VALUE");
-	fstree_refresh_id (gih_tree, id);
+	int id = IupGetInt (gapp.tree1, "VALUE");
+	fstree_refresh_id (gapp.tree1, id);
 	return IUP_DEFAULT;
 }
 
 int fstree_label (void)
 {
-	int id = IupGetInt (gih_tree, "VALUE");
-	fstree_label_id (gih_tree, id);
+	int id = IupGetInt (gapp.tree1, "VALUE");
+	fstree_label_id (gapp.tree1, id);
 	return IUP_DEFAULT;
 }
 
@@ -440,79 +473,80 @@ int exit_cb (void)
 }
 
 
-
 int main(int argc, char* argv[])
 {
 	setbuf (stdout, NULL);
 	setbuf (stderr, NULL);
 	IupOpen (&argc, &argv);
+	IupScintillaOpen ();
 	ide_images_load ();
 	IupSetGlobal ("UTF8MODE", "No");
 
-	Ihandle * dlg_menu = NULL;
+
+	gapp.tree1 = IupTree ();IupSetHandle ("tree1", gapp.tree1);
+	gapp.tree2 = IupTree ();IupSetHandle ("tree2", gapp.tree2);
+	gapp.sci = IupScintilla ();
+	gapp.zbox = IupZbox (gapp.tree1, gapp.tree2, NULL);IupSetHandle ("zbox", gapp.zbox);
+	gapp.dlg = IupDialog (IupVbox (IupSplit (gapp.zbox, gapp.sci), NULL));
+
+	{
+		IupSetAttribute (gapp.tree1, "BORDER", "NO");
+		IupSetAttribute (gapp.tree1, "EXPAND", "Yes");
+		IupSetCallback (gapp.tree1, "EXECUTELEAF_CB", (Icallback) fstree_execute);
+		IupSetCallback (gapp.tree1, "RIGHTCLICK_CB", (Icallback) iupfs_on_rclick);
+	}
+
+	{
+		IupSetAttribute (gapp.sci, "VISIBLECOLUMNS", "80");
+		IupSetAttribute (gapp.sci, "VISIBLELINES", "40");
+		IupSetAttribute (gapp.sci, "SCROLLBAR", "YES");
+		IupSetAttribute (gapp.sci, "BORDER", "NO");
+		IupSetAttribute (gapp.sci, "EXPAND", "Yes");
+		IupSetAttribute (gapp.sci, "OVERWRITE", "ON");
+		IupSetCallback (gapp.sci, "MARGINCLICK_CB", (Icallback)marginclick_cb);
+		IupSetCallback (gapp.sci, "HOTSPOTCLICK_CB", (Icallback)hotspotclick_cb);
+		IupSetCallback (gapp.sci, "BUTTON_CB", (Icallback)button_cb);
+		//IupSetCallback (handle_sci, "MOTION_CB", (Icallback)motion_cb);
+		IupSetCallback (gapp.sci, "K_ANY", (Icallback)k_any);
+		IupSetCallback (gapp.sci, "CARET_CB", (Icallback)caret_cb);
+		IupSetCallback (gapp.sci, "VALUECHANGED_CB", (Icallback)valuechanged_cb);
+		IupSetCallback (gapp.sci, "ACTION", (Icallback)action_cb);
+	}
 
 	{
 		struct
 		{
-			Ihandle * base;
-			Ihandle * open;
+			Ihandle * menu;
+			Ihandle * menu1;
+			Ihandle * tree1;
+			Ihandle * tree2;
 			Ihandle * next;
 			Ihandle * prop;
 			Ihandle * exit;
 		} menu;
-		menu.open = IupItem ("Open", NULL);
+		menu.tree1 = IupItem ("Tree1", NULL);
+		menu.tree2 = IupItem ("Tree2", NULL);
 		menu.next = IupItem ("Next", NULL);
 		menu.prop = IupItem ("Element properties", NULL);
 		menu.exit = IupItem ("Exit", NULL);
-		menu.base = IupMenu (menu.open, menu.next, menu.prop, IupSeparator(), menu.exit, NULL);
-		dlg_menu = IupMenu (IupSubmenu ("Menu", menu.base), NULL);
-		IupSetCallback (menu.open, "ACTION", (Icallback) btn_open_action);
+		menu.menu1 = IupMenu (menu.tree1, menu.tree2, menu.next, menu.prop, IupSeparator(), menu.exit, NULL);
+		menu.menu = IupMenu (IupSubmenu ("Menu", menu.menu1), NULL);
+		IupSetCallback (menu.tree1, "ACTION", (Icallback) gapp_view_tree2);
+		IupSetCallback (menu.tree2, "ACTION", (Icallback) gapp_view_tree1);
 		IupSetCallback (menu.next, "ACTION", (Icallback) btn_next_action);
 		IupSetCallback (menu.prop, "ACTION", (Icallback) btn_prop_action);
 		IupSetCallback (menu.exit, "ACTION", (Icallback) exit_cb);
+		IupSetAttributeHandle(gapp.dlg, "MENU", menu.menu);
+		IupSetAttribute (gapp.dlg, "TITLE", "gcovenant");
+		IupSetAttribute (gapp.dlg, "RASTERSIZE", "700x500");
+		IupSetAttribute (gapp.dlg, "MARGIN", "10x10");
+		IupSetAttribute (gapp.dlg, "RASTERSIZE", NULL);
+		IupShow (gapp.dlg);
 	}
 
-
-	{
-		gih_tree = IupTree ();
-		IupSetAttribute (gih_tree, "BORDER", "NO");
-		IupSetAttribute (gih_tree, "EXPAND", "Yes");
-		IupSetCallback (gih_tree, "EXECUTELEAF_CB", (Icallback)fstree_execute);
-		IupSetCallback (gih_tree, "RIGHTCLICK_CB", (Icallback) iupfs_on_rclick);
-	}
-
-	{
-		IupScintillaOpen();
-		gih_sci = IupScintilla();
-		IupSetAttribute(gih_sci, "VISIBLECOLUMNS", "80");
-		IupSetAttribute(gih_sci, "VISIBLELINES", "40");
-		IupSetAttribute(gih_sci, "SCROLLBAR", "YES");
-		IupSetAttribute(gih_sci, "BORDER", "NO");
-		IupSetAttribute(gih_sci, "EXPAND", "Yes");
-		IupSetAttribute(gih_sci, "OVERWRITE", "ON");
-		IupSetCallback(gih_sci, "MARGINCLICK_CB", (Icallback)marginclick_cb);
-		IupSetCallback(gih_sci, "HOTSPOTCLICK_CB", (Icallback)hotspotclick_cb);
-		IupSetCallback(gih_sci, "BUTTON_CB", (Icallback)button_cb);
-		//IupSetCallback(handle_sci, "MOTION_CB", (Icallback)motion_cb);
-		IupSetCallback(gih_sci, "K_ANY", (Icallback)k_any);
-		IupSetCallback(gih_sci, "CARET_CB", (Icallback)caret_cb);
-		IupSetCallback(gih_sci, "VALUECHANGED_CB", (Icallback)valuechanged_cb);
-		IupSetCallback(gih_sci, "ACTION", (Icallback)action_cb);
-	}
-
-	{
-		Ihandle * dlg = IupDialog (IupVbox (IupSplit (gih_tree, gih_sci), NULL));
-		IupSetAttributeHandle(dlg, "MENU", dlg_menu);
-		IupSetAttribute (dlg, "TITLE", "gcovenant");
-		IupSetAttribute (dlg, "RASTERSIZE", "700x500");
-		IupSetAttribute (dlg, "MARGIN", "10x10");
-		IupSetAttribute (dlg, "RASTERSIZE", NULL);
-		IupShow (dlg);
-	}
-
-	fstree_build (gih_tree, "..", 0);
-	fstree_icon (gih_tree);
-	sci_setup (gih_sci);
+	fstree_build (gapp.tree1, ".", 0);
+	fstree_icon (gapp.tree1);
+	sci_setup (gapp.sci);
 
 	IupMainLoop();
 	IupClose();

@@ -235,9 +235,9 @@ int fstree_label (void)
 int fstree_extfilter (void)
 {
 	char extfilter [200] = ".c .h .gcov";
-	int r = IupGetParam ("Title", NULL, 0, "Extfilter:%s\n", extfilter, NULL);
+	int r = IupGetParam ("Whitelist file extensions", NULL, 0, "File extensions:%s\n", extfilter, NULL);
 	if (r != 1) {return IUP_DEFAULT;}
-	printf ("IupGetParam - Button1 (OK)\n");
+	printf ("Filtering using whitelist file extensions\n");
 	IupSetAttributeId (gapp.tree2, "DELNODE", 0, "CHILDREN");
 	//IupSetAttributeId (gapp.tree2, "DELNODE", 0, "ALL");
 	fstree_copy (gapp.tree1, gapp.tree2, extfilter);
@@ -261,7 +261,7 @@ int iupfs_on_rclick (Ihandle* h, int id)
 		IupSetInt (h, "VALUE", id);
 		menu = IupMenu
 		(
-		IupItem ("extfilter", "extfilter"),
+		IupItem ("Whitelist file extensions", "extfilter"),
 		NULL
 		);
 		IupSetFunction ("extfilter", (Icallback) fstree_extfilter);
@@ -324,11 +324,11 @@ int main(int argc, char* argv[])
 	{
 		IupSetAttribute (gapp.tree1, "BORDER", "NO");
 		IupSetAttribute (gapp.tree1, "EXPAND", "Yes");
-		IupSetAttribute (gapp.tree1, "TITLE", "root");
+		IupSetAttribute (gapp.tree1, "TITLE", "root1");
 		//IupSetCallback (gapp.tree1, "EXECUTELEAF_CB", (Icallback) fstree_execute);
 		//IupSetCallback (gapp.tree1, "RIGHTCLICK_CB", (Icallback) iupfs_on_rclick);
 
-		IupSetAttribute (gapp.tree2, "TITLE", "root");
+		IupSetAttribute (gapp.tree2, "TITLE", "root2");
 		IupSetAttribute (gapp.tree2, "BORDER", "NO");
 		IupSetAttribute (gapp.tree2, "EXPAND", "Yes");
 		IupSetCallback (gapp.tree2, "EXECUTELEAF_CB", (Icallback) fstree_execute);
@@ -370,8 +370,8 @@ int main(int argc, char* argv[])
 		menu.exit = IupItem ("Exit", NULL);
 		menu.menu1 = IupMenu (menu.tree1, menu.tree2, menu.next, menu.prop, IupSeparator(), menu.exit, NULL);
 		menu.menu = IupMenu (IupSubmenu ("Menu", menu.menu1), NULL);
-		IupSetCallback (menu.tree1, "ACTION", (Icallback) gapp_view_tree2);
-		IupSetCallback (menu.tree2, "ACTION", (Icallback) gapp_view_tree1);
+		IupSetCallback (menu.tree1, "ACTION", (Icallback) gapp_view_tree1);
+		IupSetCallback (menu.tree2, "ACTION", (Icallback) gapp_view_tree2);
 		IupSetCallback (menu.next, "ACTION", (Icallback) btn_next_action);
 		IupSetCallback (menu.prop, "ACTION", (Icallback) btn_prop_action);
 		IupSetCallback (menu.exit, "ACTION", (Icallback) exit_cb);

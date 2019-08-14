@@ -206,7 +206,6 @@ int fstree_nleaf (Ihandle * h, int ref)
 			n ++;
 		}
 	}
-	printf ("nleaf %i\n", n);
 	return n;
 }
 
@@ -233,28 +232,25 @@ void fstree_copy (Ihandle * src, Ihandle * des, char const * extfilter)
 			char * ext = strrchr (title, '.');
 			if ((extfilter == NULL) || (ext && csc_str_contains1 (ext, extfilter, " ")))
 			{
-				printf ("ADDLEAF %i %s\n", depth-1, title);
+				//printf ("ADDLEAF %i %s\n", depth-1, title);
 				IupSetAttributeId (des, "ADDLEAF", depth-1, title);
 				IupSetAttributeId (des, "USERDATA", IupGetInt (des, "LASTADDNODE"), (int)i);
 			}
 		}
 		else if (strcmp (kind, "BRANCH") == 0)
 		{
-			printf ("ADDBRANCH %i %s\n", depth-1, title);
+			//printf ("ADDBRANCH %i %s\n", depth-1, title);
 			IupSetAttributeId (des, "ADDBRANCH", depth-1, title);
 			IupSetAttributeId (des, "USERDATA", IupGetInt (des, "LASTADDNODE"), (int)i);
 		}
 		i ++;
 	}
 
-	printf ("COUNT %i\n", IupGetInt (des, "COUNT"));
-
 	i = 1;
 	while (1)
 	{
 		char * title = IupGetAttributeId (des, "TITLE", i);
 		char * kind = IupGetAttributeId (des, "KIND", i);
-		printf ("Hej %i %s %s %i\n", i, kind, title, IupGetIntId (des, "CHILDCOUNT", i));
 		if (title == NULL) {break;}
 		if (kind == NULL) {break;}
 		if ((strcmp (kind, "BRANCH") == 0) && fstree_nleaf (des, i) == 0)

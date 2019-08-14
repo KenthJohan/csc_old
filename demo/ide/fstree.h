@@ -46,10 +46,9 @@ void fstree_build (Ihandle * ih, char * dir0, int ref)
 
 	while (1)
 	{
-		char * ext = strrchr (fileinfo.name, '.');
 		if(strcmp(fileinfo.name, ".") == 0 || strcmp(fileinfo.name, "..") == 0){}
 		else if (csc_fspath_ishidden (fileinfo.name)){}
-		else if ((fileinfo.attrib & _A_SUBDIR) == 0 && csc_str_contains1 (ext, ".c .h .gcov", " "))
+		else if ((fileinfo.attrib & _A_SUBDIR) == 0)
 		{
 			struct fsnode * node = malloc (sizeof (struct fsnode));
 			snprintf (star, MAX_PATH, "%s/%s", dir0, fileinfo.name);
@@ -184,6 +183,58 @@ void fstree_label_id (Ihandle * ih, int id)
 			//printf ("title %i %s\n", i, title);
 		}
 		if (IupGetAttributeId (ih, "NEXT", i) == NULL) {return;}
+		i ++;
+	}
+}
+
+
+
+/*
+Find all gcov files in the IupTree (ih) starting from node (id)
+*/
+void fstree_copy (Ihandle * src, Ihandle * des, char const * extfilter)
+{
+	int i;
+	i = 0;
+	while (1)
+	{
+		char * title = IupGetAttributeId (src, "TITLE", i);
+		char * kind = IupGetAttributeId (src, "KIND", i);
+		int depth = IupGetIntId (src, "DEPTH", i);
+		if (title == NULL) {break;}
+		if (kind == NULL) {break;}
+
+		if (depth == 0) {}
+		else if (strcmp (kind, "LEAF") == 0)
+		{
+			char * ext = strrchr (title, '.');
+			if ((extfilter == NULL) || (ext && csc_str_contains1 (ext, extfilter, " ")))
+			{
+				printf ("ADDLEAF %i %s\n", depth-1, title);
+				IupSetAttributeId (des, "ADDLEAF", depth-1, title);
+				IupSetAttributeId (des, "USERDATA", IupGetInt (des, "LASTADDNODE"), (int)i);
+			}
+		}
+		else if (strcmp (kind, "BRANCH") == 0)
+		{
+			printf ("ADDBRANCH %i %s\n", depth-1, title);
+			IupSetAttributeId (des, "ADDBRANCH", depth-1, title);
+			IupSetAttributeId (des, "USERDATA", IupGetInt (des, "LASTADDNODE"), (int)i);
+		}
+		i ++;
+	}
+
+	i = 0;
+	while (1)
+	{
+		char * title = IupGetAttributeId (des, "TITLE", i);
+		char * kind = IupGetAttributeId (des, "KIND", i);
+		printf ("Hej %s %s %i\n", kind, title, IupGetIntId (des, "CHILDCOUNT", i));
+		if (title == NULL) {break;}
+		if (kind == NULL) {break;}
+		if (strcmp (kind, "BRANCH") != 0) {i ++; continue;}
+		if (IupGetIntId (des, "CHILDCOUNT", i) != 0) {i ++; continue;}
+		IupSetAttributeId (des, "DELNODE", i, "SELECTED");
 		i ++;
 	}
 }

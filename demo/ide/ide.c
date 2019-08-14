@@ -172,6 +172,7 @@ static int btn_prop_action (Ihandle* ih)
 
 int sci_load (Ihandle * h)
 {
+	(void) h;
 	int id = IupGetInt (gapp.tree1, "VALUE");
 	char * title = IupGetAttributeId (gapp.tree1, "TITLE", id);
 	if (title == NULL) {return IUP_DEFAULT;}
@@ -199,10 +200,13 @@ This action occurs when the user double clicks a leaf, or hits Enter on a leaf.
 */
 int fstree_execute (Ihandle *ih, int id)
 {
-	char const * title = IupGetAttributeId (ih, "TITLE", id);
-	struct fsnode * node = (struct fsnode *) IupGetAttributeId (ih, "USERDATA", id);
+	char const * title;
+	title = IupGetAttributeId (ih, "TITLE", id);
 	if (title == NULL) {return IUP_DEFAULT;}
+	id = (int) (void*) IupGetAttributeId (ih, "USERDATA", id);
+	struct fsnode * node = (struct fsnode *) IupGetAttributeId (gapp.tree1, "USERDATA", id);
 	if (node == NULL) {return IUP_DEFAULT;}
+	printf ("USERDATA %i %s\n", id, node->path);
 	sci_gcov_filename (gapp.sci, node->path);
 	return IUP_DEFAULT;
 }
@@ -228,6 +232,19 @@ int fstree_label (void)
 }
 
 
+int fstree_extfilter (void)
+{
+	char extfilter [200] = ".c .h .gcov";
+	int r = IupGetParam ("Title", NULL, 0, "Extfilter:%s\n", extfilter, NULL);
+	if (r != 1) {return IUP_DEFAULT;}
+	printf ("IupGetParam - Button1 (OK)\n");
+	IupSetAttributeId (gapp.tree2, "DELNODE", 0, "CHILDREN");
+	fstree_copy (gapp.tree1, gapp.tree2, extfilter);
+	return IUP_DEFAULT;
+}
+
+
+
 
 /*
 User right click on the fstree.
@@ -237,10 +254,23 @@ int iupfs_on_rclick (Ihandle* h, int id)
 {
 	char * kind = IupGetAttributeId (h, "KIND", id);
 	ASSERT (kind);
-	if (strcmp (kind, "BRANCH") == 0)
+	Ihandle * menu = NULL;
+	if (id == 0)
 	{
 		IupSetInt (h, "VALUE", id);
-		Ihandle *popup_menu = IupMenu
+		menu = IupMenu
+		(
+		IupItem ("extfilter", "extfilter"),
+		NULL
+		);
+		IupSetFunction ("extfilter", (Icallback) fstree_extfilter);
+		IupPopup (menu, IUP_MOUSEPOS, IUP_MOUSEPOS);
+		IupDestroy (menu);
+	}
+	else if (strcmp (kind, "BRANCH") == 0)
+	{
+		IupSetInt (h, "VALUE", id);
+		menu = IupMenu
 		(
 		IupItem ("Refresh", "refresh"),
 		IupItem ("gcov", "gcov"),
@@ -248,22 +278,21 @@ int iupfs_on_rclick (Ihandle* h, int id)
 		);
 		IupSetFunction ("refresh", (Icallback) fstree_refresh);
 		IupSetFunction ("gcov", (Icallback) fstree_label);
-		IupPopup (popup_menu, IUP_MOUSEPOS, IUP_MOUSEPOS);
-		IupDestroy (popup_menu);
+		IupPopup (menu, IUP_MOUSEPOS, IUP_MOUSEPOS);
+		IupDestroy (menu);
 	}
-
-	if (strcmp (kind, "LEAF") == 0)
+	else if (strcmp (kind, "LEAF") == 0)
 	{
 		IupSetInt (h, "VALUE", id);
-		Ihandle *popup_menu = IupMenu
+		menu = IupMenu
 		(
 		IupItem ("update", "update"),
 		IupItem ("source", "source"),
 		NULL
 		);
 		IupSetFunction ("source", (Icallback) sci_load);
-		IupPopup (popup_menu, IUP_MOUSEPOS, IUP_MOUSEPOS);
-		IupDestroy (popup_menu);
+		IupPopup (menu, IUP_MOUSEPOS, IUP_MOUSEPOS);
+		IupDestroy (menu);
 	}
 
 	return IUP_DEFAULT;
@@ -288,14 +317,21 @@ int main(int argc, char* argv[])
 	gapp.tree1 = IupTree ();IupSetHandle ("tree1", gapp.tree1);
 	gapp.tree2 = IupTree ();IupSetHandle ("tree2", gapp.tree2);
 	gapp.sci = IupScintilla ();
-	gapp.zbox = IupZbox (gapp.tree1, gapp.tree2, NULL);IupSetHandle ("zbox", gapp.zbox);
+	gapp.zbox = IupZbox (gapp.tree2, gapp.tree1, NULL);IupSetHandle ("zbox", gapp.zbox);
 	gapp.dlg = IupDialog (IupVbox (IupSplit (gapp.zbox, gapp.sci), NULL));
 
 	{
 		IupSetAttribute (gapp.tree1, "BORDER", "NO");
 		IupSetAttribute (gapp.tree1, "EXPAND", "Yes");
-		IupSetCallback (gapp.tree1, "EXECUTELEAF_CB", (Icallback) fstree_execute);
-		IupSetCallback (gapp.tree1, "RIGHTCLICK_CB", (Icallback) iupfs_on_rclick);
+		IupSetAttribute (gapp.tree1, "TITLE", "root");
+		//IupSetCallback (gapp.tree1, "EXECUTELEAF_CB", (Icallback) fstree_execute);
+		//IupSetCallback (gapp.tree1, "RIGHTCLICK_CB", (Icallback) iupfs_on_rclick);
+
+		IupSetAttribute (gapp.tree2, "TITLE", "root");
+		IupSetAttribute (gapp.tree2, "BORDER", "NO");
+		IupSetAttribute (gapp.tree2, "EXPAND", "Yes");
+		IupSetCallback (gapp.tree2, "EXECUTELEAF_CB", (Icallback) fstree_execute);
+		IupSetCallback (gapp.tree2, "RIGHTCLICK_CB", (Icallback) iupfs_on_rclick);
 	}
 
 	{
@@ -348,6 +384,7 @@ int main(int argc, char* argv[])
 
 	fstree_build (gapp.tree1, ".", 0);
 	fstree_icon (gapp.tree1);
+	fstree_copy (gapp.tree1, gapp.tree2, ".c .h");
 	sci_setup (gapp.sci);
 
 	IupMainLoop();

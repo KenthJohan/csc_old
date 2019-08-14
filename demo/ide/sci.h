@@ -4,6 +4,7 @@
 #include <iup_scintilla.h>
 #include <iup_config.h>
 #include <csc_malloc_file.h>
+#include <csc_str.h>
 
 enum app_scimargin
 {

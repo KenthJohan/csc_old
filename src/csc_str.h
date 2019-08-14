@@ -25,7 +25,7 @@ SOFTWARE.
 #pragma once
 #include <string.h>
 
-#define CSC_STRNCMP_LITERAL(str1,str2) strncmp ((str1), (str2), sizeof (str2)-1)
+#define CSC_STRNCMP_LITERAL(str1,str2) strncmp ((str1), (str2), sizeof ((str2))-1)
 
 /*
 returns positive when (str1) contains substring of (str2) seperated by (delimiters).

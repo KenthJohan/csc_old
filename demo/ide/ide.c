@@ -239,6 +239,7 @@ int fstree_extfilter (void)
 	if (r != 1) {return IUP_DEFAULT;}
 	printf ("IupGetParam - Button1 (OK)\n");
 	IupSetAttributeId (gapp.tree2, "DELNODE", 0, "CHILDREN");
+	//IupSetAttributeId (gapp.tree2, "DELNODE", 0, "ALL");
 	fstree_copy (gapp.tree1, gapp.tree2, extfilter);
 	return IUP_DEFAULT;
 }

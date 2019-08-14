@@ -188,6 +188,28 @@ void fstree_label_id (Ihandle * ih, int id)
 }
 
 
+int fstree_nleaf (Ihandle * h, int ref)
+{
+	int n = 0;
+	int i = ref;
+	int depth = IupGetIntId (h, "DEPTH", ref);
+	while (1)
+	{
+		i ++;
+		char * kind = IupGetAttributeId (h, "KIND", i);
+		if (kind == NULL) {break;}
+		int d = IupGetIntId (h, "DEPTH", i);
+		if (depth == d) {break;}
+
+		if (strcmp (kind, "LEAF") == 0)
+		{
+			n ++;
+		}
+	}
+	printf ("nleaf %i\n", n);
+	return n;
+}
+
 
 /*
 Find all gcov files in the IupTree (ih) starting from node (id)
@@ -195,7 +217,8 @@ Find all gcov files in the IupTree (ih) starting from node (id)
 void fstree_copy (Ihandle * src, Ihandle * des, char const * extfilter)
 {
 	int i;
-	i = 0;
+
+	i = 1;
 	while (1)
 	{
 		char * title = IupGetAttributeId (src, "TITLE", i);
@@ -224,17 +247,21 @@ void fstree_copy (Ihandle * src, Ihandle * des, char const * extfilter)
 		i ++;
 	}
 
-	i = 0;
+	printf ("COUNT %i\n", IupGetInt (des, "COUNT"));
+
+	i = 1;
 	while (1)
 	{
 		char * title = IupGetAttributeId (des, "TITLE", i);
 		char * kind = IupGetAttributeId (des, "KIND", i);
-		printf ("Hej %s %s %i\n", kind, title, IupGetIntId (des, "CHILDCOUNT", i));
+		printf ("Hej %i %s %s %i\n", i, kind, title, IupGetIntId (des, "CHILDCOUNT", i));
 		if (title == NULL) {break;}
 		if (kind == NULL) {break;}
-		if (strcmp (kind, "BRANCH") != 0) {i ++; continue;}
-		if (IupGetIntId (des, "CHILDCOUNT", i) != 0) {i ++; continue;}
-		IupSetAttributeId (des, "DELNODE", i, "SELECTED");
+		if ((strcmp (kind, "BRANCH") == 0) && fstree_nleaf (des, i) == 0)
+		{
+			IupSetAttributeId (des, "DELNODE", i, "SELECTED");
+			continue;
+		}
 		i ++;
 	}
 }

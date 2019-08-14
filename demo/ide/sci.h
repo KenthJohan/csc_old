@@ -3,6 +3,7 @@
 //#include "Scintilla.h"
 #include <iup_scintilla.h>
 #include <iup_config.h>
+#include <csc_malloc_file.h>
 
 enum app_scimargin
 {
@@ -107,3 +108,47 @@ void sci_setup (Ihandle * gih_sci)
 	IupSetAttribute(gih_sci, "MARKERDEFINE", "FOLDERTAIL=EMPTY");
 	IupSetAttribute(gih_sci, "FOLDFLAGS", "LINEAFTER_CONTRACTED");
 }
+
+
+int sci_gcov_filename (Ihandle * h, char const * filename)
+{
+	IupSetAttribute (h, "APPENDNEWLINE", "No");
+	IupSetAttribute (h, "CLEARALL", NULL);
+	FILE * f = fopen (filename, "r");
+	if (f == NULL) {return IUP_DEFAULT;}
+	char line [2048] = {0};
+	while (fgets(line, 2048, f))
+	{
+		int l = IupGetInt (h, "LINECOUNT");
+		if (CSC_STRNCMP_LITERAL (line, "        -:    0:") == 0) {continue;}
+		IupSetAttribute (h, "APPEND", line+16);
+		if (CSC_STRNCMP_LITERAL (line, "    #####") == 0)
+		{
+			IupSetIntId (h, "MARKERADD", l-1, 8);
+		}
+		else if (CSC_STRNCMP_LITERAL (line, "        -:") == 0)
+		{
+
+		}
+		else
+		{
+			IupSetIntId (h, "MARKERADD", l-1, 9);
+		}
+	}
+	fclose (f);
+
+	return IUP_DEFAULT;
+}
+
+int sci_load_filename (Ihandle * h, char const * filename)
+{
+	char * text = csc_malloc_file (filename);
+	if (text == NULL) {return IUP_DEFAULT;}
+	//printf ("%s\n", text);
+	IupSetAttribute (h, "CLEARALL", NULL);
+	IupSetAttribute (h, "INSERT0", text);
+	free (text);
+	return IUP_DEFAULT;
+}
+
+

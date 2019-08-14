@@ -25,6 +25,7 @@
 
 #include "img.h"
 #include "sci.h"
+#include "fstree.h"
 
 
 
@@ -168,104 +169,14 @@ static int btn_prop_action (Ihandle* ih)
 	return IUP_DEFAULT;
 }
 
-/*
-Walk directory recursive.
-Build directory tree in IupTree.
-*/
-void fstree_build (Ihandle * ih, char * dir0, int ref)
+
+int sci_load (Ihandle * h)
 {
-	//printf ("%i %s\n", id, dir0);
-	//Set to NO to add many items to the tree without updating the display. Default: "YES".
-	IupSetAttribute(ih, "AUTOREDRAW", "No");
-	struct _finddata_t fileinfo;
-	intptr_t handle;
-	char star [MAX_PATH];
-	snprintf (star, MAX_PATH, "%s/*", dir0);
-	//printf ("dir %i %s\n", i, star);
-	handle = _findfirst (star, &fileinfo);
-	if(handle == -1)
-	{
-		//perror ("Error searching for file");
-		//exit (1);
-		return;
-	}
-
-	while (1)
-	{
-		char * ext = strrchr (fileinfo.name, '.');
-		if(strcmp(fileinfo.name, ".") == 0 || strcmp(fileinfo.name, "..") == 0){}
-		else if (csc_fspath_ishidden (fileinfo.name)){}
-		else if ((fileinfo.attrib & _A_SUBDIR) == 0 && csc_str_contains1 (ext, ".c .h .gcov", " "))
-		{
-			char buf [MAX_PATH];
-			snprintf (star, MAX_PATH, "%s/%s", dir0, fileinfo.name);
-			snprintf (buf, MAX_PATH, "%i %s/%s", ref, dir0, fileinfo.name);
-			//puts (buf);
-			//printf ("F %x %s\n", fileinfo.attrib, star);
-			IupSetAttributeId (ih, "ADDLEAF", ref, star);
-			//IupSetAttributeId (ih, "USERDATA", IupGetInt(ih, "LASTADDNODE"), "Leaf");
-		}
-		else if (fileinfo.attrib & _A_SUBDIR)
-		{
-			char buf [MAX_PATH];
-			snprintf (star, MAX_PATH, "%s/%s", dir0, fileinfo.name);
-			//snprintf (buf, MAX_PATH, "%i %s/%s", ref, dir0, fileinfo.name);
-			snprintf (buf, MAX_PATH, "Hej %s", fileinfo.name);
-			//puts (buf);
-			//printf ("D %x %s\n", fileinfo.attrib, star);
-			IupSetAttributeId (ih, "ADDBRANCH", ref, star);
-			//IupSetAttributeId (ih, "USERDATA", IupGetInt(ih, "LASTADDNODE"), buf);
-			fstree_build (ih, star, ref + 1);
-		}
-		int r = _findnext (handle, &fileinfo);
-		if (r != 0)
-		{
-			break;
-		}
-	}
-	_findclose(handle);
-	IupSetAttribute(ih, "AUTOREDRAW", "Yes");
-}
-
-
-void fstree_icon (Ihandle * ih)
-{
-	int i = 0;
-	while (1)
-	{
-		//IupSetAttributeId (ih, "USERDATA", i, "Hej");
-		char * title = IupGetAttributeId (ih, "TITLE", i);
-		char * ud = IupGetAttributeId (ih, "USERDATA", i);
-		printf ("%s %s\n", title, ud);
-		if (title == NULL) {break;}
-		char * ext = strrchr (title, '.');
-		if (ext == NULL) {}
-		else if (ext && (strcmp (ext, ".a") == 0))
-		{
-			IupSetAttributeHandleId (ih, "IMAGE", i, gih_img_lib);
-		}
-		else if (ext && (strcmp (ext, ".h") == 0))
-		{
-			IupSetAttributeHandleId (ih, "IMAGE", i, gih_img_h);
-		}
-		else if (ext && (strcmp (ext, ".hpp") == 0))
-		{
-			IupSetAttributeHandleId (ih, "IMAGE", i, gih_img_hpp);
-		}
-		else if (ext && (strcmp (ext, ".c") == 0))
-		{
-			IupSetAttributeHandleId (ih, "IMAGE", i, gih_img_c);
-		}
-		else if (ext && (strcmp (ext, ".cpp") == 0))
-		{
-			IupSetAttributeHandleId (ih, "IMAGE", i, gih_img_cpp);
-		}
-		else if (ext && (strcmp (ext, ".gcov") == 0))
-		{
-			IupSetAttributeHandleId (ih, "IMAGE", i, gih_img_gcov);
-		}
-		i ++;
-	}
+	int id = IupGetInt (gapp.tree1, "VALUE");
+	char * title = IupGetAttributeId (gapp.tree1, "TITLE", id);
+	if (title == NULL) {return IUP_DEFAULT;}
+	sci_load_filename (gapp.sci, title);
+	return IUP_DEFAULT;
 }
 
 
@@ -282,118 +193,6 @@ void fstree_refresh_id (Ihandle * ih, int id)
 }
 
 
-
-void fstree_label_filename (Ihandle * ih, char const * str1)
-{
-	//Set to NO to add many items to the tree without updating the display. Default: "YES".
-	IupSetAttribute(ih, "AUTOREDRAW", "No");
-	char const * ext1 = strrchr (str1, '.');
-	if (ext1 == NULL) {return;}
-	char const * ext0 = strrchr (str1, '/');
-	if (ext0 == NULL) {ext0 = str1;}
-	else {ext0 ++;}
-	char name [MAX_PATH] = {0};
-	strncpy (name, ext0, (unsigned) MIN (ext1-ext0, MAX_PATH));
-	printf ("%s\n", name);
-
-	int i = 0;
-	while (1)
-	{
-		char * title = IupGetAttributeId (ih, "TITLE", i);
-		if (title == NULL) {break;}
-		if (strstr (title, name))
-		{
-			IupSetAttributeId (ih, "COLOR", i, "0 120 0");
-			IupSetAttributeId (ih, "TITLEFONTSTYLE", i, "Bold");
-		}
-		i ++;
-	}
-	IupSetAttribute (ih, "AUTOREDRAW", "Yes");
-}
-
-/*
-Find all gcov files in the IupTree (ih) starting from node (id)
-*/
-void fstree_label_id (Ihandle * ih, int id)
-{
-	int i;
-
-	i = 0;
-	while (1)
-	{
-		char * title = IupGetAttributeId (ih, "TITLE", i);
-		if (title == NULL) {break;}
-		IupSetAttributeId (ih, "COLOR", i, "0 0 0");
-		IupSetAttributeId (ih, "TITLEFONTSTYLE", i, "Normal");
-		//IupSetAttributeId (ih, "NODEVISIBLE", i, "No");
-		i ++;
-	}
-
-	i = id;
-	while (1)
-	{
-		char * title = IupGetAttributeId (ih, "TITLE", i);
-		char * ext = strrchr (title, '.');
-		if (ext && strcmp (ext, ".gcov") == 0)
-		{
-			fstree_label_filename (ih, title);
-			//printf ("title %i %s\n", i, title);
-		}
-		if (IupGetAttributeId (ih, "NEXT", i) == NULL) {return;}
-		i ++;
-	}
-}
-
-int sci_gcov_filename (Ihandle * h, char const * filename)
-{
-	IupSetAttribute (h, "APPENDNEWLINE", "No");
-	IupSetAttribute (h, "CLEARALL", NULL);
-	FILE * f = fopen (filename, "r");
-	if (f == NULL) {return IUP_DEFAULT;}
-	char line [2048] = {0};
-	while (fgets(line, 2048, f))
-	{
-		int l = IupGetInt (h, "LINECOUNT");
-		if (CSC_STRNCMP_LITERAL (line, "        -:    0:") == 0) {continue;}
-		IupSetAttribute (h, "APPEND", line+16);
-		if (CSC_STRNCMP_LITERAL (line, "    #####") == 0)
-		{
-			IupSetIntId (h, "MARKERADD", l-1, 8);
-		}
-		else if (CSC_STRNCMP_LITERAL (line, "        -:") == 0)
-		{
-
-		}
-		else
-		{
-			IupSetIntId (h, "MARKERADD", l-1, 9);
-		}
-	}
-	fclose (f);
-
-	return IUP_DEFAULT;
-}
-
-int sci_load_filename (Ihandle * h, char const * filename)
-{
-	char * text = csc_malloc_file (filename);
-	if (text == NULL) {return IUP_DEFAULT;}
-	//printf ("%s\n", text);
-	IupSetAttribute (h, "CLEARALL", NULL);
-	IupSetAttribute (h, "INSERT0", text);
-	free (text);
-	return IUP_DEFAULT;
-}
-
-int sci_load (Ihandle * h)
-{
-	int id = IupGetInt (gapp.tree1, "VALUE");
-	char * title = IupGetAttributeId (gapp.tree1, "TITLE", id);
-	if (title == NULL) {return IUP_DEFAULT;}
-	sci_load_filename (gapp.sci, title);
-	return IUP_DEFAULT;
-}
-
 /*
 Action generated when a leaf is to be executed.
 This action occurs when the user double clicks a leaf, or hits Enter on a leaf.
@@ -401,10 +200,10 @@ This action occurs when the user double clicks a leaf, or hits Enter on a leaf.
 int fstree_execute (Ihandle *ih, int id)
 {
 	char const * title = IupGetAttributeId (ih, "TITLE", id);
+	struct fsnode * node = (struct fsnode *) IupGetAttributeId (ih, "USERDATA", id);
 	if (title == NULL) {return IUP_DEFAULT;}
-	char const * ud = IupGetAttributeId (ih, "USERDATA", id);
-	if (ud) {puts (ud);}
-	sci_gcov_filename (gapp.sci, title);
+	if (node == NULL) {return IUP_DEFAULT;}
+	sci_gcov_filename (gapp.sci, node->path);
 	return IUP_DEFAULT;
 }
 
@@ -420,12 +219,15 @@ int fstree_refresh (void)
 	return IUP_DEFAULT;
 }
 
+
 int fstree_label (void)
 {
 	int id = IupGetInt (gapp.tree1, "VALUE");
 	fstree_label_id (gapp.tree1, id);
 	return IUP_DEFAULT;
 }
+
+
 
 /*
 User right click on the fstree.

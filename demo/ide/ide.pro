@@ -19,6 +19,7 @@ HEADERS += $$PWD/../../src/csc_str.h
 HEADERS += $$PWD/../../src/csc_iup.h
 HEADERS += img.h
 HEADERS += sci.h
+HEADERS += fstree.h
 
 INCLUDEPATH += "C:/msys64/mingw64/include"
 INCLUDEPATH += $$PWD/../../iup-3.27_Win64_mingw6_lib/include

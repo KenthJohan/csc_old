@@ -1,6 +1,14 @@
 #pragma once
 #include <io.h>
 #include <iup.h>
+#include <io.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <stdio.h>
+#include <time.h>
+#include <uv.h>
+
 #include "img.h"
 
 struct fsnode
@@ -188,28 +196,6 @@ void fstree_label_id (Ihandle * ih, int id)
 }
 
 
-int fstree_nleaf (Ihandle * h, int ref)
-{
-	int n = 0;
-	int i = ref;
-	int depth = IupGetIntId (h, "DEPTH", ref);
-	while (1)
-	{
-		i ++;
-		char * kind = IupGetAttributeId (h, "KIND", i);
-		if (kind == NULL) {break;}
-		int d = IupGetIntId (h, "DEPTH", i);
-		if (depth == d) {break;}
-
-		if (strcmp (kind, "LEAF") == 0)
-		{
-			n ++;
-		}
-	}
-	return n;
-}
-
-
 /*
 Find all gcov files in the IupTree (ih) starting from node (id)
 */
@@ -253,7 +239,7 @@ void fstree_copy (Ihandle * src, Ihandle * des, char const * extfilter)
 		char * kind = IupGetAttributeId (des, "KIND", i);
 		if (title == NULL) {break;}
 		if (kind == NULL) {break;}
-		if ((strcmp (kind, "BRANCH") == 0) && fstree_nleaf (des, i) == 0)
+		if ((strcmp (kind, "BRANCH") == 0) && IupTree_nleaf (des, i) == 0)
 		{
 			IupSetAttributeId (des, "DELNODE", i, "SELECTED");
 			continue;

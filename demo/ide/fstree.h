@@ -88,16 +88,16 @@ void fstree_build (Ihandle * ih, char * dir0, int ref)
 
 void fstree_icon (Ihandle * ih)
 {
-	int i = 0;
+	int i = 1;
 	while (1)
 	{
 		//IupSetAttributeId (ih, "USERDATA", i, "Hej");
 		char * title = IupGetAttributeId (ih, "TITLE", i);
-		struct fsnode * ud = (struct fsnode *) IupGetAttributeId (ih, "USERDATA", i);
-		if (ud == NULL) {break;}
+		//struct fsnode * ud = (struct fsnode *) IupGetAttributeId (ih, "USERDATA", i);
+		//if (ud == NULL) {break;}
 		if (title == NULL) {break;}
 
-		printf ("%i %s %s\n", i, title, ud->path);
+		//printf ("%i %s %s\n", i, title, ud->path);
 
 		char * ext = strrchr (title, '.');
 		if (ext == NULL) {}

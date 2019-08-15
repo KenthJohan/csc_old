@@ -207,7 +207,15 @@ int fstree_execute (Ihandle *ih, int id)
 	struct fsnode * node = (struct fsnode *) IupGetAttributeId (gapp.tree1, "USERDATA", id);
 	if (node == NULL) {return IUP_DEFAULT;}
 	printf ("USERDATA %i %s\n", id, node->path);
-	sci_gcov_filename (gapp.sci, node->path);
+	char * ext = strrchr (title, '.');
+	if (ext && strcmp (ext, ".gcov") == 0)
+	{
+		sci_gcov_filename (gapp.sci, node->path);
+	}
+	else
+	{
+		sci_load_filename(gapp.sci, node->path);
+	}
 	return IUP_DEFAULT;
 }
 
@@ -226,8 +234,8 @@ int fstree_refresh (void)
 
 int fstree_label (void)
 {
-	int id = IupGetInt (gapp.tree1, "VALUE");
-	fstree_label_id (gapp.tree1, id);
+	int id = IupGetInt (gapp.tree2, "VALUE");
+	fstree_label_id (gapp.tree2, id);
 	return IUP_DEFAULT;
 }
 
@@ -241,6 +249,7 @@ int fstree_extfilter (void)
 	IupSetAttributeId (gapp.tree2, "DELNODE", 0, "CHILDREN");
 	//IupSetAttributeId (gapp.tree2, "DELNODE", 0, "ALL");
 	fstree_copy (gapp.tree1, gapp.tree2, extfilter);
+	fstree_icon (gapp.tree2);
 	return IUP_DEFAULT;
 }
 
@@ -383,9 +392,10 @@ int main(int argc, char* argv[])
 		IupShow (gapp.dlg);
 	}
 
-	fstree_build (gapp.tree1, ".", 0);
+	fstree_build (gapp.tree1, "..", 0);
 	fstree_icon (gapp.tree1);
 	fstree_copy (gapp.tree1, gapp.tree2, ".c .h");
+	fstree_icon (gapp.tree2);
 	sci_setup (gapp.sci);
 
 	IupMainLoop();

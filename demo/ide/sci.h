@@ -115,6 +115,10 @@ int sci_gcov_filename (Ihandle * h, char const * filename)
 {
 	IupSetAttribute (h, "APPENDNEWLINE", "No");
 	IupSetAttribute (h, "CLEARALL", NULL);
+
+	IupSetIntId (h, "MARGINWIDTH", 1, 30);
+	IupSetAttributeId (h, "MARGINTYPE", 1, "TEXT");
+
 	FILE * f = fopen (filename, "r");
 	if (f == NULL) {return IUP_DEFAULT;}
 	char line [2048] = {0};
@@ -133,6 +137,11 @@ int sci_gcov_filename (Ihandle * h, char const * filename)
 		}
 		else
 		{
+			int k;
+			char buf [100];
+			sscanf (line, "%i", &k);
+			snprintf (buf, 100, " %i", k);
+			IupSetAttributeId (h, "MARGINTEXT", l-1, buf);
 			IupSetIntId (h, "MARKERADD", l-1, 9);
 		}
 	}
@@ -149,6 +158,19 @@ int sci_load_filename (Ihandle * h, char const * filename)
 	IupSetAttribute (h, "CLEARALL", NULL);
 	IupSetAttribute (h, "INSERT0", text);
 	free (text);
+
+	IupSetIntId (h, "MARGINWIDTH", 1, 80);
+	IupSetAttributeId (h, "MARGINTYPE", 1, "TEXT");
+	IupSetAttributeId (h, "MARGINTEXT", 1, "Hej");
+
+	IupSetAttributeId (h, "MARGINTYPE", 2, "TEXT");
+
+	IupSetAttributeId (h, "MARGINTEXT", 4, "Hejdå");
+
+
+	IupSetAttribute (h, "APPEND", "Banana");
+
+
 	return IUP_DEFAULT;
 }
 

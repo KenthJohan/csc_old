@@ -214,7 +214,7 @@ int fstree_execute (Ihandle *ih, int id)
 	}
 	else
 	{
-		sci_load_filename(gapp.sci, node->path);
+		sci_load_filename (gapp.sci, node->path);
 	}
 	return IUP_DEFAULT;
 }

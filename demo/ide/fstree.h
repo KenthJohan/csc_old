@@ -23,16 +23,22 @@ struct fsnode
 };
 
 
-void fstree_free_userdata (Ihandle * ih)
+/*
+For every userdata (i) that is non null will be free.
+*/
+void fstree_free_userdata (Ihandle * h)
 {
 	int i = 0;
 	while (1)
 	{
-		void * title = IupGetAttributeId (ih, "USERDATA", i);
+		void * title = IupGetAttributeId (h, "TITLE", i);
 		if (title == NULL) {break;}
-		void * userdata = IupGetAttributeId (ih, "USERDATA", i);
-		if (userdata == NULL) {continue;}
-		free (userdata);
+		void * userdata = IupTreeGetUserId (h, i);
+		if (userdata)
+		{
+			free (userdata);
+		}
+		i ++;
 	}
 }
 
@@ -96,13 +102,17 @@ void fstree_build (Ihandle * h, char const * dir)
 }
 
 
-void fstree_icon (Ihandle * ih)
+/*
+Adds icons from img.h
+TODO: Make this more generic.
+*/
+void fstree_icon (Ihandle * h)
 {
 	int i = 1;
 	while (1)
 	{
 		//IupSetAttributeId (ih, "USERDATA", i, "Hej");
-		char * title = IupGetAttributeId (ih, "TITLE", i);
+		char * title = IupGetAttributeId (h, "TITLE", i);
 		//struct fsnode * ud = (struct fsnode *) IupGetAttributeId (ih, "USERDATA", i);
 		//if (ud == NULL) {break;}
 		if (title == NULL) {break;}
@@ -113,33 +123,36 @@ void fstree_icon (Ihandle * ih)
 		if (ext == NULL) {}
 		else if (ext && (strcmp (ext, ".a") == 0))
 		{
-			IupSetAttributeHandleId (ih, "IMAGE", i, gih_img_lib);
+			IupSetAttributeHandleId (h, "IMAGE", i, gih_img_lib);
 		}
 		else if (ext && (strcmp (ext, ".h") == 0))
 		{
-			IupSetAttributeHandleId (ih, "IMAGE", i, gih_img_h);
+			IupSetAttributeHandleId (h, "IMAGE", i, gih_img_h);
 		}
 		else if (ext && (strcmp (ext, ".hpp") == 0))
 		{
-			IupSetAttributeHandleId (ih, "IMAGE", i, gih_img_hpp);
+			IupSetAttributeHandleId (h, "IMAGE", i, gih_img_hpp);
 		}
 		else if (ext && (strcmp (ext, ".c") == 0))
 		{
-			IupSetAttributeHandleId (ih, "IMAGE", i, gih_img_c);
+			IupSetAttributeHandleId (h, "IMAGE", i, gih_img_c);
 		}
 		else if (ext && (strcmp (ext, ".cpp") == 0))
 		{
-			IupSetAttributeHandleId (ih, "IMAGE", i, gih_img_cpp);
+			IupSetAttributeHandleId (h, "IMAGE", i, gih_img_cpp);
 		}
 		else if (ext && (strcmp (ext, ".gcov") == 0))
 		{
-			IupSetAttributeHandleId (ih, "IMAGE", i, gih_img_gcov);
+			IupSetAttributeHandleId (h, "IMAGE", i, gih_img_gcov);
 		}
 		i ++;
 	}
 }
 
 
+/*
+TODO: More generic
+*/
 void fstree_label_filename (Ihandle * ih, char const * str1)
 {
 	//Set to NO to add many items to the tree without updating the display. Default: "YES".
@@ -170,40 +183,49 @@ void fstree_label_filename (Ihandle * ih, char const * str1)
 
 
 /*
-Find all gcov files in the IupTree (ih) starting from node (id)
+Reset color and text.
 */
-void fstree_gcov_putlabel (Ihandle * ih, int id)
+void fstree_default_style (Ihandle * h)
 {
-	int i;
-
-	i = 0;
+	int i = 0;
 	while (1)
 	{
-		char * title = IupGetAttributeId (ih, "TITLE", i);
+		char * title = IupGetAttributeId (h, "TITLE", i);
 		if (title == NULL) {break;}
-		IupSetAttributeId (ih, "COLOR", i, "0 0 0");
-		IupSetAttributeId (ih, "TITLEFONTSTYLE", i, "Normal");
+		IupSetAttributeId (h, "COLOR", i, "0 0 0");
+		IupSetAttributeId (h, "TITLEFONTSTYLE", i, "Normal");
 		//IupSetAttributeId (ih, "NODEVISIBLE", i, "No");
 		i ++;
 	}
+}
 
-	i = id + 1;
+
+/*
+Find all gcov files in the IupTree (ih) starting from node (id)
+*/
+void fstree_gcov_putlabel (Ihandle * h, int id)
+{
+	int n = IupGetIntId (h, "TOTALCHILDCOUNT", id);
+	if (n == 0) {return;}
+	// id is a branch.
+	// id+1 is the first child of that branch.
+	int i = id + 1;
 	while (1)
 	{
-		char * title = IupGetAttributeId (ih, "TITLE", i);
-		char * kind = IupGetAttributeId (ih, "KIND", i);
-		char * next = IupGetAttributeId (ih, "NEXT", i);
+		char * title = IupGetAttributeId (h, "TITLE", i);
+		char * kind = IupGetAttributeId (h, "KIND", i);
+		char * next = IupGetAttributeId (h, "NEXT", i);
 		if (title == NULL) {break;}
 		if (kind == NULL) {break;}
 		if (strcmp (kind, "BRANCH") == 0)
 		{
-			i += IupGetIntId (ih, "TOTALCHILDCOUNT", i) + 1;
+			i += IupGetIntId (h, "TOTALCHILDCOUNT", i) + 1;
 			continue;
 		}
 		char * ext = strrchr (title, '.');
 		if (ext && strcmp (ext, ".gcov") == 0)
 		{
-			fstree_label_filename (ih, title);
+			fstree_label_filename (h, title);
 			//printf ("title %i %s\n", i, title);
 		}
 		//printf ("PREV %s %s\n", title, IupGetAttributeId (ih, "PREVIOUS", i));
@@ -236,7 +258,7 @@ void fstree_remove_empty_dir (Ihandle * h)
 
 
 /*
-Find all all empty dir and remove them.
+Removes every node except extension whitelist (extw).
 */
 void fstree_filter_extw (Ihandle * h, char const * extw)
 {
@@ -271,6 +293,11 @@ void fstree_update (Ihandle * h)
 	//Set to NO to add many items to the tree without updating the display. Default: "YES".
 	IupSetAttribute (h, "AUTOREDRAW", "No");
 	char const * dir = IupGetAttribute (h, "FSTREE_ROOT");
+	if (dir == NULL) {return;}
+	IupSetAttribute (h, "TITLE", dir);
+	struct fsnode * node = malloc (sizeof (struct fsnode));
+	strcpy(node->path, dir);
+	IupTreeSetUserId (h, 0, node);
 	fstree_free_userdata (h);
 	IupSetAttribute (h, "DELNODE", "CHILDREN");
 	fstree_build (h, dir);

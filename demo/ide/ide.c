@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include <io.h>
 #include <unistd.h>
+#include <limits.h>
 #include <sys/types.h>
 
 #include <time.h>
@@ -195,6 +196,37 @@ int fstree_cb_refresh (void)
 }
 
 
+/*
+*/
+int fstree_cb_makeroot (void)
+{
+	int id = IupGetInt (gapp.tree1, "VALUE");
+	struct fsnode * node = IupTreeGetUserId (gapp.tree1, id);
+	if (node == NULL) {return IUP_DEFAULT;}
+	IupSetStrAttribute (gapp.tree1, "FSTREE_ROOT", node->path);
+	IupSetAttributeId (gapp.tree1, "DELNODE", 0, "CHILDREN");
+	fstree_update (gapp.tree1);
+	return IUP_DEFAULT;
+}
+
+
+/*
+*/
+int fstree_cb_makeparentroot (void)
+{
+	int id = IupGetInt (gapp.tree1, "VALUE");
+	struct fsnode * node = IupTreeGetUserId (gapp.tree1, id);
+	if (node == NULL) {return IUP_DEFAULT;}
+	char buf [260];
+	snprintf (buf, 260, "%s/..", node->path);
+	puts (buf);
+	IupSetStrAttribute (gapp.tree1, "FSTREE_ROOT", buf);
+	IupSetAttributeId (gapp.tree1, "DELNODE", 0, "CHILDREN");
+	fstree_update (gapp.tree1);
+	return IUP_DEFAULT;
+}
+
+
 int fstree_cb_gcov_putlabel (void)
 {
 	int id = IupGetInt (gapp.tree1, "VALUE");
@@ -226,6 +258,12 @@ int fstree_cb_rclick (Ihandle* h, int id)
 	char * kind = IupGetAttributeId (h, "KIND", id);
 	ASSERT (kind);
 	Ihandle * menu = NULL;
+	IupSetFunction ("extfilter", (Icallback) fstree_cb_extfilter);
+	IupSetFunction ("refresh", (Icallback) fstree_cb_refresh);
+	IupSetFunction ("gcov", (Icallback) fstree_cb_gcov_putlabel);
+	IupSetFunction ("makeroot", (Icallback) fstree_cb_makeroot);
+	IupSetFunction ("makeparentroot", (Icallback) fstree_cb_makeparentroot);
+	IupSetFunction ("source", (Icallback) sci_load);
 	if (id == 0)
 	{
 		IupSetInt (h, "VALUE", id);
@@ -233,10 +271,9 @@ int fstree_cb_rclick (Ihandle* h, int id)
 		(
 		IupItem ("Refresh", "refresh"),
 		IupItem ("Passfilter by extensions", "extfilter"),
+		IupItem ("Make parent root", "makeparentroot"),
 		NULL
 		);
-		IupSetFunction ("extfilter", (Icallback) fstree_cb_extfilter);
-		IupSetFunction ("refresh", (Icallback) fstree_cb_refresh);
 		IupPopup (menu, IUP_MOUSEPOS, IUP_MOUSEPOS);
 		IupDestroy (menu);
 	}
@@ -245,10 +282,11 @@ int fstree_cb_rclick (Ihandle* h, int id)
 		IupSetInt (h, "VALUE", id);
 		menu = IupMenu
 		(
+		IupItem ("Make root", "makeroot"),
+		IupItem ("Make parent root", "makeparentroot"),
 		IupItem ("gcov", "gcov"),
 		NULL
 		);
-		IupSetFunction ("gcov", (Icallback) fstree_cb_gcov_putlabel);
 		IupPopup (menu, IUP_MOUSEPOS, IUP_MOUSEPOS);
 		IupDestroy (menu);
 	}
@@ -260,7 +298,6 @@ int fstree_cb_rclick (Ihandle* h, int id)
 		IupItem ("source", "source"),
 		NULL
 		);
-		IupSetFunction ("source", (Icallback) sci_load);
 		IupPopup (menu, IUP_MOUSEPOS, IUP_MOUSEPOS);
 		IupDestroy (menu);
 	}

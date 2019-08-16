@@ -11,6 +11,12 @@
 
 #include "img.h"
 
+
+#include <csc_fspath.h>
+#include <csc_str.h>
+#include <csc_basic.h>
+#include <csc_iup.h>
+
 struct fsnode
 {
 	char path [MAX_PATH];
@@ -34,11 +40,9 @@ void fstree_free_userdata (Ihandle * ih)
 Walk directory recursive.
 Build directory tree in IupTree.
 */
-void fstree_build (Ihandle * ih, char * dir0, int ref)
+void fstree_build_recursively (Ihandle * h, char const * dir0, int ref)
 {
 	//printf ("%i %s\n", id, dir0);
-	//Set to NO to add many items to the tree without updating the display. Default: "YES".
-	IupSetAttribute(ih, "AUTOREDRAW", "No");
 	struct _finddata_t fileinfo;
 	intptr_t handle;
 	char star [MAX_PATH];
@@ -62,8 +66,8 @@ void fstree_build (Ihandle * ih, char * dir0, int ref)
 			snprintf (star, MAX_PATH, "%s/%s", dir0, fileinfo.name);
 			snprintf (node->path, MAX_PATH, "%s/%s", dir0, fileinfo.name);
 			//printf ("F %x %s\n", fileinfo.attrib, star);
-			IupSetAttributeId (ih, "ADDLEAF", ref, fileinfo.name);
-			IupSetAttributeId (ih, "USERDATA", IupGetInt(ih, "LASTADDNODE"), node->path);
+			IupSetAttributeId (h, "ADDLEAF", ref, fileinfo.name);
+			IupTreeSetUserId (h, IupGetInt(h, "LASTADDNODE"), node);
 		}
 		else if (fileinfo.attrib & _A_SUBDIR)
 		{
@@ -71,9 +75,9 @@ void fstree_build (Ihandle * ih, char * dir0, int ref)
 			snprintf (star, MAX_PATH, "%s/%s", dir0, fileinfo.name);
 			snprintf (node->path, MAX_PATH, "%s/%s", dir0, fileinfo.name);
 			//printf ("D %x %s\n", fileinfo.attrib, star);
-			IupSetAttributeId (ih, "ADDBRANCH", ref, fileinfo.name);
-			IupSetAttributeId (ih, "USERDATA", IupGetInt(ih, "LASTADDNODE"), (void*)node);
-			fstree_build (ih, star, ref + 1);
+			IupSetAttributeId (h, "ADDBRANCH", ref, fileinfo.name);
+			IupTreeSetUserId (h, IupGetInt(h, "LASTADDNODE"), node);
+			fstree_build_recursively (h, star, ref + 1);
 		}
 		int r = _findnext (handle, &fileinfo);
 		if (r != 0)
@@ -81,9 +85,18 @@ void fstree_build (Ihandle * ih, char * dir0, int ref)
 			break;
 		}
 	}
-	_findclose(handle);
-	IupSetAttribute(ih, "AUTOREDRAW", "Yes");
+	_findclose (handle);
 }
+
+/*
+Walk directory recursive.
+Build directory tree in IupTree.
+*/
+void fstree_build (Ihandle * h, char const * dir)
+{
+	fstree_build_recursively (h, dir, 0);
+}
+
 
 
 void fstree_icon (Ihandle * ih)
@@ -165,7 +178,7 @@ void fstree_label_filename (Ihandle * ih, char const * str1)
 /*
 Find all gcov files in the IupTree (ih) starting from node (id)
 */
-void fstree_label_id (Ihandle * ih, int id)
+void fstree_gcov_putlabel (Ihandle * ih, int id)
 {
 	int i;
 
@@ -197,51 +210,20 @@ void fstree_label_id (Ihandle * ih, int id)
 
 
 /*
-Find all gcov files in the IupTree (ih) starting from node (id)
+Find all all empty dir and remove them.
 */
-void fstree_copy (Ihandle * src, Ihandle * des, char const * extfilter)
+void fstree_remove_empty_dir (Ihandle * h)
 {
-	int i;
-
-	i = 1;
+	int i = 1;
 	while (1)
 	{
-		char * title = IupGetAttributeId (src, "TITLE", i);
-		char * kind = IupGetAttributeId (src, "KIND", i);
-		int depth = IupGetIntId (src, "DEPTH", i);
+		char * title = IupGetAttributeId (h, "TITLE", i);
+		char * kind = IupGetAttributeId (h, "KIND", i);
 		if (title == NULL) {break;}
 		if (kind == NULL) {break;}
-
-		if (depth == 0) {}
-		else if (strcmp (kind, "LEAF") == 0)
+		if ((strcmp (kind, "BRANCH") == 0) && IupTree_nleaf (h, i) == 0)
 		{
-			char * ext = strrchr (title, '.');
-			if ((extfilter == NULL) || (ext && csc_str_contains1 (ext, extfilter, " ")))
-			{
-				//printf ("ADDLEAF %i %s\n", depth-1, title);
-				IupSetAttributeId (des, "ADDLEAF", depth-1, title);
-				IupSetAttributeId (des, "USERDATA", IupGetInt (des, "LASTADDNODE"), (int)i);
-			}
-		}
-		else if (strcmp (kind, "BRANCH") == 0)
-		{
-			//printf ("ADDBRANCH %i %s\n", depth-1, title);
-			IupSetAttributeId (des, "ADDBRANCH", depth-1, title);
-			IupSetAttributeId (des, "USERDATA", IupGetInt (des, "LASTADDNODE"), (int)i);
-		}
-		i ++;
-	}
-
-	i = 1;
-	while (1)
-	{
-		char * title = IupGetAttributeId (des, "TITLE", i);
-		char * kind = IupGetAttributeId (des, "KIND", i);
-		if (title == NULL) {break;}
-		if (kind == NULL) {break;}
-		if ((strcmp (kind, "BRANCH") == 0) && IupTree_nleaf (des, i) == 0)
-		{
-			IupSetAttributeId (des, "DELNODE", i, "SELECTED");
+			IupSetAttributeId (h, "DELNODE", i, "SELECTED");
 			continue;
 		}
 		i ++;
@@ -249,10 +231,48 @@ void fstree_copy (Ihandle * src, Ihandle * des, char const * extfilter)
 }
 
 
+/*
+Find all all empty dir and remove them.
+*/
+void fstree_filter_extw (Ihandle * h, char const * extw)
+{
+	int i = 0;
+	while (1)
+	{
+		char const * title = IupGetAttributeId (h, "TITLE", i);
+		char const * kind = IupGetAttributeId (h, "KIND", i);
+		if (title == NULL) {break;}
+		if (kind == NULL) {break;}
+		if (strcmp (kind, "LEAF") == 0)
+		{
+			char const * ext = strrchr (title, '.');
+			if (ext == NULL || csc_str_contains1 (ext, extw, " ") == 0)
+			{
+				IupSetAttributeId (h, "DELNODE", i, "SELECTED");
+				continue;
+			}
+		}
+		i ++;
+	}
+}
 
 
-
-
-
+void fstree_update (Ihandle * h)
+{
+	//Set to NO to add many items to the tree without updating the display. Default: "YES".
+	IupSetAttribute (h, "AUTOREDRAW", "No");
+	char const * dir = IupGetAttribute (h, "FSTREE_ROOT");
+	fstree_free_userdata (h);
+	IupSetAttribute (h, "DELNODE", "CHILDREN");
+	fstree_build (h, dir);
+	char const * extw = IupGetAttribute (h, "FSTREE_EXTW");
+	if (extw)
+	{
+		fstree_filter_extw (h, extw);
+	}
+	fstree_remove_empty_dir (h);
+	fstree_icon (h);
+	IupSetAttribute (h, "AUTOREDRAW", "Yes");
+}
 
 

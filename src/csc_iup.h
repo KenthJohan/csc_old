@@ -43,3 +43,12 @@ int IupTree_nleaf (Ihandle * h, int ref)
 	}
 	return n;
 }
+
+
+size_t IupCopyAttribute (Ihandle* ih, const char* name, char * des, size_t size)
+{
+	char const * data = IupGetAttribute (ih, name);
+	if (data == 0) {return 0;}
+	memcpy (des, data, size);
+	return size;
+}

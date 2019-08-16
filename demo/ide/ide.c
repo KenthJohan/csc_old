@@ -34,13 +34,11 @@ static struct
 	Ihandle * dlg;
 	Ihandle * sci;
 	Ihandle * tree1;
-	Ihandle * tree2;
-	Ihandle * zbox;
 } gapp;
 
 
 
-static int k_any (Ihandle *ih, int c)
+static int sci_cb_kany (Ihandle *ih, int c)
 {
 	//  printf("K_ANY(key: %d)\n", c);
 	if (c == K_cS) {return IUP_IGNORE;}
@@ -52,7 +50,7 @@ static int k_any (Ihandle *ih, int c)
 	return IUP_CONTINUE;
 }
 
-static int marginclick_cb (Ihandle *self, int margin, int line, char* status)
+static int sci_cb_marginclick (Ihandle *self, int margin, int line, char* status)
 {
 	(void)status;
 	(void)line;
@@ -87,7 +85,7 @@ static int marginclick_cb (Ihandle *self, int margin, int line, char* status)
 	return IUP_DEFAULT;
 }
 
-static int hotspotclick_cb (Ihandle *self, int pos, int line, int col, char* status)
+static int sci_cb_hotspotclick (Ihandle *self, int pos, int line, int col, char* status)
 {
 	char *text = IupGetAttributeId(self, "LINE", line);
 	printf("HOTSPOTCLICK_CB (Pos: %d, Line: %d, Col: %d, Status:%s)\n", pos, line, col, status);
@@ -95,7 +93,7 @@ static int hotspotclick_cb (Ihandle *self, int pos, int line, int col, char* sta
 	return IUP_DEFAULT;
 }
 
-static int button_cb (Ihandle* self, int button, int pressed, int x, int y, char* status)
+static int sci_cb_button (Ihandle* self, int button, int pressed, int x, int y, char* status)
 {
 	printf("BUTTON_CB = button: %d, pressed: %d, x: %d, y: %d, status: %s\n", button, pressed, x, y, status);
 	(void)self;
@@ -111,46 +109,28 @@ static int motion_cb (Ihandle *self, int x, int y, char *status)
 }
 */
 
-static int caret_cb (Ihandle *self, int lin, int col, int pos)
+static int sci_cb_caret (Ihandle *self, int lin, int col, int pos)
 {
 	printf("CARET_CB = lin: %d, col: %d, pos: %d\n", lin, col, pos);
 	(void)self;
 	return IUP_DEFAULT;
 }
 
-static int valuechanged_cb (Ihandle *self)
+static int sci_cb_valuechanged (Ihandle *self)
 {
 	printf("VALUECHANGED_CB\n");
 	(void)self;
 	return IUP_DEFAULT;
 }
 
-static int action_cb (Ihandle *self, int insert, int pos, int length, char* text)
+static int sci_cb_action (Ihandle *self, int insert, int pos, int length, char* text)
 {
 	printf("ACTION = insert: %d, pos: %d, lenght:%d, text: %s\n", insert, pos, length, text);
 	(void)self;
 	return IUP_IGNORE;
 }
 
-static int gapp_view_tree2 (Ihandle * h)
-{
-	(void)h;
-	Ihandle * zbox = IupGetHandle ("zbox");
-	ASSERT (zbox);
-	IupSetAttribute (zbox, "VALUE", "tree2");
-	return IUP_DEFAULT;
-}
-
-static int gapp_view_tree1 (Ihandle * h)
-{
-	(void)h;
-	Ihandle * zbox = IupGetHandle ("zbox");
-	ASSERT (zbox);
-	IupSetAttribute (zbox, "VALUE", "tree1");
-	return IUP_DEFAULT;
-}
-
-static int btn_next_action (Ihandle* ih)
+static int sci_cb_next_line (Ihandle* ih)
 {
 	(void)ih;
 	printf ("btn_next_action!\n");
@@ -162,49 +142,33 @@ static int btn_next_action (Ihandle* ih)
 	return IUP_DEFAULT;
 }
 
-static int btn_prop_action (Ihandle* ih)
-{
-	IupShow (IupElementPropertiesDialog (gapp.sci));
-	(void)ih;
-	return IUP_DEFAULT;
-}
-
 
 int sci_load (Ihandle * h)
 {
 	(void) h;
 	int id = IupGetInt (gapp.tree1, "VALUE");
-	char * title = IupGetAttributeId (gapp.tree1, "TITLE", id);
+	char const * title;
+	struct fsnode * node;
+	title = IupGetAttributeId (gapp.tree1, "TITLE", id);
 	if (title == NULL) {return IUP_DEFAULT;}
-	sci_load_filename (gapp.sci, title);
+	node = IupTreeGetUserId (gapp.tree1, id);
+	if (node == NULL) {return IUP_DEFAULT;}
+	printf ("USERDATA %i %s\n", id, node->path);
+	sci_load_filename (gapp.sci, node->path);
 	return IUP_DEFAULT;
 }
-
-
-/*
-Update directories and file names for.
-Using globals (gih_tree)
-*/
-void fstree_refresh_id (Ihandle * ih, int id)
-{
-	char * dir = IupGetAttributeId (gapp.tree1, "TITLE", id);
-	printf ("list1_refresh %s\n", dir);
-	IupSetAttributeId (ih, "DELNODE", id, "CHILDREN");
-	fstree_build (ih, dir, id);
-}
-
 
 /*
 Action generated when a leaf is to be executed.
 This action occurs when the user double clicks a leaf, or hits Enter on a leaf.
 */
-int fstree_execute (Ihandle *ih, int id)
+int fstree_execute (Ihandle * h, int id)
 {
 	char const * title;
-	title = IupGetAttributeId (ih, "TITLE", id);
+	struct fsnode * node;
+	title = IupGetAttributeId (h, "TITLE", id);
 	if (title == NULL) {return IUP_DEFAULT;}
-	id = (int) (void*) IupGetAttributeId (ih, "USERDATA", id);
-	struct fsnode * node = (struct fsnode *) IupGetAttributeId (gapp.tree1, "USERDATA", id);
+	node = IupTreeGetUserId (h, id);
 	if (node == NULL) {return IUP_DEFAULT;}
 	printf ("USERDATA %i %s\n", id, node->path);
 	char * ext = strrchr (title, '.');
@@ -224,35 +188,29 @@ int fstree_execute (Ihandle *ih, int id)
 /*
 User left clicks on refresh button from fstree right click menu.
 */
-int fstree_refresh (void)
+int fstree_cb_refresh (void)
 {
-	/*
-	int id = IupGetInt (gapp.tree2, "VALUE");
-	int ud = (int)(void*)IupGetAttributeId (gapp.tree2, "USERDATA", id);
-	fstree_refresh_id (gapp.tree2, id);
-	*/
+	fstree_update (gapp.tree1);
 	return IUP_DEFAULT;
 }
 
 
-int fstree_label (void)
+int fstree_cb_gcov_putlabel (void)
 {
-	int id = IupGetInt (gapp.tree2, "VALUE");
-	fstree_label_id (gapp.tree2, id);
+	int id = IupGetInt (gapp.tree1, "VALUE");
+	fstree_gcov_putlabel (gapp.tree1, id);
 	return IUP_DEFAULT;
 }
 
 
-int fstree_extfilter (void)
+int fstree_cb_extfilter (void)
 {
-	char extfilter [200] = ".c .h .gcov";
-	int r = IupGetParam ("Whitelist file extensions", NULL, 0, "File extensions:%s\n", extfilter, NULL);
+	char extw [100] = {0};
+	IupCopyAttribute (gapp.tree1, "FSTREE_EXTW", extw, 100);
+	int r = IupGetParam ("Whitelist file extensions", NULL, 0, "File extensions:%s\n", extw, NULL);
 	if (r != 1) {return IUP_DEFAULT;}
-	printf ("Filtering using whitelist file extensions\n");
-	IupSetAttributeId (gapp.tree2, "DELNODE", 0, "CHILDREN");
-	//IupSetAttributeId (gapp.tree2, "DELNODE", 0, "ALL");
-	fstree_copy (gapp.tree1, gapp.tree2, extfilter);
-	fstree_icon (gapp.tree2);
+	IupSetStrAttribute (gapp.tree1, "FSTREE_EXTW", extw);
+	fstree_update (gapp.tree1);
 	return IUP_DEFAULT;
 }
 
@@ -263,7 +221,7 @@ int fstree_extfilter (void)
 User right click on the fstree.
 Node (id) is the closest to mouse pointer.
 */
-int iupfs_on_rclick (Ihandle* h, int id)
+int fstree_cb_rclick (Ihandle* h, int id)
 {
 	char * kind = IupGetAttributeId (h, "KIND", id);
 	ASSERT (kind);
@@ -273,10 +231,12 @@ int iupfs_on_rclick (Ihandle* h, int id)
 		IupSetInt (h, "VALUE", id);
 		menu = IupMenu
 		(
-		IupItem ("Whitelist file extensions", "extfilter"),
+		IupItem ("Refresh", "refresh"),
+		IupItem ("Passfilter by extensions", "extfilter"),
 		NULL
 		);
-		IupSetFunction ("extfilter", (Icallback) fstree_extfilter);
+		IupSetFunction ("extfilter", (Icallback) fstree_cb_extfilter);
+		IupSetFunction ("refresh", (Icallback) fstree_cb_refresh);
 		IupPopup (menu, IUP_MOUSEPOS, IUP_MOUSEPOS);
 		IupDestroy (menu);
 	}
@@ -285,12 +245,10 @@ int iupfs_on_rclick (Ihandle* h, int id)
 		IupSetInt (h, "VALUE", id);
 		menu = IupMenu
 		(
-		IupItem ("Refresh", "refresh"),
 		IupItem ("gcov", "gcov"),
 		NULL
 		);
-		IupSetFunction ("refresh", (Icallback) fstree_refresh);
-		IupSetFunction ("gcov", (Icallback) fstree_label);
+		IupSetFunction ("gcov", (Icallback) fstree_cb_gcov_putlabel);
 		IupPopup (menu, IUP_MOUSEPOS, IUP_MOUSEPOS);
 		IupDestroy (menu);
 	}
@@ -299,7 +257,6 @@ int iupfs_on_rclick (Ihandle* h, int id)
 		IupSetInt (h, "VALUE", id);
 		menu = IupMenu
 		(
-		IupItem ("update", "update"),
 		IupItem ("source", "source"),
 		NULL
 		);
@@ -311,9 +268,16 @@ int iupfs_on_rclick (Ihandle* h, int id)
 	return IUP_DEFAULT;
 }
 
-int exit_cb (void)
+static int main_cb_exit (void)
 {
 	return IUP_CLOSE;
+}
+
+static int main_cb_showprop (Ihandle* ih)
+{
+	IupShow (IupElementPropertiesDialog (gapp.sci));
+	(void)ih;
+	return IUP_DEFAULT;
 }
 
 
@@ -327,24 +291,17 @@ int main(int argc, char* argv[])
 	IupSetGlobal ("UTF8MODE", "No");
 
 
-	gapp.tree1 = IupTree ();IupSetHandle ("tree1", gapp.tree1);
-	gapp.tree2 = IupTree ();IupSetHandle ("tree2", gapp.tree2);
+	gapp.tree1 = IupTree ();
 	gapp.sci = IupScintilla ();
-	gapp.zbox = IupZbox (gapp.tree2, gapp.tree1, NULL);IupSetHandle ("zbox", gapp.zbox);
-	gapp.dlg = IupDialog (IupVbox (IupSplit (gapp.zbox, gapp.sci), NULL));
+	gapp.dlg = IupDialog (IupVbox (IupSplit (gapp.tree1, gapp.sci), NULL));
+	IupSetHandle ("tree1", gapp.tree1);
 
 	{
 		IupSetAttribute (gapp.tree1, "BORDER", "NO");
 		IupSetAttribute (gapp.tree1, "EXPAND", "Yes");
 		IupSetAttribute (gapp.tree1, "TITLE", "root1");
-		//IupSetCallback (gapp.tree1, "EXECUTELEAF_CB", (Icallback) fstree_execute);
-		//IupSetCallback (gapp.tree1, "RIGHTCLICK_CB", (Icallback) iupfs_on_rclick);
-
-		IupSetAttribute (gapp.tree2, "TITLE", "root2");
-		IupSetAttribute (gapp.tree2, "BORDER", "NO");
-		IupSetAttribute (gapp.tree2, "EXPAND", "Yes");
-		IupSetCallback (gapp.tree2, "EXECUTELEAF_CB", (Icallback) fstree_execute);
-		IupSetCallback (gapp.tree2, "RIGHTCLICK_CB", (Icallback) iupfs_on_rclick);
+		IupSetCallback (gapp.tree1, "EXECUTELEAF_CB", (Icallback) fstree_execute);
+		IupSetCallback (gapp.tree1, "RIGHTCLICK_CB", (Icallback) fstree_cb_rclick);
 	}
 
 	{
@@ -354,14 +311,14 @@ int main(int argc, char* argv[])
 		IupSetAttribute (gapp.sci, "BORDER", "NO");
 		IupSetAttribute (gapp.sci, "EXPAND", "Yes");
 		IupSetAttribute (gapp.sci, "OVERWRITE", "ON");
-		IupSetCallback (gapp.sci, "MARGINCLICK_CB", (Icallback)marginclick_cb);
-		IupSetCallback (gapp.sci, "HOTSPOTCLICK_CB", (Icallback)hotspotclick_cb);
-		IupSetCallback (gapp.sci, "BUTTON_CB", (Icallback)button_cb);
+		IupSetCallback (gapp.sci, "MARGINCLICK_CB", (Icallback)sci_cb_marginclick);
+		IupSetCallback (gapp.sci, "HOTSPOTCLICK_CB", (Icallback)sci_cb_hotspotclick);
+		IupSetCallback (gapp.sci, "BUTTON_CB", (Icallback)sci_cb_button);
 		//IupSetCallback (handle_sci, "MOTION_CB", (Icallback)motion_cb);
-		IupSetCallback (gapp.sci, "K_ANY", (Icallback)k_any);
-		IupSetCallback (gapp.sci, "CARET_CB", (Icallback)caret_cb);
-		IupSetCallback (gapp.sci, "VALUECHANGED_CB", (Icallback)valuechanged_cb);
-		IupSetCallback (gapp.sci, "ACTION", (Icallback)action_cb);
+		IupSetCallback (gapp.sci, "K_ANY", (Icallback)sci_cb_kany);
+		IupSetCallback (gapp.sci, "CARET_CB", (Icallback)sci_cb_caret);
+		IupSetCallback (gapp.sci, "VALUECHANGED_CB", (Icallback)sci_cb_valuechanged);
+		IupSetCallback (gapp.sci, "ACTION", (Icallback)sci_cb_action);
 	}
 
 	{
@@ -369,24 +326,18 @@ int main(int argc, char* argv[])
 		{
 			Ihandle * menu;
 			Ihandle * menu1;
-			Ihandle * tree1;
-			Ihandle * tree2;
 			Ihandle * next;
 			Ihandle * prop;
 			Ihandle * exit;
 		} menu;
-		menu.tree1 = IupItem ("Tree1", NULL);
-		menu.tree2 = IupItem ("Tree2", NULL);
 		menu.next = IupItem ("Next", NULL);
 		menu.prop = IupItem ("Element properties", NULL);
 		menu.exit = IupItem ("Exit", NULL);
-		menu.menu1 = IupMenu (menu.tree1, menu.tree2, menu.next, menu.prop, IupSeparator(), menu.exit, NULL);
+		menu.menu1 = IupMenu (menu.next, menu.prop, IupSeparator(), menu.exit, NULL);
 		menu.menu = IupMenu (IupSubmenu ("Menu", menu.menu1), NULL);
-		IupSetCallback (menu.tree1, "ACTION", (Icallback) gapp_view_tree1);
-		IupSetCallback (menu.tree2, "ACTION", (Icallback) gapp_view_tree2);
-		IupSetCallback (menu.next, "ACTION", (Icallback) btn_next_action);
-		IupSetCallback (menu.prop, "ACTION", (Icallback) btn_prop_action);
-		IupSetCallback (menu.exit, "ACTION", (Icallback) exit_cb);
+		IupSetCallback (menu.next, "ACTION", (Icallback) sci_cb_next_line);
+		IupSetCallback (menu.prop, "ACTION", (Icallback) main_cb_showprop);
+		IupSetCallback (menu.exit, "ACTION", (Icallback) main_cb_exit);
 		IupSetAttributeHandle(gapp.dlg, "MENU", menu.menu);
 		IupSetAttribute (gapp.dlg, "TITLE", "gcovenant");
 		IupSetAttribute (gapp.dlg, "RASTERSIZE", "700x500");
@@ -395,10 +346,9 @@ int main(int argc, char* argv[])
 		IupShow (gapp.dlg);
 	}
 
-	fstree_build (gapp.tree1, "..", 0);
-	fstree_icon (gapp.tree1);
-	fstree_copy (gapp.tree1, gapp.tree2, ".c .h .gcov");
-	fstree_icon (gapp.tree2);
+	IupSetStrAttribute (gapp.tree1, "FSTREE_ROOT", "..");
+	IupSetStrAttribute (gapp.tree1, "FSTREE_EXTW", ".c .h. .gcov");
+	fstree_update (gapp.tree1);
 	sci_setup (gapp.sci);
 
 	IupMainLoop();

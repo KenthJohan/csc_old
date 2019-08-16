@@ -158,19 +158,6 @@ int sci_load_filename (Ihandle * h, char const * filename)
 	IupSetAttribute (h, "CLEARALL", NULL);
 	IupSetAttribute (h, "INSERT0", text);
 	free (text);
-
-	IupSetIntId (h, "MARGINWIDTH", 1, 80);
-	IupSetAttributeId (h, "MARGINTYPE", 1, "TEXT");
-	IupSetAttributeId (h, "MARGINTEXT", 1, "Hej");
-
-	IupSetAttributeId (h, "MARGINTYPE", 2, "TEXT");
-
-	IupSetAttributeId (h, "MARGINTEXT", 4, "Hejdå");
-
-
-	IupSetAttribute (h, "APPEND", "Banana");
-
-
 	return IUP_DEFAULT;
 }
 

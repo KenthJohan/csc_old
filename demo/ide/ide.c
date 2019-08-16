@@ -226,8 +226,11 @@ User left clicks on refresh button from fstree right click menu.
 */
 int fstree_refresh (void)
 {
-	int id = IupGetInt (gapp.tree1, "VALUE");
-	fstree_refresh_id (gapp.tree1, id);
+	/*
+	int id = IupGetInt (gapp.tree2, "VALUE");
+	int ud = (int)(void*)IupGetAttributeId (gapp.tree2, "USERDATA", id);
+	fstree_refresh_id (gapp.tree2, id);
+	*/
 	return IUP_DEFAULT;
 }
 

@@ -41,8 +41,8 @@ void sci_setup (Ihandle * gih_sci)
 {
 	IupSetAttribute(gih_sci, "CLEARALL", "");
 	IupSetAttribute(gih_sci, "LEXERLANGUAGE", "cpp");
-	IupSetAttribute(gih_sci, "KEYWORDS0", "void struct union enum char short int long double float signed unsigned const static extern auto register volatile bool class private protected public friend inline template virtual asm explicit typename mutable"
-	"if else switch case default break goto return for while do continue typedef sizeof NULL new delete throw try catch namespace operator this const_cast static_cast dynamic_cast reinterpret_cast true false using"
+	IupSetAttribute(gih_sci, "KEYWORDS0", "void struct union enum char short int long double float signed unsigned const static extern auto register volatile bool class private protected public friend inline template virtual asm explicit typename mutable "
+	"if else switch case default break goto return for while do continue typedef sizeof NULL new delete throw try catch namespace operator this const_cast static_cast dynamic_cast reinterpret_cast true false using "
 	"typeid and and_eq bitand bitor compl not not_eq or or_eq xor xor_eq");
 	IupSetAttribute(gih_sci, "STYLEFONT32", "Consolas");
 	IupSetAttribute(gih_sci, "STYLEFONTSIZE32", "11");
@@ -116,20 +116,20 @@ int sci_gcov_filename (Ihandle * h, char const * filename)
 	IupSetAttribute (h, "APPENDNEWLINE", "No");
 	IupSetAttribute (h, "CLEARALL", NULL);
 
-	IupSetIntId (h, "MARGINWIDTH", 1, 30);
-	IupSetAttributeId (h, "MARGINTYPE", 1, "TEXT");
+	IupSetIntId (h, "MARGINWIDTH", 1, 50);
+	IupSetAttributeId (h, "MARGINTYPE", 1, "RTEXT");
 
 	FILE * f = fopen (filename, "r");
 	if (f == NULL) {return IUP_DEFAULT;}
 	char line [2048] = {0};
 	while (fgets(line, 2048, f))
 	{
-		int l = IupGetInt (h, "LINECOUNT");
+		int l = IupGetInt (h, "LINECOUNT") - 1;
 		if (CSC_STRNCMP_LITERAL (line, "        -:    0:") == 0) {continue;}
 		IupSetAttribute (h, "APPEND", line+16);
 		if (CSC_STRNCMP_LITERAL (line, "    #####") == 0)
 		{
-			IupSetIntId (h, "MARKERADD", l-1, 8);
+			IupSetIntId (h, "MARKERADD", l, 8);
 		}
 		else if (CSC_STRNCMP_LITERAL (line, "        -:") == 0)
 		{
@@ -140,9 +140,9 @@ int sci_gcov_filename (Ihandle * h, char const * filename)
 			int k;
 			char buf [100];
 			sscanf (line, "%i", &k);
-			snprintf (buf, 100, " %i", k);
-			IupSetAttributeId (h, "MARGINTEXT", l-1, buf);
-			IupSetIntId (h, "MARKERADD", l-1, 9);
+			snprintf (buf, 100, "%i", k);
+			IupSetAttributeId (h, "MARGINTEXT", l, buf);
+			IupSetIntId (h, "MARKERADD", l, 9);
 		}
 	}
 	fclose (f);

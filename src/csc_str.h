@@ -42,9 +42,9 @@ size_t csc_str_contains1 (char const * str1, char const * str2, char const * del
 	while (1)
 	{
 		str2 += strspn (str2, delimiters);
-		if ((*str1) == '\0') {break;}
-		if ((*str2) == '\0') {break;}
-		if ((*str1) == (*str2))
+		int end = ((*str1) == '\0') || ((*str2) == '\0');
+		if (end) {break;}
+		else if ((*str1) == (*str2))
 		{
 			str1 ++;
 			str2 ++;

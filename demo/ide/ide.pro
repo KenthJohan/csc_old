@@ -4,8 +4,8 @@ CONFIG -= app_bundle
 CONFIG -= qt
 
 
-QMAKE_CFLAGS += -fprofile-arcs -ftest-coverage
-LIBS += --coverage
+QMAKE_CFLAGS += -fprofile-arcs -ftest-coverage -O0
+LIBS += -lgcov
 
 SOURCES += ide.c
 

@@ -273,12 +273,15 @@ static int main_cb_exit (void)
 	return IUP_CLOSE;
 }
 
-static int main_cb_showprop (Ihandle* ih)
+static int main_cb_show_layoutdlg (Ihandle* ih)
 {
-	IupShow (IupElementPropertiesDialog (gapp.sci));
+	IupShow (IupLayoutDialog (gapp.dlg));
 	(void)ih;
 	return IUP_DEFAULT;
 }
+
+
+
 
 
 int main(int argc, char* argv[])
@@ -327,16 +330,16 @@ int main(int argc, char* argv[])
 			Ihandle * menu;
 			Ihandle * menu1;
 			Ihandle * next;
-			Ihandle * prop;
+			Ihandle * show_layoutdlg;
 			Ihandle * exit;
 		} menu;
 		menu.next = IupItem ("Next", NULL);
-		menu.prop = IupItem ("Element properties", NULL);
+		menu.show_layoutdlg = IupItem ("IupLayoutDialog", NULL);
 		menu.exit = IupItem ("Exit", NULL);
-		menu.menu1 = IupMenu (menu.next, menu.prop, IupSeparator(), menu.exit, NULL);
+		menu.menu1 = IupMenu (menu.next, menu.show_layoutdlg, IupSeparator(), menu.exit, NULL);
 		menu.menu = IupMenu (IupSubmenu ("Menu", menu.menu1), NULL);
 		IupSetCallback (menu.next, "ACTION", (Icallback) sci_cb_next_line);
-		IupSetCallback (menu.prop, "ACTION", (Icallback) main_cb_showprop);
+		IupSetCallback (menu.show_layoutdlg, "ACTION", (Icallback) main_cb_show_layoutdlg);
 		IupSetCallback (menu.exit, "ACTION", (Icallback) main_cb_exit);
 		IupSetAttributeHandle(gapp.dlg, "MENU", menu.menu);
 		IupSetAttribute (gapp.dlg, "TITLE", "gcovenant");
@@ -347,7 +350,7 @@ int main(int argc, char* argv[])
 	}
 
 	IupSetStrAttribute (gapp.tree1, "FSTREE_ROOT", "..");
-	IupSetStrAttribute (gapp.tree1, "FSTREE_EXTW", ".c .h. .gcov");
+	IupSetStrAttribute (gapp.tree1, "FSTREE_EXTW", ".c .h .gcov");
 	fstree_update (gapp.tree1);
 	sci_setup (gapp.sci);
 

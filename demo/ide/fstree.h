@@ -36,6 +36,7 @@ void fstree_free_userdata (Ihandle * ih)
 	}
 }
 
+
 /*
 Walk directory recursive.
 Build directory tree in IupTree.
@@ -88,15 +89,11 @@ void fstree_build_recursively (Ihandle * h, char const * dir0, int ref)
 	_findclose (handle);
 }
 
-/*
-Walk directory recursive.
-Build directory tree in IupTree.
-*/
+
 void fstree_build (Ihandle * h, char const * dir)
 {
 	fstree_build_recursively (h, dir, 0);
 }
-
 
 
 void fstree_icon (Ihandle * ih)
@@ -143,10 +140,6 @@ void fstree_icon (Ihandle * ih)
 }
 
 
-
-
-
-
 void fstree_label_filename (Ihandle * ih, char const * str1)
 {
 	//Set to NO to add many items to the tree without updating the display. Default: "YES".
@@ -174,6 +167,7 @@ void fstree_label_filename (Ihandle * ih, char const * str1)
 	}
 	IupSetAttribute (ih, "AUTOREDRAW", "Yes");
 }
+
 
 /*
 Find all gcov files in the IupTree (ih) starting from node (id)
@@ -220,7 +214,7 @@ void fstree_gcov_putlabel (Ihandle * ih, int id)
 
 
 /*
-Find all all empty dir and remove them.
+Delete all empty directory nodes.
 */
 void fstree_remove_empty_dir (Ihandle * h)
 {
@@ -267,6 +261,11 @@ void fstree_filter_extw (Ihandle * h, char const * extw)
 }
 
 
+/*
+Adds two custom attributes:
+FSTREE_ROOT: Walk all files in this directory.
+FSTREE_EXTW: Whitelist of file extension. No filtering when NULL.
+*/
 void fstree_update (Ihandle * h)
 {
 	//Set to NO to add many items to the tree without updating the display. Default: "YES".

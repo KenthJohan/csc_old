@@ -394,7 +394,7 @@ int main(int argc, char* argv[])
 
 	fstree_build (gapp.tree1, "..", 0);
 	fstree_icon (gapp.tree1);
-	fstree_copy (gapp.tree1, gapp.tree2, ".c .h");
+	fstree_copy (gapp.tree1, gapp.tree2, ".c .h .gcov");
 	fstree_icon (gapp.tree2);
 	sci_setup (gapp.sci);
 

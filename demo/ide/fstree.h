@@ -158,7 +158,7 @@ void fstree_label_filename (Ihandle * ih, char const * str1)
 	else {ext0 ++;}
 	char name [MAX_PATH] = {0};
 	strncpy (name, ext0, (unsigned) MIN (ext1-ext0, MAX_PATH));
-	printf ("%s\n", name);
+	//printf ("%s\n", name);
 
 	int i = 0;
 	while (1)
@@ -193,17 +193,27 @@ void fstree_gcov_putlabel (Ihandle * ih, int id)
 		i ++;
 	}
 
-	i = id;
+	i = id + 1;
 	while (1)
 	{
 		char * title = IupGetAttributeId (ih, "TITLE", i);
+		char * kind = IupGetAttributeId (ih, "KIND", i);
+		char * next = IupGetAttributeId (ih, "NEXT", i);
+		if (title == NULL) {break;}
+		if (kind == NULL) {break;}
+		if (strcmp (kind, "BRANCH") == 0)
+		{
+			i += IupGetIntId (ih, "TOTALCHILDCOUNT", i) + 1;
+			continue;
+		}
 		char * ext = strrchr (title, '.');
 		if (ext && strcmp (ext, ".gcov") == 0)
 		{
 			fstree_label_filename (ih, title);
 			//printf ("title %i %s\n", i, title);
 		}
-		if (IupGetAttributeId (ih, "NEXT", i) == NULL) {return;}
+		//printf ("PREV %s %s\n", title, IupGetAttributeId (ih, "PREVIOUS", i));
+		if (next == NULL) {break;}
 		i ++;
 	}
 }

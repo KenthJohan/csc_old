@@ -16,6 +16,7 @@
 #include <csc_str.h>
 #include <csc_basic.h>
 #include <csc_iup.h>
+#include <csc_realpath.h>
 
 struct fsnode
 {
@@ -71,7 +72,8 @@ void fstree_build_recursively (Ihandle * h, char const * dir0, int ref)
 		{
 			struct fsnode * node = malloc (sizeof (struct fsnode));
 			snprintf (star, MAX_PATH, "%s/%s", dir0, fileinfo.name);
-			snprintf (node->path, MAX_PATH, "%s/%s", dir0, fileinfo.name);
+			//snprintf (node->path, MAX_PATH, "%s/%s", dir0, fileinfo.name);
+			csc_realpath (star, node->path);
 			//printf ("F %x %s\n", fileinfo.attrib, star);
 			IupSetAttributeId (h, "ADDLEAF", ref, fileinfo.name);
 			IupTreeSetUserId (h, IupGetInt(h, "LASTADDNODE"), node);
@@ -80,7 +82,8 @@ void fstree_build_recursively (Ihandle * h, char const * dir0, int ref)
 		{
 			struct fsnode * node = malloc (sizeof (struct fsnode));
 			snprintf (star, MAX_PATH, "%s/%s", dir0, fileinfo.name);
-			snprintf (node->path, MAX_PATH, "%s/%s", dir0, fileinfo.name);
+			//snprintf (node->path, MAX_PATH, "%s/%s", dir0, fileinfo.name);
+			csc_realpath (star, node->path);
 			//printf ("D %x %s\n", fileinfo.attrib, star);
 			IupSetAttributeId (h, "ADDBRANCH", ref, fileinfo.name);
 			IupTreeSetUserId (h, IupGetInt(h, "LASTADDNODE"), node);
@@ -292,15 +295,17 @@ void fstree_update (Ihandle * h)
 {
 	//Set to NO to add many items to the tree without updating the display. Default: "YES".
 	IupSetAttribute (h, "AUTOREDRAW", "No");
+	fstree_free_userdata (h);
+	IupSetAttributeId (h, "DELNODE", 0, "CHILDREN");
 	char const * dir = IupGetAttribute (h, "FSTREE_ROOT");
 	if (dir == NULL) {return;}
-	IupSetAttribute (h, "TITLE", dir);
 	struct fsnode * node = malloc (sizeof (struct fsnode));
-	strcpy(node->path, dir);
-	fstree_free_userdata (h);
-	IupSetAttribute (h, "DELNODE", "CHILDREN");
+	//strcpy(node->path, dir);
+	csc_realpath (dir, node->path);
 	IupTreeSetUserId (h, 0, node);
-	fstree_build (h, dir);
+	IupSetAttribute (h, "TITLE", node->path);
+	IupSetStrAttribute (h, "FSTREE_ROOT", node->path);
+	fstree_build (h, node->path);
 	char const * extw = IupGetAttribute (h, "FSTREE_EXTW");
 	if (extw)
 	{

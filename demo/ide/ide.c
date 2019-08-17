@@ -23,6 +23,7 @@
 #include <csc_basic.h>
 #include <csc_str.h>
 #include <csc_iup.h>
+#include <csc_realpath.h>
 
 #include "img.h"
 #include "sci.h"
@@ -204,7 +205,6 @@ int fstree_cb_makeroot (void)
 	struct fsnode * node = IupTreeGetUserId (gapp.tree1, id);
 	if (node == NULL) {return IUP_DEFAULT;}
 	IupSetStrAttribute (gapp.tree1, "FSTREE_ROOT", node->path);
-	IupSetAttributeId (gapp.tree1, "DELNODE", 0, "CHILDREN");
 	fstree_update (gapp.tree1);
 	return IUP_DEFAULT;
 }
@@ -218,7 +218,6 @@ int fstree_cb_makeparentroot (void)
 	struct fsnode * node = IupTreeGetUserId (gapp.tree1, id);
 	if (node == NULL) {return IUP_DEFAULT;}
 	IupSetStrf (gapp.tree1, "FSTREE_ROOT", "%s/..", node->path);
-	IupSetAttributeId (gapp.tree1, "DELNODE", 0, "CHILDREN");
 	fstree_update (gapp.tree1);
 	return IUP_DEFAULT;
 }
@@ -382,6 +381,8 @@ int main(int argc, char* argv[])
 		IupShow (gapp.dlg);
 	}
 
+	char resolved_path [PATH_MAX];
+	printf ("realpth %s\n", csc_realpath("..", resolved_path));
 	IupSetStrAttribute (gapp.tree1, "FSTREE_ROOT", "..");
 	IupSetStrAttribute (gapp.tree1, "FSTREE_EXTW", ".c .h .gcov");
 	fstree_update (gapp.tree1);

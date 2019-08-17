@@ -17,6 +17,7 @@ HEADERS += $$PWD/../../src/csc_malloc_file.h
 HEADERS += $$PWD/../../src/csc_fspath.h
 HEADERS += $$PWD/../../src/csc_str.h
 HEADERS += $$PWD/../../src/csc_iup.h
+HEADERS += $$PWD/../../src/csc_realpath.h
 HEADERS += img.h
 HEADERS += sci.h
 HEADERS += fstree.h

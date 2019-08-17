@@ -1,137 +1,82 @@
-#pragma once
 /*
-realpath() Win32 implementation
-By Nach M. S.
-Copyright (C) September 8, 2005
+MIT License
 
-I am placing this in the public domain for anyone to use or modify
+Copyright (c) 2019 CSC Project
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 */
 
+#pragma once
+
+#ifndef _WIN32
+#define csc_realpath realpath
+#else
 #include <windows.h>
 #include <stdlib.h>
 #include <limits.h>
 #include <errno.h>
 #include <sys/stat.h>
 
-char * csc_realpath (const char *path, char resolved_path[PATH_MAX])
+char * csc_realpath (char const * path, char resolved_path [PATH_MAX])
 {
-  char *return_path = 0;
-
-  if (path) //Else EINVAL
-  {
-	  if (resolved_path)
+	if (path == NULL || resolved_path == NULL)
 	{
-		return_path = resolved_path;
-	}
-	else
-	{
-		//Non standard extension that glibc uses
-		return_path = malloc(PATH_MAX);
+		errno = EINVAL;
+		return NULL;
 	}
 
-	if (return_path) //Else EINVAL
+	//https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfullpathnamea
+	size_t size = GetFullPathNameA (path, PATH_MAX, resolved_path, 0);
+
+	if (size > PATH_MAX)
 	{
-		//This is a Win32 API function similar to what realpath() is supposed to do
-		size_t size = GetFullPathNameA(path, PATH_MAX, return_path, 0);
+		errno = ENAMETOOLONG;
+		return NULL;
+	}
 
-	  //GetFullPathNameA() returns a size larger than buffer if buffer is too small
-	  if (size > PATH_MAX)
-	  {
-		  if (return_path != resolved_path) //Malloc'd buffer - Unstandard extension retry
-		{
-			size_t new_size;
-
-		  free(return_path);
-		  return_path = malloc(size);
-
-		  if (return_path)
-		  {
-			  new_size = GetFullPathNameA(path, size, return_path, 0); //Try again
-
-			if (new_size > size) //If it's still too large, we have a problem, don't try again
-			{
-				free(return_path);
-			  return_path = 0;
-			  errno = ENAMETOOLONG;
-			}
-			else
-			{
-				size = new_size;
-			}
-		  }
-		  else
-		  {
-			  //I wasn't sure what to return here, but the standard does say to return EINVAL
-			  //if resolved_path is null, and in this case we couldn't malloc large enough buffer
-			  errno = EINVAL;
-		  }
-		}
-		else //resolved_path buffer isn't big enough
-		{
-			return_path = 0;
-		  errno = ENAMETOOLONG;
-		}
-	  }
-
-	  //GetFullPathNameA() returns 0 if some path resolve problem occured
-	  if (!size)
-	  {
-		  if (return_path != resolved_path) //Malloc'd buffer
-		{
-			free(return_path);
-		}
-
-		return_path = 0;
-
-		//Convert MS errors into standard errors
+	//If the function fails for any other reason, the return value is zero.
+	//To get extended error information, call GetLastError.
+	if (size == 0)
+	{
+		//https://docs.microsoft.com/en-us/windows/win32/api/errhandlingapi/nf-errhandlingapi-getlasterror
+		//https://docs.microsoft.com/en-us/windows/win32/debug/system-error-codes--0-499-
 		switch (GetLastError())
 		{
 		case ERROR_FILE_NOT_FOUND:
 			errno = ENOENT;
-			break;
+			return NULL;
 
-		case ERROR_PATH_NOT_FOUND: case ERROR_INVALID_DRIVE:
+		case ERROR_PATH_NOT_FOUND:
+		case ERROR_INVALID_DRIVE:
 			errno = ENOTDIR;
-			break;
+			return NULL;
 
 		case ERROR_ACCESS_DENIED:
 			errno = EACCES;
-			break;
+			return NULL;
 
-		default: //Unknown Error
+		default:
 			errno = EIO;
-			break;
+			return NULL;
 		}
-	  }
-
-	  //If we get to here with a valid return_path, we're still doing good
-	  if (return_path)
-	  {
-		  struct stat stat_buffer;
-
-		//Make sure path exists, stat() returns 0 on success
-		if (stat(return_path, &stat_buffer))
-		{
-			if (return_path != resolved_path)
-		  {
-			  free(return_path);
-		  }
-
-		  return_path = 0;
-		  //stat() will set the correct errno for us
-		}
-		//else we succeeded!
-	  }
 	}
-	else
-	{
-		errno = EINVAL;
-	}
-  }
-  else
-  {
-	  errno = EINVAL;
-  }
 
-  return return_path;
+	return resolved_path;
 }
+#endif

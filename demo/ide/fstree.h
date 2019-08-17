@@ -297,9 +297,9 @@ void fstree_update (Ihandle * h)
 	IupSetAttribute (h, "TITLE", dir);
 	struct fsnode * node = malloc (sizeof (struct fsnode));
 	strcpy(node->path, dir);
-	IupTreeSetUserId (h, 0, node);
 	fstree_free_userdata (h);
 	IupSetAttribute (h, "DELNODE", "CHILDREN");
+	IupTreeSetUserId (h, 0, node);
 	fstree_build (h, dir);
 	char const * extw = IupGetAttribute (h, "FSTREE_EXTW");
 	if (extw)

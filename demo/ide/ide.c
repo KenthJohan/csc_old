@@ -217,10 +217,7 @@ int fstree_cb_makeparentroot (void)
 	int id = IupGetInt (gapp.tree1, "VALUE");
 	struct fsnode * node = IupTreeGetUserId (gapp.tree1, id);
 	if (node == NULL) {return IUP_DEFAULT;}
-	char buf [260];
-	snprintf (buf, 260, "%s/..", node->path);
-	puts (buf);
-	IupSetStrAttribute (gapp.tree1, "FSTREE_ROOT", buf);
+	IupSetStrf (gapp.tree1, "FSTREE_ROOT", "%s/..", node->path);
 	IupSetAttributeId (gapp.tree1, "DELNODE", 0, "CHILDREN");
 	fstree_update (gapp.tree1);
 	return IUP_DEFAULT;
@@ -283,7 +280,6 @@ int fstree_cb_rclick (Ihandle* h, int id)
 		menu = IupMenu
 		(
 		IupItem ("Make root", "makeroot"),
-		IupItem ("Make parent root", "makeparentroot"),
 		IupItem ("gcov", "gcov"),
 		NULL
 		);

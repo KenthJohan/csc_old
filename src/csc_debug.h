@@ -28,7 +28,7 @@ SOFTWARE.
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include "csc_tcol.h"
+#include <csc_tcol.h>
 
 //https://stackoverflow.com/questions/8487986/file-macro-shows-full-path
 #ifdef _WIN32

@@ -307,7 +307,7 @@ void fstree_update (Ihandle * h)
 	IupSetStrAttribute (h, "FSTREE_ROOT", node->path);
 	fstree_build (h, node->path);
 	char const * extw = IupGetAttribute (h, "FSTREE_EXTW");
-	if (extw)
+	if (extw && extw [0] != '\0')
 	{
 		fstree_filter_extw (h, extw);
 	}

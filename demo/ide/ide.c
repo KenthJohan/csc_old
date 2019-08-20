@@ -256,7 +256,7 @@ int fstree_cb_rclick (Ihandle* h, int id)
 	Ihandle * menu = NULL;
 	IupSetFunction ("extfilter", (Icallback) fstree_cb_extfilter);
 	IupSetFunction ("refresh", (Icallback) fstree_cb_refresh);
-	IupSetFunction ("gcov", (Icallback) fstree_cb_gcov_putlabel);
+	IupSetFunction ("gcovhighlight", (Icallback) fstree_cb_gcov_putlabel);
 	IupSetFunction ("makeroot", (Icallback) fstree_cb_makeroot);
 	IupSetFunction ("makeparentroot", (Icallback) fstree_cb_makeparentroot);
 	IupSetFunction ("source", (Icallback) sci_load);
@@ -279,7 +279,7 @@ int fstree_cb_rclick (Ihandle* h, int id)
 		menu = IupMenu
 		(
 		IupItem ("Make root", "makeroot"),
-		IupItem ("gcov", "gcov"),
+		IupItem ("Highlight gcov", "gcovhighlight"),
 		NULL
 		);
 		IupPopup (menu, IUP_MOUSEPOS, IUP_MOUSEPOS);

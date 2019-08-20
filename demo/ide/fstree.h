@@ -174,7 +174,7 @@ void fstree_label_filename (Ihandle * ih, char const * str1)
 	{
 		char * title = IupGetAttributeId (ih, "TITLE", i);
 		if (title == NULL) {break;}
-		if (strstr (title, name))
+		if (strcmp (title, name) == 0)
 		{
 			IupSetAttributeId (ih, "COLOR", i, "0 120 0");
 			IupSetAttributeId (ih, "TITLEFONTSTYLE", i, "Bold");

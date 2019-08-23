@@ -24,6 +24,7 @@ SOFTWARE.
 
 #pragma once
 #include <string.h>
+#include <ctype.h>
 
 #define CSC_STRNCMP_LITERAL(str1,str2) strncmp ((str1), (str2), sizeof ((str2))-1)
 
@@ -67,3 +68,60 @@ eg:
 */
 
 
+int csc_str_next_cmp (char const ** p, int * col, char const * str)
+{
+	size_t l = strlen (str);
+	int diff = strncmp (*p, str, l);
+	if (diff == 0)
+	{
+		(*p) += l;
+		(*col) += l;
+		return (int) l;
+	}
+	return 0;
+}
+
+
+void csc_str_skip (char const ** p, int (*f)(int))
+{
+	while (f (**p)) {(*p)++;}
+}
+
+
+int csc_isalpha (int c)
+{
+	return isalpha (c);
+}
+
+
+int csc_isdigit (int c)
+{
+	return isalpha (c);
+}
+
+
+int csc_isalphadigit (int c)
+{
+	return isalpha (c) || isdigit (c);
+}
+
+
+int csc_next_indentifer (char const ** p, int * col)
+{
+	char const * q = (*p);
+	csc_str_skip (p, isalpha);
+	csc_str_skip (p, csc_isalphadigit);
+	ptrdiff_t n = (*p) - q;
+	(*col) += n;
+	return (int)n;
+}
+
+
+int csc_next_literal (char const ** p, int * col)
+{
+	char const * q = (*p);
+	csc_str_skip (p, isdigit);
+	ptrdiff_t n = (*p) - q;
+	(*col) += n;
+	return (int)n;
+}

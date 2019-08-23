@@ -5,6 +5,9 @@ CONFIG -= qt
 
 INCLUDEPATH += $$PWD/../../src
 HEADERS += $$PWD/../../src/csc_tcol.h
+HEADERS += $$PWD/../../src/csc_str.h
+HEADERS += $$PWD/../../src/csc_tok_c.h
+HEADERS += $$PWD/../../src/csc_tree4.h
 VPATH +=
 SOURCES += main.c
 

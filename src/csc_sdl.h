@@ -23,32 +23,24 @@ SOFTWARE.
 */
 
 #pragma once
-#include <csc_debug.h>
-#include <stdio.h> //fopen
-#include <string.h> //memset
-#include <stdlib.h> //malloc
 
-char * csc_malloc_file (char const * filename)
+
+#include <SDL2/SDL.h>
+
+#define XSDL_Init(x) ASSERT_F(SDL_Init((x)) == 0, "There was an error initializing the SDL library: %s\n", SDL_GetError())
+#define XSDL_WaitEvent(x) ASSERT_F(SDL_WaitEvent((x)) == 0, "There was an error while waiting for events: %s\n", SDL_GetError())
+#define XSDL_ASSERT_CreateWindow(win, title, x, y, w, h, flags)\
+	ASSERT((win) == NULL);\
+	(win) = SDL_CreateWindow ((title), (x), (y), (w), (h), (flags));\
+	ASSERT_F((win) != NULL, "Could not create window: %s\n", SDL_GetError())
+
+
+void XSDL_DestroyWindows (SDL_Window * window [], uint32_t n)
 {
-	ASSERT_F (filename != NULL, "filename is NULL%s", "");
-	FILE * file = fopen (filename, "rb");
-	ASSERT_F (file != NULL, "can not open file '%s'", filename);
-	int r;
-	r = fseek (file, 0, SEEK_END);
-	ASSERT (r == 0);
-	long length = ftell (file);
-	ASSERT (length >= 0);
-	r = fseek (file, 0, SEEK_SET);
-	ASSERT (r == 0);
-	char * buffer = (char *) malloc ((unsigned) length + 1);
-	ASSERT_F (buffer != NULL, "buffer is NULL%s", "");
-	memset (buffer, 0, (unsigned) length + 1);
-	//buffer [length + 1] = 0;
-	if (length > 0)
+	for (uint32_t i = 0; i < n; i ++)
 	{
-		size_t n = fread (buffer, (unsigned) length, 1, file);
-		ASSERT_F (n == 1, "fread error %i %i", (int)n, (int)length);
+		SDL_DestroyWindow (window [i]);
 	}
-	fclose (file);
-	return buffer;
 }
+
+

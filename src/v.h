@@ -139,7 +139,8 @@ void vf32_random (uint32_t n, float r [])
 {
 	while (n--)
 	{
-		r [n] = (float)rand () / (float)RAND_MAX;
+		double f = (double)rand () / (double)RAND_MAX;
+		r [n] = (float)f;
 		//r [i] = 1.0f;
 	}
 }
@@ -269,7 +270,7 @@ void vf32_print2 (FILE * f, float const x [], size_t n1, size_t n2, char const *
 
 
 // r := a - b
-void vf32_sub2 (float r [], float const a [], float const b [], size_t an, size_t bn)
+void vf32_sub2 (float r [], float const a [], float const b [], uint32_t an, uint32_t bn)
 {
 	for (size_t i = 0; i < an; ++ i)
 	{
@@ -284,7 +285,7 @@ void vf32_setl (float r [], uint32_t n, ...)
 	va_start (ap, n);
 	for (uint32_t i = 0; i < n; ++i)
 	{
-		r [i] = va_arg (ap, double);
+		r [i] = (float) va_arg (ap, double);
 	}
 	va_end (ap);
 }

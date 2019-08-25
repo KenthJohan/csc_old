@@ -71,7 +71,8 @@ int main (int argc, char * argv[])
 	xgl_program_print (program);
 
 	float vertices [] =
-	{   //x      y     s      t
+	{
+	//x      y     s      t
 	-1.0f, -1.0f, 0.0f,  1.0f, // BL
 	-1.0f,  1.0f, 0.0f,  0.0f, // TL
 	1.0f,  1.0f, 1.0f,  0.0f, // TR
@@ -148,9 +149,12 @@ int main (int argc, char * argv[])
 			switch (event.key.keysym.sym)
 			{
 			case SDLK_ESCAPE:
+				printf ("%i\n", event.window.windowID);
+				/*
 				SDL_DestroyWindow (SDL_GetWindowFromID (event.window.windowID));
 				a.n --;
 				a.window [a.n] = NULL;
+				*/
 				break;
 
 			case SDLK_c:
@@ -181,11 +185,13 @@ int main (int argc, char * argv[])
 
 		if (a.window [0])
 		{
+			/*
 			glBindTexture(GL_TEXTURE_2D, tex [0]);XGL_ASSERT_ERROR;
 			glTexSubImage2D (GL_TEXTURE_2D, 0, 0, 0, APP_TEX_W, APP_TEX_H, APP_RENDER_FORMAT, APP_RENDER_TYPE, img_render);XGL_ASSERT_ERROR;
 			glClear (GL_COLOR_BUFFER_BIT);XGL_ASSERT_ERROR;
 			glDrawElements (GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);XGL_ASSERT_ERROR;
 			SDL_GL_SwapWindow (a.window [0]);
+			*/
 		}
 
 	}

@@ -26,6 +26,7 @@ SOFTWARE.
 
 #include <vulkan/vulkan.h>
 #include <string.h>
+#include <stdio.h>
 
 #define CSC_VK_LAYER_COUNT 32
 int csc_vk_layer_exist (char const * layername)
@@ -52,4 +53,24 @@ int csc_vk_layers_exist (char const * layername [], int n)
 		}
 	}
 	return 1;
+}
+
+
+void csc_vk_pinfo (void const * item)
+{
+	struct csc_vk_struct
+	{
+		VkStructureType sType;
+	};
+	struct csc_vk_struct const * p = (struct csc_vk_struct *) item;
+	switch (p->sType)
+	{
+	case VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO:{
+		VkInstanceCreateInfo const * info = (VkInstanceCreateInfo const *)item;
+		for (uint32_t i = 0; i < info->enabledExtensionCount; ++i)
+		{
+			printf ("ppEnabledLayerNames %s\n", info->ppEnabledExtensionNames [i]);
+		}
+		break;}
+	}
 }

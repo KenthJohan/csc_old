@@ -17,6 +17,7 @@ HEADERS += $$PWD/../../src/csc_debug.h
 HEADERS += $$PWD/../../src/csc_malloc_file.h
 HEADERS += $$PWD/../../src/csc_basic.h
 HEADERS += $$PWD/../../src/csc_vk.h
+HEADERS += $$PWD/../../src/csc_glfw.h
 HEADERS += shader.vert
 HEADERS += shader.frag
 

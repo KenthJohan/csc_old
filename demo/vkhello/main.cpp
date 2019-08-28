@@ -17,6 +17,7 @@
 #include <csc_malloc_file.h>
 #include <csc_basic.h>
 #include <csc_vk.h>
+#include <csc_glfw.h>
 
 const int WIDTH = 800;
 const int HEIGHT = 600;
@@ -110,19 +111,25 @@ static std::vector<VkSemaphore> renderFinishedSemaphores;
 static std::vector<VkFence> inFlightFences;
 static size_t currentFrame = 0;
 
-std::vector<const char*> getRequiredExtensions()
-{
-	uint32_t glfwExtensionCount = 0;
-	const char** glfwExtensions;
-	glfwExtensions = glfwGetRequiredInstanceExtensions (&glfwExtensionCount);
-	std::vector<const char*> extensions (glfwExtensions, glfwExtensions + glfwExtensionCount);
-	if (enableValidationLayers)
-	{
-		extensions.push_back (VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-	}
-	return extensions;
-}
 
+uint32_t csc_vk_find_queue (VkPhysicalDevice dev, VkQueueFlags req, VkSurfaceKHR s)
+{
+	VkQueueFamilyProperties q [10];
+	uint32_t n = 10;
+	vkGetPhysicalDeviceQueueFamilyProperties (dev, &n, NULL);
+	vkGetPhysicalDeviceQueueFamilyProperties (dev, &n, q);
+	uint32_t i = UINT32_MAX;
+	for (i = 0; i < n; ++i)
+	{
+		if (q [i].queueCount == 0) {continue;}
+		if ((req != 0) && !(q [i].queueFlags & req)) {continue;}
+		if (s == NULL) {break;}
+		VkBool32 presentSupport = VK_FALSE;
+		vkGetPhysicalDeviceSurfaceSupportKHR (dev, i, s, &presentSupport);
+		if (presentSupport == VK_TRUE) {break;}
+	}
+	return i;
+}
 
 QueueFamilyIndices findQueueFamilies (VkPhysicalDevice device)
 {
@@ -174,7 +181,8 @@ void cleanup()
 
 	vkDestroyCommandPool(device, commandPool, nullptr);
 
-	for (auto framebuffer : swapChainFramebuffers) {
+	for (auto framebuffer : swapChainFramebuffers)
+	{
 		vkDestroyFramebuffer(device, framebuffer, nullptr);
 	}
 
@@ -182,14 +190,16 @@ void cleanup()
 	vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 	vkDestroyRenderPass(device, renderPass, nullptr);
 
-	for (auto imageView : swapChainImageViews) {
+	for (auto imageView : swapChainImageViews)
+	{
 		vkDestroyImageView(device, imageView, nullptr);
 	}
 
 	vkDestroySwapchainKHR(device, swapChain, nullptr);
 	vkDestroyDevice(device, nullptr);
 
-	if (enableValidationLayers) {
+	if (enableValidationLayers)
+	{
 		DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
 	}
 
@@ -203,8 +213,7 @@ void cleanup()
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback
 (VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
 {
-	fprintf (stderr, "validation layer: %s", pCallbackData->pMessage);
-	//std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+	fprintf (stderr, "validation layer: %s\n", pCallbackData->pMessage);
 	return VK_FALSE;
 }
 
@@ -226,6 +235,7 @@ void setupDebugMessenger ()
 	if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS)
 	{
 		perror ("failed to set up debug messenger!");
+		exit (EXIT_FAILURE);
 	}
 }
 
@@ -236,6 +246,7 @@ void createInstance()
 	if (enableValidationLayers && !csc_vk_layers_exist (validationLayers, VALIDATON_LAYER_COUNT))
 	{
 		perror ("validation layers requested, but not available!");
+		exit (EXIT_FAILURE);
 	}
 
 	VkApplicationInfo appInfo = {};
@@ -250,9 +261,12 @@ void createInstance()
 	createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	createInfo.pApplicationInfo = &appInfo;
 
-	auto extensions = getRequiredExtensions();
-	createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
-	createInfo.ppEnabledExtensionNames = extensions.data();
+	char const * ext [3];
+	ext [0] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
+	createInfo.enabledExtensionCount = 1;
+	createInfo.enabledExtensionCount += csc_glfw_copy_required_instance_extensions (ext + 1, 2);
+	createInfo.ppEnabledExtensionNames = ext;
+	csc_vk_pinfo (&createInfo);
 
 	VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo;
 	if (enableValidationLayers)
@@ -272,6 +286,7 @@ void createInstance()
 	if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS)
 	{
 		perror ("failed to create instance!");
+		exit (EXIT_FAILURE);
 	}
 }
 
@@ -333,6 +348,7 @@ void pickPhysicalDevice()
 	if (deviceCount == 0)
 	{
 		perror ("failed to find GPUs with Vulkan support!");
+		exit (EXIT_FAILURE);
 	}
 
 	std::vector<VkPhysicalDevice> devices (deviceCount);
@@ -350,6 +366,7 @@ void pickPhysicalDevice()
 	if (physicalDevice == VK_NULL_HANDLE)
 	{
 		perror ("failed to find a suitable GPU!");
+		exit (EXIT_FAILURE);
 	}
 }
 
@@ -397,6 +414,7 @@ void createLogicalDevice()
 	if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS)
 	{
 		perror ("failed to create logical device!");
+		exit (EXIT_FAILURE);
 	}
 
 	vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
@@ -427,6 +445,7 @@ void createImageViews()
 		if (vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i]) != VK_SUCCESS)
 		{
 			perror ("failed to create image views!");
+			exit (EXIT_FAILURE);
 		}
 	}
 }
@@ -472,6 +491,7 @@ void createRenderPass()
 	if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS)
 	{
 		perror ("failed to create render pass!");
+		exit (EXIT_FAILURE);
 	}
 }
 
@@ -489,6 +509,7 @@ VkShaderModule createShaderModule (char const * filename)
 	if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
 	{
 		perror ("failed to create shader module!");
+		exit (EXIT_FAILURE);
 	}
 	return shaderModule;
 }
@@ -579,6 +600,7 @@ void createGraphicsPipeline() {
 	if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
 	{
 		perror ("failed to create pipeline layout!");
+		exit (EXIT_FAILURE);
 	}
 
 	VkGraphicsPipelineCreateInfo pipelineInfo = {};
@@ -599,6 +621,7 @@ void createGraphicsPipeline() {
 	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)
 	{
 		perror ("failed to create graphics pipeline!");
+		exit (EXIT_FAILURE);
 	}
 
 	vkDestroyShaderModule(device, fragShaderModule, nullptr);
@@ -627,6 +650,7 @@ void createFramebuffers ()
 		if (vkCreateFramebuffer (device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS)
 		{
 			perror ("failed to create framebuffer!");
+			exit (EXIT_FAILURE);
 		}
 	}
 }
@@ -640,6 +664,7 @@ void createCommandPool ()
 	if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS)
 	{
 		perror ("failed to create command pool!");
+		exit (EXIT_FAILURE);
 	}
 }
 
@@ -656,6 +681,7 @@ void createCommandBuffers ()
 	if (vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data()) != VK_SUCCESS)
 	{
 		perror ("failed to allocate command buffers!");
+		exit (EXIT_FAILURE);
 	}
 
 	for (size_t i = 0; i < commandBuffers.size(); i++)
@@ -666,6 +692,7 @@ void createCommandBuffers ()
 		if (vkBeginCommandBuffer(commandBuffers[i], &beginInfo) != VK_SUCCESS)
 		{
 			perror ("failed to begin recording command buffer!");
+			exit (EXIT_FAILURE);
 		}
 
 		VkRenderPassBeginInfo renderPassInfo = {};
@@ -687,8 +714,10 @@ void createCommandBuffers ()
 
 		vkCmdEndRenderPass(commandBuffers[i]);
 
-		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS) {
-			throw std::runtime_error("failed to record command buffer!");
+		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
+		{
+			perror("failed to record command buffer!");
+			exit (EXIT_FAILURE);
 		}
 	}
 }
@@ -710,8 +739,10 @@ void createSyncObjects ()
 	{
 		if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
 		vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
-		vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS) {
-			throw std::runtime_error("failed to create synchronization objects for a frame!");
+		vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS)
+		{
+			perror("failed to create synchronization objects for a frame!");
+			exit (EXIT_FAILURE);
 		}
 	}
 }
@@ -742,7 +773,8 @@ void drawFrame ()
 
 	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS)
 	{
-		throw std::runtime_error("failed to submit draw command buffer!");
+		perror ("failed to submit draw command buffer!");
+		exit (EXIT_FAILURE);
 	}
 
 	VkPresentInfoKHR presentInfo = {};
@@ -833,10 +865,16 @@ void createSwapChain()
 	createInfo.imageArrayLayers = 1;
 	createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-	QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
-	uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
+	//QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+	//uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
+	uint32_t queueFamilyIndices [2];
+	queueFamilyIndices [0] = csc_vk_find_queue (physicalDevice, VK_QUEUE_GRAPHICS_BIT, NULL);
+	queueFamilyIndices [1] = csc_vk_find_queue (physicalDevice, 0, surface);
+	ASSERT (queueFamilyIndices [0] != UINT32_MAX);
+	ASSERT (queueFamilyIndices [1] != UINT32_MAX);
 
-	if (indices.graphicsFamily != indices.presentFamily)
+	TRACE_F("%i %i",queueFamilyIndices [0], queueFamilyIndices [1]);
+	if (queueFamilyIndices [0] != queueFamilyIndices [1])
 	{
 		createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 		createInfo.queueFamilyIndexCount = 2;
@@ -845,6 +883,8 @@ void createSwapChain()
 	else
 	{
 		createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		createInfo.queueFamilyIndexCount = 0;
+		createInfo.pQueueFamilyIndices = NULL;
 	}
 
 	createInfo.preTransform = swapChainSupport.capabilities.currentTransform;
@@ -857,6 +897,7 @@ void createSwapChain()
 	if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS)
 	{
 		perror ("failed to create swap chain!");
+		exit (EXIT_FAILURE);
 	}
 
 	vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
@@ -879,6 +920,7 @@ void run()
 	if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
 	{
 		perror ("failed to create window surface!");
+		exit (EXIT_FAILURE);
 	}
 	pickPhysicalDevice();
 	createLogicalDevice();

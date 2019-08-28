@@ -52,3 +52,28 @@ char * csc_malloc_file (char const * filename)
 	fclose (file);
 	return buffer;
 }
+
+char * csc_malloc_file1 (char const * filename, long * length)
+{
+	ASSERT_F (filename != NULL, "filename is NULL%s", "");
+	FILE * file = fopen (filename, "rb");
+	ASSERT_F (file != NULL, "can not open file '%s'", filename);
+	int r;
+	r = fseek (file, 0, SEEK_END);
+	ASSERT (r == 0);
+	*length = ftell (file);
+	ASSERT ((*length) >= 0);
+	r = fseek (file, 0, SEEK_SET);
+	ASSERT (r == 0);
+	char * buffer = (char *) malloc ((unsigned) (*length) + 1);
+	ASSERT_F (buffer != NULL, "buffer is NULL%s", "");
+	memset (buffer, 0, (unsigned) (*length) + 1);
+	//buffer [length + 1] = 0;
+	if (*length > 0)
+	{
+		size_t n = fread (buffer, (unsigned) (*length), 1, file);
+		ASSERT_F (n == 1, "fread error %i %i", (int)n, (int)(*length));
+	}
+	fclose (file);
+	return buffer;
+}

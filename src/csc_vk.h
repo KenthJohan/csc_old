@@ -23,13 +23,33 @@ SOFTWARE.
 */
 
 #pragma once
-#include <stddef.h> //offsetof
 
-#define MAX(a,b) ((a)>(b)?(a):(b))
-#define MIN(a,b) ((a)<(b)?(a):(b))
-//#define INSIDE(x, a, b) ((a) <= (x) && (x) <= (b))
-#define CLAMP(x, a, b) ((a) <= (x) && (x) <= (b))
-#define SWAP(t, a, b) do{t c = (b); (b) = (a); (a) = (c);} while (0)
-#define SWAPX(a, b)	((a)^=(b),(b)^=(a),(a)^=(b))
+#include <vulkan/vulkan.h>
+#include <string.h>
 
-#define container_of(ptr, type, member) ((type *)(void *)((char *)(ptr) - offsetof(type, member)))
+#define CSC_VK_LAYER_COUNT 32
+int csc_vk_layer_exist (char const * layername)
+{
+	uint32_t count = CSC_VK_LAYER_COUNT;
+	VkLayerProperties available [CSC_VK_LAYER_COUNT];
+	vkEnumerateInstanceLayerProperties (&count, available);
+	for (uint32_t i = 0; i < count; i ++)
+	{
+		//TRACE_F ("%s %s", available [i].layerName, available [i].description);
+		int diff = strcmp (layername, available [i].layerName);
+		if (diff == 0) {return 1;}
+	}
+	return 0;
+}
+
+int csc_vk_layers_exist (char const * layername [], int n)
+{
+	for (int i = 0; i < n; i ++)
+	{
+		if (csc_vk_layer_exist (layername [i]) == 0)
+		{
+			return 0;
+		}
+	}
+	return 1;
+}

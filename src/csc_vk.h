@@ -27,6 +27,7 @@ SOFTWARE.
 #include <vulkan/vulkan.h>
 #include <string.h>
 #include <stdio.h>
+#include <csc_debug.h>
 
 #define CSC_VK_LAYER_COUNT 32
 int csc_vk_layer_exist (char const * layername)
@@ -36,7 +37,7 @@ int csc_vk_layer_exist (char const * layername)
 	vkEnumerateInstanceLayerProperties (&count, available);
 	for (uint32_t i = 0; i < count; i ++)
 	{
-		//TRACE_F ("%s %s", available [i].layerName, available [i].description);
+		TRACE_F ("%s %s", available [i].layerName, available [i].description);
 		int diff = strcmp (layername, available [i].layerName);
 		if (diff == 0) {return 1;}
 	}
@@ -72,5 +73,43 @@ void csc_vk_pinfo (void const * item)
 			printf ("ppEnabledLayerNames %s\n", info->ppEnabledExtensionNames [i]);
 		}
 		break;}
+	default:
+		break;
+	}
+}
+
+void csc_vk_pinfo_qflags (VkQueueFlags flags)
+{
+	if (flags & VK_QUEUE_GRAPHICS_BIT) {printf ("VK_QUEUE_GRAPHICS_BIT ");}
+	if (flags & VK_QUEUE_COMPUTE_BIT) {printf ("VK_QUEUE_COMPUTE_BIT ");}
+	if (flags & VK_QUEUE_TRANSFER_BIT) {printf ("VK_QUEUE_TRANSFER_BIT ");}
+	if (flags & VK_QUEUE_SPARSE_BINDING_BIT) {printf ("VK_QUEUE_SPARSE_BINDING_BIT ");}
+	if (flags & VK_QUEUE_PROTECTED_BIT) {printf ("VK_QUEUE_PROTECTED_BIT ");}
+	if (flags & VK_QUEUE_FLAG_BITS_MAX_ENUM) {printf ("VK_QUEUE_FLAG_BITS_MAX_ENUM ");}
+}
+
+
+void csc_vk_pinfo_qfp (VkQueueFamilyProperties * qfp)
+{
+	printf ("%30s ", "queueFlags");
+	csc_vk_pinfo_qflags (qfp->queueFlags);
+	printf ("\n");
+	printf ("%30s %10i\n", "queueCount", qfp->queueCount);
+}
+
+
+void csc_vk_pinfo_qf (VkPhysicalDevice dev, VkSurfaceKHR s)
+{
+	VkQueueFamilyProperties q [10];
+	uint32_t n = 10;
+	vkGetPhysicalDeviceQueueFamilyProperties (dev, &n, NULL);
+	vkGetPhysicalDeviceQueueFamilyProperties (dev, &n, q);
+	uint32_t i = UINT32_MAX;
+	for (i = 0; i < n; ++i)
+	{
+		csc_vk_pinfo_qfp (q + i);
+		VkBool32 psupport = VK_FALSE;
+		vkGetPhysicalDeviceSurfaceSupportKHR (dev, i, s, &psupport);
+		printf ("%30s %10i\n", "presentSupport", psupport);
 	}
 }

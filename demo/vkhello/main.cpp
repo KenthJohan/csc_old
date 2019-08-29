@@ -27,7 +27,8 @@ const int MAX_FRAMES_IN_FLIGHT = 2;
 #define VALIDATON_LAYER_COUNT 1
 static char const * validationLayers [VALIDATON_LAYER_COUNT] =
 {
-"VK_LAYER_KHRONOS_validation"
+//"VK_LAYER_KHRONOS_validation"
+"VK_LAYER_LUNARG_standard_validation"
 };
 
 const std::vector<const char*> deviceExtensions = {
@@ -211,8 +212,15 @@ void cleanup()
 
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback
-(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
+(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
 {
+	(VkDebugUtilsMessageTypeFlagsEXT)messageType;
+	(VkDebugUtilsMessengerCallbackDataEXT*)pUserData;
+	if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) {fprintf (stderr, "VERBOSE|");};
+	if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {fprintf (stderr, "VERBOSE|");};
+	if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {fprintf (stderr, "VERBOSE|");};
+	if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {fprintf (stderr, "VERBOSE");};
+	fprintf (stderr, "\n");
 	fprintf (stderr, "validation layer: %s\n", pCallbackData->pMessage);
 	return VK_FALSE;
 }
@@ -867,6 +875,7 @@ void createSwapChain()
 
 	//QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
 	//uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
+	csc_vk_pinfo_qf (physicalDevice, surface);
 	uint32_t queueFamilyIndices [2];
 	queueFamilyIndices [0] = csc_vk_find_queue (physicalDevice, VK_QUEUE_GRAPHICS_BIT, NULL);
 	queueFamilyIndices [1] = csc_vk_find_queue (physicalDevice, 0, surface);

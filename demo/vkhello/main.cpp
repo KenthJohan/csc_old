@@ -87,12 +87,6 @@ static VkInstance instance;
 static VkDebugUtilsMessengerEXT debugMessenger;
 static VkSurfaceKHR surface;
 
-//static VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-//static VkDevice device;
-
-static VkQueue graphicsQueue;
-static VkQueue presentQueue;
-
 static VkSwapchainKHR swapChain;
 static std::vector<VkImage> swapChainImages;
 static VkFormat swapChainImageFormat;
@@ -111,109 +105,6 @@ static std::vector<VkSemaphore> imageAvailableSemaphores;
 static std::vector<VkSemaphore> renderFinishedSemaphores;
 static std::vector<VkFence> inFlightFences;
 static size_t currentFrame = 0;
-
-
-struct csc_vk_device
-{
-	VkPhysicalDevice phys;
-	VkDevice logical;
-	uint32_t family_gfx;
-	uint32_t family_present;
-	uint32_t family_transfer;
-};
-
-void csc_vk_find_famqueue3
-(VkPhysicalDevice dev, VkSurfaceKHR s, uint32_t * fam_gfx, uint32_t * fam_present, uint32_t * fam_transfer)
-{
-	ASSERT (dev)
-	VkQueueFamilyProperties q [10];
-	uint32_t n = 10;
-	vkGetPhysicalDeviceQueueFamilyProperties (dev, &n, NULL);
-	vkGetPhysicalDeviceQueueFamilyProperties (dev, &n, q);
-	uint32_t i = UINT32_MAX;
-	for (i = 0; i < n; ++i)
-	{
-		if (q [i].queueCount == 0) {continue;}
-
-		if (fam_present && s && (*fam_present) == UINT32_MAX)
-		{
-			VkBool32 present = VK_FALSE;
-			vkGetPhysicalDeviceSurfaceSupportKHR (dev, i, s, &present);
-			if (present == VK_TRUE)
-			{
-				(*fam_present) = i;
-			}
-		}
-
-		if (fam_gfx && (*fam_gfx) == UINT32_MAX && (q [i].queueFlags & VK_QUEUE_GRAPHICS_BIT))
-		{
-			(*fam_gfx) = i;
-		}
-
-		if (fam_transfer && (*fam_transfer) == UINT32_MAX && (q [i].queueFlags & (VK_QUEUE_TRANSFER_BIT|VK_QUEUE_GRAPHICS_BIT)) == VK_QUEUE_TRANSFER_BIT)
-		{
-			(*fam_transfer) = i;
-		}
-	}
-}
-
-
-uint32_t csc_vk_find_queue (VkPhysicalDevice dev, VkQueueFlags req, VkSurfaceKHR s)
-{
-	VkQueueFamilyProperties q [10];
-	uint32_t n = 10;
-	vkGetPhysicalDeviceQueueFamilyProperties (dev, &n, NULL);
-	vkGetPhysicalDeviceQueueFamilyProperties (dev, &n, q);
-	uint32_t i = UINT32_MAX;
-	for (i = 0; i < n; ++i)
-	{
-		if (q [i].queueCount == 0) {continue;}
-		if ((req != 0) && !(q [i].queueFlags & req)) {continue;}
-		if (s == NULL) {break;}
-		VkBool32 presentSupport = VK_FALSE;
-		vkGetPhysicalDeviceSurfaceSupportKHR (dev, i, s, &presentSupport);
-		if (presentSupport == VK_TRUE) {break;}
-	}
-	return i;
-}
-
-QueueFamilyIndices findQueueFamilies (VkPhysicalDevice device)
-{
-	QueueFamilyIndices indices;
-
-	uint32_t queueFamilyCount = 0;
-	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
-
-	std::vector<VkQueueFamilyProperties> queueFamilies (queueFamilyCount);
-	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
-
-	uint32_t i = 0;
-	for (const auto& queueFamily : queueFamilies)
-	{
-		if (queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-		{
-			indices.graphicsFamily = i;
-		}
-
-		VkBool32 presentSupport = false;
-		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
-
-		if (queueFamily.queueCount > 0 && presentSupport)
-		{
-			indices.presentFamily = i;
-		}
-
-		if (indices.isComplete())
-		{
-			break;
-		}
-
-		i++;
-	}
-
-	return indices;
-}
-
 
 
 void cleanup (struct csc_vk_device * dev)
@@ -254,8 +145,6 @@ void cleanup (struct csc_vk_device * dev)
 }
 
 
-
-
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback
 (VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
 {
@@ -269,6 +158,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback
 	fprintf (stderr, "validation layer: %s\n", pCallbackData->pMessage);
 	return VK_FALSE;
 }
+
 
 void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo)
 {
@@ -465,8 +355,8 @@ void createLogicalDevice (struct csc_vk_device * dev)
 		perror ("failed to create logical device!");
 		exit (EXIT_FAILURE);
 	}
-	vkGetDeviceQueue (dev->logical, dev->family_gfx, 0, &graphicsQueue);
-	vkGetDeviceQueue (dev->logical, dev->family_present, 0, &presentQueue);
+	vkGetDeviceQueue (dev->logical, dev->family_gfx, 0, &dev->graphicsQueue);
+	vkGetDeviceQueue (dev->logical, dev->family_present, 0, &dev->presentQueue);
 }
 
 
@@ -818,7 +708,7 @@ void drawFrame (struct csc_vk_device * dev)
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = signalSemaphores;
 
-	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS)
+	if (vkQueueSubmit (dev->graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS)
 	{
 		perror ("failed to submit draw command buffer!");
 		exit (EXIT_FAILURE);
@@ -836,7 +726,7 @@ void drawFrame (struct csc_vk_device * dev)
 
 	presentInfo.pImageIndices = &imageIndex;
 
-	vkQueuePresentKHR (presentQueue, &presentInfo);
+	vkQueuePresentKHR (dev->presentQueue, &presentInfo);
 
 	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }

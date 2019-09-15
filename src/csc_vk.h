@@ -29,6 +29,18 @@ SOFTWARE.
 #include <stdio.h>
 #include <csc_debug.h>
 
+
+struct csc_vk_device
+{
+	VkPhysicalDevice phys;
+	VkDevice logical;
+	uint32_t family_gfx;
+	uint32_t family_present;
+	uint32_t family_transfer;
+	VkQueue graphicsQueue;
+	VkQueue presentQueue;
+};
+
 #define CSC_VK_LAYER_COUNT 32
 int csc_vk_layer_exist (char const * layername)
 {
@@ -111,5 +123,41 @@ void csc_vk_pinfo_qf (VkPhysicalDevice dev, VkSurfaceKHR s)
 		VkBool32 psupport = VK_FALSE;
 		vkGetPhysicalDeviceSurfaceSupportKHR (dev, i, s, &psupport);
 		printf ("%30s %10i\n", "presentSupport", psupport);
+	}
+}
+
+
+void csc_vk_find_famqueue3
+(VkPhysicalDevice dev, VkSurfaceKHR s, uint32_t * fam_gfx, uint32_t * fam_present, uint32_t * fam_transfer)
+{
+	ASSERT (dev)
+	VkQueueFamilyProperties q [10];
+	uint32_t n = 10;
+	vkGetPhysicalDeviceQueueFamilyProperties (dev, &n, NULL);
+	vkGetPhysicalDeviceQueueFamilyProperties (dev, &n, q);
+	uint32_t i = UINT32_MAX;
+	for (i = 0; i < n; ++i)
+	{
+		if (q [i].queueCount == 0) {continue;}
+
+		if (fam_present && s && (*fam_present) == UINT32_MAX)
+		{
+			VkBool32 present = VK_FALSE;
+			vkGetPhysicalDeviceSurfaceSupportKHR (dev, i, s, &present);
+			if (present == VK_TRUE)
+			{
+				(*fam_present) = i;
+			}
+		}
+
+		if (fam_gfx && (*fam_gfx) == UINT32_MAX && (q [i].queueFlags & VK_QUEUE_GRAPHICS_BIT))
+		{
+			(*fam_gfx) = i;
+		}
+
+		if (fam_transfer && (*fam_transfer) == UINT32_MAX && (q [i].queueFlags & (VK_QUEUE_TRANSFER_BIT|VK_QUEUE_GRAPHICS_BIT)) == VK_QUEUE_TRANSFER_BIT)
+		{
+			(*fam_transfer) = i;
+		}
 	}
 }

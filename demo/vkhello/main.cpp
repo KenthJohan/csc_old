@@ -87,8 +87,8 @@ static VkInstance instance;
 static VkDebugUtilsMessengerEXT debugMessenger;
 static VkSurfaceKHR surface;
 
-static VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-static VkDevice device;
+//static VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+//static VkDevice device;
 
 static VkQueue graphicsQueue;
 static VkQueue presentQueue;
@@ -113,52 +113,10 @@ static std::vector<VkFence> inFlightFences;
 static size_t currentFrame = 0;
 
 
-/*
-void csc_vk_find_queues
-(VkPhysicalDevice const dev, VkQueueFlags const flags, VkSurfaceKHR s, uint32_t * const n, uint32_t * const q)
-{
-	VkQueueFamilyProperties p [10];
-	uint32_t pn = 10;
-	vkGetPhysicalDeviceQueueFamilyProperties(dev, &pn, NULL);
-	vkGetPhysicalDeviceQueueFamilyProperties(dev, &pn, p);
-
-	if (q == NULL)
-	{
-		(*n) = 0;
-		for (uint32_t i = 0; i < pn; i++)
-		{
-			VkBool32 presentSupport = VK_TRUE;
-			if (s) {vkGetPhysicalDeviceSurfaceSupportKHR (dev, i, s, &presentSupport);}
-			if (((flags & p [i].queueFlags) == flags) && (presentSupport == VK_TRUE))
-			{
-				(*n) += 1;
-			}
-		}
-	}
-	else
-	{
-		uint32_t i = 0;
-		uint32_t j = 0;
-		while (1)
-		{
-			if (i >= pn) {break;}
-			if (j >= (*n)) {break;}
-			VkBool32 presentSupport = VK_TRUE;
-			if (s) {vkGetPhysicalDeviceSurfaceSupportKHR (dev, i, s, &presentSupport);}
-			if (((flags & p [i].queueFlags) == flags) && (presentSupport == VK_TRUE))
-			{
-				q [j] = i;
-				j++;
-			}
-			i++;
-		}
-	}
-}
-*/
-
-
 struct csc_vk_device
 {
+	VkPhysicalDevice phys;
+	VkDevice logical;
 	uint32_t family_gfx;
 	uint32_t family_present;
 	uint32_t family_transfer;
@@ -167,6 +125,7 @@ struct csc_vk_device
 void csc_vk_find_famqueue3
 (VkPhysicalDevice dev, VkSurfaceKHR s, uint32_t * fam_gfx, uint32_t * fam_present, uint32_t * fam_transfer)
 {
+	ASSERT (dev)
 	VkQueueFamilyProperties q [10];
 	uint32_t n = 10;
 	vkGetPhysicalDeviceQueueFamilyProperties (dev, &n, NULL);
@@ -257,41 +216,41 @@ QueueFamilyIndices findQueueFamilies (VkPhysicalDevice device)
 
 
 
-void cleanup()
+void cleanup (struct csc_vk_device * dev)
 {
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
-		vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
-		vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
-		vkDestroyFence(device, inFlightFences[i], nullptr);
+		vkDestroySemaphore (dev->logical, renderFinishedSemaphores[i], nullptr);
+		vkDestroySemaphore (dev->logical, imageAvailableSemaphores[i], nullptr);
+		vkDestroyFence (dev->logical, inFlightFences[i], nullptr);
 	}
 
-	vkDestroyCommandPool(device, commandPool, nullptr);
+	vkDestroyCommandPool (dev->logical, commandPool, nullptr);
 
 	for (auto framebuffer : swapChainFramebuffers)
 	{
-		vkDestroyFramebuffer(device, framebuffer, nullptr);
+		vkDestroyFramebuffer (dev->logical, framebuffer, nullptr);
 	}
 
-	vkDestroyPipeline(device, graphicsPipeline, nullptr);
-	vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-	vkDestroyRenderPass(device, renderPass, nullptr);
+	vkDestroyPipeline (dev->logical, graphicsPipeline, nullptr);
+	vkDestroyPipelineLayout (dev->logical, pipelineLayout, nullptr);
+	vkDestroyRenderPass (dev->logical, renderPass, nullptr);
 
 	for (auto imageView : swapChainImageViews)
 	{
-		vkDestroyImageView(device, imageView, nullptr);
+		vkDestroyImageView (dev->logical, imageView, nullptr);
 	}
 
-	vkDestroySwapchainKHR(device, swapChain, nullptr);
-	vkDestroyDevice(device, nullptr);
+	vkDestroySwapchainKHR (dev->logical, swapChain, nullptr);
+	vkDestroyDevice (dev->logical, nullptr);
 
 	if (enableValidationLayers)
 	{
 		DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
 	}
 
-	vkDestroySurfaceKHR(instance, surface, nullptr);
-	vkDestroyInstance(instance, nullptr);
+	vkDestroySurfaceKHR (instance, surface, nullptr);
+	vkDestroyInstance (instance, nullptr);
 }
 
 
@@ -421,65 +380,44 @@ SwapChainSupportDetails querySwapChainSupport (VkPhysicalDevice device)
 	return details;
 }
 
-bool isDeviceSuitable (VkPhysicalDevice device)
+void pickPhysicalDevice (struct csc_vk_device * dev)
 {
-	QueueFamilyIndices indices = findQueueFamilies(device);
-	bool extensionsSupported = checkDeviceExtensionSupport(device);
-	bool swapChainAdequate = false;
-	if (extensionsSupported)
+	VkPhysicalDevice phys [10];
+	uint32_t n = 10;
+	uint32_t format_count = 0;
+	uint32_t presentmodes_count = 0;
+	vkEnumeratePhysicalDevices (instance, &n, NULL);
+	vkEnumeratePhysicalDevices (instance, &n, phys);
+	for (uint32_t i = 0; i < n; i ++)
 	{
-		SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
-		swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
-	}
-	return indices.isComplete() && extensionsSupported && swapChainAdequate;
-}
-
-void pickPhysicalDevice()
-{
-	uint32_t deviceCount = 0;
-	vkEnumeratePhysicalDevices (instance, &deviceCount, nullptr);
-
-	if (deviceCount == 0)
-	{
-		perror ("failed to find GPUs with Vulkan support!");
-		exit (EXIT_FAILURE);
-	}
-
-	std::vector<VkPhysicalDevice> devices (deviceCount);
-	vkEnumeratePhysicalDevices (instance, &deviceCount, devices.data());
-
-	for (const auto& device : devices)
-	{
-		if (isDeviceSuitable(device))
+		dev->family_gfx = UINT32_MAX;
+		dev->family_present = UINT32_MAX;
+		dev->family_transfer = UINT32_MAX;
+		vkGetPhysicalDeviceSurfaceFormatsKHR (phys[i], surface, &format_count, NULL);
+		vkGetPhysicalDeviceSurfacePresentModesKHR (phys[i], surface, &presentmodes_count, NULL);
+		csc_vk_find_famqueue3 (phys [i], surface, &dev->family_gfx, &dev->family_present, &dev->family_transfer);
+		if (dev->family_gfx != UINT32_MAX && dev->family_present != UINT32_MAX)
 		{
-			physicalDevice = device;
+			dev->phys = phys [i];
 			break;
 		}
 	}
-
-	if (physicalDevice == VK_NULL_HANDLE)
+	if (dev->phys == VK_NULL_HANDLE)
 	{
 		perror ("failed to find a suitable GPU!");
 		exit (EXIT_FAILURE);
 	}
 }
 
-void createLogicalDevice()
+void createLogicalDevice (struct csc_vk_device * dev)
 {
-	uint32_t fam_gfx = UINT32_MAX;
-	uint32_t fam_present = UINT32_MAX;
-	uint32_t fam_transfer = UINT32_MAX;
-	csc_vk_find_famqueue3 (physicalDevice, surface, &fam_gfx, &fam_present, &fam_transfer);
-	ASSERT (fam_gfx != UINT32_MAX)
-	ASSERT (fam_present != UINT32_MAX)
-	ASSERT (fam_transfer != UINT32_MAX)
 	uint32_t n = 1;
 	float priority = 1.0f;
 	VkDeviceQueueCreateInfo q [3];
 	q[0].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
 	q[0].pNext = NULL;
 	q[0].flags = 0;
-	q[0].queueFamilyIndex = fam_gfx;
+	q[0].queueFamilyIndex = dev->family_gfx;
 	q[0].queueCount = 1;
 	q[0].pQueuePriorities = &priority;
 	q[1].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -494,14 +432,14 @@ void createLogicalDevice()
 	q[2].queueFamilyIndex = 0;
 	q[2].queueCount = 1;
 	q[2].pQueuePriorities = &priority;
-	if (fam_present != fam_gfx)
+	if (dev->family_present != dev->family_gfx)
 	{
-		q[n].queueFamilyIndex = fam_present;
+		q[n].queueFamilyIndex = dev->family_present;
 		n++;
 	}
-	if (fam_transfer != fam_gfx && fam_transfer != fam_present)
+	if (dev->family_transfer != dev->family_gfx && dev->family_transfer != dev->family_present)
 	{
-		q[n].queueFamilyIndex = fam_transfer;
+		q[n].queueFamilyIndex = dev->family_transfer;
 		n++;
 	}
 	VkPhysicalDeviceFeatures deviceFeatures = {};
@@ -522,17 +460,17 @@ void createLogicalDevice()
 		info.enabledLayerCount = 0;
 		info.ppEnabledLayerNames = NULL;
 	}
-	if (vkCreateDevice(physicalDevice, &info, nullptr, &device) != VK_SUCCESS)
+	if (vkCreateDevice (dev->phys, &info, nullptr, &dev->logical) != VK_SUCCESS)
 	{
 		perror ("failed to create logical device!");
 		exit (EXIT_FAILURE);
 	}
-	vkGetDeviceQueue(device, fam_gfx, 0, &graphicsQueue);
-	vkGetDeviceQueue(device, fam_present, 0, &presentQueue);
+	vkGetDeviceQueue (dev->logical, dev->family_gfx, 0, &graphicsQueue);
+	vkGetDeviceQueue (dev->logical, dev->family_present, 0, &presentQueue);
 }
 
 
-void createImageViews()
+void createImageViews (struct csc_vk_device * dev)
 {
 	swapChainImageViews.resize(swapChainImages.size());
 	for (size_t i = 0; i < swapChainImages.size(); i++)
@@ -551,7 +489,7 @@ void createImageViews()
 		createInfo.subresourceRange.levelCount = 1;
 		createInfo.subresourceRange.baseArrayLayer = 0;
 		createInfo.subresourceRange.layerCount = 1;
-		if (vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i]) != VK_SUCCESS)
+		if (vkCreateImageView (dev->logical, &createInfo, nullptr, &swapChainImageViews[i]) != VK_SUCCESS)
 		{
 			perror ("failed to create image views!");
 			exit (EXIT_FAILURE);
@@ -559,7 +497,7 @@ void createImageViews()
 	}
 }
 
-void createRenderPass()
+void createRenderPass (struct csc_vk_device * dev)
 {
 	VkAttachmentDescription colorAttachment = {};
 	colorAttachment.format = swapChainImageFormat;
@@ -597,7 +535,7 @@ void createRenderPass()
 	renderPassInfo.dependencyCount = 1;
 	renderPassInfo.pDependencies = &dependency;
 
-	if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS)
+	if (vkCreateRenderPass (dev->logical, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS)
 	{
 		perror ("failed to create render pass!");
 		exit (EXIT_FAILURE);
@@ -605,7 +543,7 @@ void createRenderPass()
 }
 
 
-VkShaderModule createShaderModule (char const * filename)
+VkShaderModule createShaderModule (struct csc_vk_device * dev, char const * filename)
 {
 	VkShaderModuleCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -615,7 +553,7 @@ VkShaderModule createShaderModule (char const * filename)
 	createInfo.codeSize = (size_t) length;
 	createInfo.pCode = (uint32_t const*) code;
 	VkShaderModule shaderModule;
-	if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+	if (vkCreateShaderModule (dev->logical, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
 	{
 		perror ("failed to create shader module!");
 		exit (EXIT_FAILURE);
@@ -624,9 +562,10 @@ VkShaderModule createShaderModule (char const * filename)
 }
 
 
-void createGraphicsPipeline() {
-	VkShaderModule vertShaderModule = createShaderModule ("../vkhello/shader.vert.spv");
-	VkShaderModule fragShaderModule = createShaderModule ("../vkhello/shader.frag.spv");
+void createGraphicsPipeline (struct csc_vk_device * dev)
+{
+	VkShaderModule vertShaderModule = createShaderModule (dev, "../vkhello/shader.vert.spv");
+	VkShaderModule fragShaderModule = createShaderModule (dev, "../vkhello/shader.frag.spv");
 
 	VkPipelineShaderStageCreateInfo vertShaderStageInfo = {};
 	vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -706,7 +645,7 @@ void createGraphicsPipeline() {
 	pipelineLayoutInfo.setLayoutCount = 0;
 	pipelineLayoutInfo.pushConstantRangeCount = 0;
 
-	if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
+	if (vkCreatePipelineLayout (dev->logical, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
 	{
 		perror ("failed to create pipeline layout!");
 		exit (EXIT_FAILURE);
@@ -727,17 +666,17 @@ void createGraphicsPipeline() {
 	pipelineInfo.subpass = 0;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)
+	if (vkCreateGraphicsPipelines (dev->logical, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)
 	{
 		perror ("failed to create graphics pipeline!");
 		exit (EXIT_FAILURE);
 	}
 
-	vkDestroyShaderModule(device, fragShaderModule, nullptr);
-	vkDestroyShaderModule(device, vertShaderModule, nullptr);
+	vkDestroyShaderModule (dev->logical, fragShaderModule, nullptr);
+	vkDestroyShaderModule (dev->logical, vertShaderModule, nullptr);
 }
 
-void createFramebuffers ()
+void createFramebuffers (struct csc_vk_device * dev)
 {
 	swapChainFramebuffers.resize (swapChainImageViews.size());
 	for (size_t i = 0; i < swapChainImageViews.size(); i++)
@@ -756,7 +695,7 @@ void createFramebuffers ()
 		framebufferInfo.height = swapChainExtent.height;
 		framebufferInfo.layers = 1;
 
-		if (vkCreateFramebuffer (device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS)
+		if (vkCreateFramebuffer (dev->logical, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS)
 		{
 			perror ("failed to create framebuffer!");
 			exit (EXIT_FAILURE);
@@ -764,20 +703,19 @@ void createFramebuffers ()
 	}
 }
 
-void createCommandPool ()
+void createCommandPool (struct csc_vk_device * dev)
 {
-	QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice);
 	VkCommandPoolCreateInfo poolInfo = {};
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
-	if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS)
+	poolInfo.queueFamilyIndex = dev->family_gfx;
+	if (vkCreateCommandPool (dev->logical, &poolInfo, nullptr, &commandPool) != VK_SUCCESS)
 	{
 		perror ("failed to create command pool!");
 		exit (EXIT_FAILURE);
 	}
 }
 
-void createCommandBuffers ()
+void createCommandBuffers (struct csc_vk_device * dev)
 {
 	commandBuffers.resize(swapChainFramebuffers.size());
 
@@ -787,7 +725,7 @@ void createCommandBuffers ()
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	allocInfo.commandBufferCount = (uint32_t) commandBuffers.size();
 
-	if (vkAllocateCommandBuffers (device, &allocInfo, commandBuffers.data()) != VK_SUCCESS)
+	if (vkAllocateCommandBuffers (dev->logical, &allocInfo, commandBuffers.data()) != VK_SUCCESS)
 	{
 		perror ("failed to allocate command buffers!");
 		exit (EXIT_FAILURE);
@@ -831,11 +769,11 @@ void createCommandBuffers ()
 	}
 }
 
-void createSyncObjects ()
+void createSyncObjects (struct csc_vk_device * dev)
 {
-	imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-	renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-	inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+	imageAvailableSemaphores.resize (MAX_FRAMES_IN_FLIGHT);
+	renderFinishedSemaphores.resize (MAX_FRAMES_IN_FLIGHT);
+	inFlightFences.resize (MAX_FRAMES_IN_FLIGHT);
 
 	VkSemaphoreCreateInfo semaphoreInfo = {};
 	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -846,23 +784,23 @@ void createSyncObjects ()
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
-		if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
-		vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
-		vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS)
+		if (vkCreateSemaphore (dev->logical, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
+		vkCreateSemaphore (dev->logical, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
+		vkCreateFence (dev->logical, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS)
 		{
-			perror("failed to create synchronization objects for a frame!");
+			perror ("failed to create synchronization objects for a frame!");
 			exit (EXIT_FAILURE);
 		}
 	}
 }
 
-void drawFrame ()
+void drawFrame (struct csc_vk_device * dev)
 {
-	vkWaitForFences (device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
-	vkResetFences (device, 1, &inFlightFences[currentFrame]);
+	vkWaitForFences (dev->logical, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+	vkResetFences (dev->logical, 1, &inFlightFences[currentFrame]);
 
 	uint32_t imageIndex;
-	vkAcquireNextImageKHR (device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+	vkAcquireNextImageKHR (dev->logical, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
 
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -903,7 +841,7 @@ void drawFrame ()
 	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
+VkSurfaceFormatKHR chooseSwapSurfaceFormat (const std::vector<VkSurfaceFormatKHR>& availableFormats)
 {
 	for (const auto& availableFormat : availableFormats)
 	{
@@ -949,9 +887,9 @@ VkExtent2D chooseSwapExtent (const VkSurfaceCapabilitiesKHR& capabilities)
 
 
 
-void createSwapChain()
+void createSwapChain (struct csc_vk_device * dev)
 {
-	SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice);
+	SwapChainSupportDetails swapChainSupport = querySwapChainSupport (dev->phys);
 
 	VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
 	VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
@@ -966,7 +904,6 @@ void createSwapChain()
 	VkSwapchainCreateInfoKHR createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 	createInfo.surface = surface;
-
 	createInfo.minImageCount = imageCount;
 	createInfo.imageFormat = surfaceFormat.format;
 	createInfo.imageColorSpace = surfaceFormat.colorSpace;
@@ -974,14 +911,10 @@ void createSwapChain()
 	createInfo.imageArrayLayers = 1;
 	createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-	//QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
-	//uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
-	csc_vk_pinfo_qf (physicalDevice, surface);
-
-
+	csc_vk_pinfo_qf (dev->phys, surface);
 
 	uint32_t queueFamilyIndices [2] = {UINT32_MAX};
-	csc_vk_find_famqueue3 (physicalDevice, surface, queueFamilyIndices + 0, queueFamilyIndices + 1, NULL);
+	csc_vk_find_famqueue3 (dev->phys, surface, queueFamilyIndices + 0, queueFamilyIndices + 1, NULL);
 	ASSERT (queueFamilyIndices [0] != UINT32_MAX)
 	ASSERT (queueFamilyIndices [1] != UINT32_MAX)
 	TRACE_F("%i %i", queueFamilyIndices [0], queueFamilyIndices [1]);
@@ -1006,15 +939,15 @@ void createSwapChain()
 
 	createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-	if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS)
+	if (vkCreateSwapchainKHR (dev->logical, &createInfo, nullptr, &swapChain) != VK_SUCCESS)
 	{
 		perror ("failed to create swap chain!");
 		exit (EXIT_FAILURE);
 	}
 
-	vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
+	vkGetSwapchainImagesKHR (dev->logical, swapChain, &imageCount, nullptr);
 	swapChainImages.resize(imageCount);
-	vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
+	vkGetSwapchainImagesKHR (dev->logical, swapChain, &imageCount, swapChainImages.data());
 
 	swapChainImageFormat = surfaceFormat.format;
 	swapChainExtent = extent;
@@ -1027,32 +960,33 @@ void run()
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+	struct csc_vk_device dev;
 	createInstance();
 	setupDebugMessenger();
-	if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
+	if (glfwCreateWindowSurface (instance, window, nullptr, &surface) != VK_SUCCESS)
 	{
 		perror ("failed to create window surface!");
 		exit (EXIT_FAILURE);
 	}
-	pickPhysicalDevice();
-	createLogicalDevice();
-	createSwapChain();
-	createImageViews();
-	createRenderPass();
-	createGraphicsPipeline();
-	createFramebuffers();
-	createCommandPool();
-	createCommandBuffers();
-	createSyncObjects();
-	while (!glfwWindowShouldClose(window))
+	pickPhysicalDevice (&dev);
+	createLogicalDevice (&dev);
+	createSwapChain (&dev);
+	createImageViews (&dev);
+	createRenderPass (&dev);
+	createGraphicsPipeline(&dev);
+	createFramebuffers (&dev);
+	createCommandPool (&dev);
+	createCommandBuffers (&dev);
+	createSyncObjects (&dev);
+	while (!glfwWindowShouldClose (window))
 	{
-		glfwPollEvents();
-		drawFrame();
+		glfwPollEvents ();
+		drawFrame (&dev);
 	}
-	vkDeviceWaitIdle (device);
-	cleanup();
-	glfwDestroyWindow(window);
-	glfwTerminate();
+	vkDeviceWaitIdle (dev.logical);
+	cleanup (&dev);
+	glfwDestroyWindow (window);
+	glfwTerminate ();
 }
 
 

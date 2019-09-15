@@ -7,7 +7,8 @@ CONFIG += c++17
 #QMAKE_CXXFLAGS += -std=c++17
 
 SOURCES += \
-    main.cpp
+    main.cpp \
+    #main2.cpp
 
 
 
@@ -22,7 +23,7 @@ HEADERS += shader.vert
 HEADERS += shader.frag
 
 INCLUDEPATH += $$PWD/../../src/opengl46/include
-INCLUDEPATH += C:/VulkanSDK/1.1.114.0/Include
+INCLUDEPATH += C:/VulkanSDK/1.1.121.0/Include
 
 
 

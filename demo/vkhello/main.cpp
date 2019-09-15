@@ -27,8 +27,8 @@ const int MAX_FRAMES_IN_FLIGHT = 2;
 #define VALIDATON_LAYER_COUNT 1
 static char const * validationLayers [VALIDATON_LAYER_COUNT] =
 {
-//"VK_LAYER_KHRONOS_validation"
-"VK_LAYER_LUNARG_standard_validation"
+"VK_LAYER_KHRONOS_validation"
+//"VK_LAYER_LUNARG_standard_validation"
 };
 
 const std::vector<const char*> deviceExtensions = {
@@ -111,6 +111,92 @@ static std::vector<VkSemaphore> imageAvailableSemaphores;
 static std::vector<VkSemaphore> renderFinishedSemaphores;
 static std::vector<VkFence> inFlightFences;
 static size_t currentFrame = 0;
+
+
+/*
+void csc_vk_find_queues
+(VkPhysicalDevice const dev, VkQueueFlags const flags, VkSurfaceKHR s, uint32_t * const n, uint32_t * const q)
+{
+	VkQueueFamilyProperties p [10];
+	uint32_t pn = 10;
+	vkGetPhysicalDeviceQueueFamilyProperties(dev, &pn, NULL);
+	vkGetPhysicalDeviceQueueFamilyProperties(dev, &pn, p);
+
+	if (q == NULL)
+	{
+		(*n) = 0;
+		for (uint32_t i = 0; i < pn; i++)
+		{
+			VkBool32 presentSupport = VK_TRUE;
+			if (s) {vkGetPhysicalDeviceSurfaceSupportKHR (dev, i, s, &presentSupport);}
+			if (((flags & p [i].queueFlags) == flags) && (presentSupport == VK_TRUE))
+			{
+				(*n) += 1;
+			}
+		}
+	}
+	else
+	{
+		uint32_t i = 0;
+		uint32_t j = 0;
+		while (1)
+		{
+			if (i >= pn) {break;}
+			if (j >= (*n)) {break;}
+			VkBool32 presentSupport = VK_TRUE;
+			if (s) {vkGetPhysicalDeviceSurfaceSupportKHR (dev, i, s, &presentSupport);}
+			if (((flags & p [i].queueFlags) == flags) && (presentSupport == VK_TRUE))
+			{
+				q [j] = i;
+				j++;
+			}
+			i++;
+		}
+	}
+}
+*/
+
+
+struct csc_vk_device
+{
+	uint32_t family_gfx;
+	uint32_t family_present;
+	uint32_t family_transfer;
+};
+
+void csc_vk_find_famqueue3
+(VkPhysicalDevice dev, VkSurfaceKHR s, uint32_t * fam_gfx, uint32_t * fam_present, uint32_t * fam_transfer)
+{
+	VkQueueFamilyProperties q [10];
+	uint32_t n = 10;
+	vkGetPhysicalDeviceQueueFamilyProperties (dev, &n, NULL);
+	vkGetPhysicalDeviceQueueFamilyProperties (dev, &n, q);
+	uint32_t i = UINT32_MAX;
+	for (i = 0; i < n; ++i)
+	{
+		if (q [i].queueCount == 0) {continue;}
+
+		if (fam_present && s && (*fam_present) == UINT32_MAX)
+		{
+			VkBool32 present = VK_FALSE;
+			vkGetPhysicalDeviceSurfaceSupportKHR (dev, i, s, &present);
+			if (present == VK_TRUE)
+			{
+				(*fam_present) = i;
+			}
+		}
+
+		if (fam_gfx && (*fam_gfx) == UINT32_MAX && (q [i].queueFlags & VK_QUEUE_GRAPHICS_BIT))
+		{
+			(*fam_gfx) = i;
+		}
+
+		if (fam_transfer && (*fam_transfer) == UINT32_MAX && (q [i].queueFlags & (VK_QUEUE_TRANSFER_BIT|VK_QUEUE_GRAPHICS_BIT)) == VK_QUEUE_TRANSFER_BIT)
+		{
+			(*fam_transfer) = i;
+		}
+	}
+}
 
 
 uint32_t csc_vk_find_queue (VkPhysicalDevice dev, VkQueueFlags req, VkSurfaceKHR s)
@@ -380,55 +466,70 @@ void pickPhysicalDevice()
 
 void createLogicalDevice()
 {
-	QueueFamilyIndices indices = findQueueFamilies (physicalDevice);
-
-	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-	std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily.value(), indices.presentFamily.value()};
-
-	float queuePriority = 1.0f;
-	for (uint32_t queueFamily : uniqueQueueFamilies)
+	uint32_t fam_gfx = UINT32_MAX;
+	uint32_t fam_present = UINT32_MAX;
+	uint32_t fam_transfer = UINT32_MAX;
+	csc_vk_find_famqueue3 (physicalDevice, surface, &fam_gfx, &fam_present, &fam_transfer);
+	ASSERT (fam_gfx != UINT32_MAX)
+	ASSERT (fam_present != UINT32_MAX)
+	ASSERT (fam_transfer != UINT32_MAX)
+	uint32_t n = 1;
+	float priority = 1.0f;
+	VkDeviceQueueCreateInfo q [3];
+	q[0].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+	q[0].pNext = NULL;
+	q[0].flags = 0;
+	q[0].queueFamilyIndex = fam_gfx;
+	q[0].queueCount = 1;
+	q[0].pQueuePriorities = &priority;
+	q[1].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+	q[1].pNext = NULL;
+	q[1].flags = 0;
+	q[1].queueFamilyIndex = 0;
+	q[1].queueCount = 1;
+	q[1].pQueuePriorities = &priority;
+	q[2].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+	q[2].pNext = NULL;
+	q[2].flags = 0;
+	q[2].queueFamilyIndex = 0;
+	q[2].queueCount = 1;
+	q[2].pQueuePriorities = &priority;
+	if (fam_present != fam_gfx)
 	{
-		VkDeviceQueueCreateInfo queueCreateInfo = {};
-		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-		queueCreateInfo.queueFamilyIndex = queueFamily;
-		queueCreateInfo.queueCount = 1;
-		queueCreateInfo.pQueuePriorities = &queuePriority;
-		queueCreateInfos.push_back(queueCreateInfo);
+		q[n].queueFamilyIndex = fam_present;
+		n++;
 	}
-
+	if (fam_transfer != fam_gfx && fam_transfer != fam_present)
+	{
+		q[n].queueFamilyIndex = fam_transfer;
+		n++;
+	}
 	VkPhysicalDeviceFeatures deviceFeatures = {};
-
-	VkDeviceCreateInfo createInfo = {};
-	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-
-	createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
-	createInfo.pQueueCreateInfos = queueCreateInfos.data();
-
-	createInfo.pEnabledFeatures = &deviceFeatures;
-
-	createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
-	createInfo.ppEnabledExtensionNames = deviceExtensions.data();
-
+	VkDeviceCreateInfo info = {};
+	info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+	info.queueCreateInfoCount = n;
+	info.pQueueCreateInfos = q;
+	info.pEnabledFeatures = &deviceFeatures;
+	info.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
+	info.ppEnabledExtensionNames = deviceExtensions.data();
 	if (enableValidationLayers)
 	{
-		createInfo.enabledLayerCount = VALIDATON_LAYER_COUNT;
-		createInfo.ppEnabledLayerNames = validationLayers;
+		info.enabledLayerCount = VALIDATON_LAYER_COUNT;
+		info.ppEnabledLayerNames = validationLayers;
 	}
 	else
 	{
-		createInfo.enabledLayerCount = 0;
+		info.enabledLayerCount = 0;
+		info.ppEnabledLayerNames = NULL;
 	}
-
-	if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS)
+	if (vkCreateDevice(physicalDevice, &info, nullptr, &device) != VK_SUCCESS)
 	{
 		perror ("failed to create logical device!");
 		exit (EXIT_FAILURE);
 	}
-
-	vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
-	vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
+	vkGetDeviceQueue(device, fam_gfx, 0, &graphicsQueue);
+	vkGetDeviceQueue(device, fam_present, 0, &presentQueue);
 }
-
 
 
 void createImageViews()
@@ -686,7 +787,7 @@ void createCommandBuffers ()
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	allocInfo.commandBufferCount = (uint32_t) commandBuffers.size();
 
-	if (vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data()) != VK_SUCCESS)
+	if (vkAllocateCommandBuffers (device, &allocInfo, commandBuffers.data()) != VK_SUCCESS)
 	{
 		perror ("failed to allocate command buffers!");
 		exit (EXIT_FAILURE);
@@ -876,13 +977,15 @@ void createSwapChain()
 	//QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
 	//uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 	csc_vk_pinfo_qf (physicalDevice, surface);
-	uint32_t queueFamilyIndices [2];
-	queueFamilyIndices [0] = csc_vk_find_queue (physicalDevice, VK_QUEUE_GRAPHICS_BIT, NULL);
-	queueFamilyIndices [1] = csc_vk_find_queue (physicalDevice, 0, surface);
-	ASSERT (queueFamilyIndices [0] != UINT32_MAX);
-	ASSERT (queueFamilyIndices [1] != UINT32_MAX);
 
-	TRACE_F("%i %i",queueFamilyIndices [0], queueFamilyIndices [1]);
+
+
+	uint32_t queueFamilyIndices [2] = {UINT32_MAX};
+	csc_vk_find_famqueue3 (physicalDevice, surface, queueFamilyIndices + 0, queueFamilyIndices + 1, NULL);
+	ASSERT (queueFamilyIndices [0] != UINT32_MAX)
+	ASSERT (queueFamilyIndices [1] != UINT32_MAX)
+	TRACE_F("%i %i", queueFamilyIndices [0], queueFamilyIndices [1]);
+
 	if (queueFamilyIndices [0] != queueFamilyIndices [1])
 	{
 		createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;

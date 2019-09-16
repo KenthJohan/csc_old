@@ -47,6 +47,21 @@ struct csc_vk_swapchain
 	VkSwapchainKHR swapChain;
 	VkImage * swapChainImages;
 	uint32_t swapChainImagesCount;
+	VkFormat swapChainImageFormat;
+	VkExtent2D swapChainExtent;
+};
+
+
+struct csc_vk_pipeline
+{
+	VkPipelineLayout pipelineLayout;
+	VkPipeline graphicsPipeline;
+};
+
+
+struct csc_vk_renderpass
+{
+	VkRenderPass renderpass;
 };
 
 

@@ -79,25 +79,17 @@ struct SwapChainSupportDetails
 
 
 
-static VkFormat swapChainImageFormat;
-static VkExtent2D swapChainExtent;
+
 static std::vector<VkImageView> swapChainImageViews;
 static std::vector<VkFramebuffer> swapChainFramebuffers;
-
-static VkRenderPass renderPass;
-static VkPipelineLayout pipelineLayout;
-static VkPipeline graphicsPipeline;
-
-static VkCommandPool commandPool;
 static std::vector<VkCommandBuffer> commandBuffers;
-
 static std::vector<VkSemaphore> imageAvailableSemaphores;
 static std::vector<VkSemaphore> renderFinishedSemaphores;
 static std::vector<VkFence> inFlightFences;
 static size_t currentFrame = 0;
 
 
-void cleanup (struct csc_vk_device * dev, struct csc_vk_swapchain * swapchain)
+void cleanup (struct csc_vk_device * dev, struct csc_vk_swapchain * swapchain, struct csc_vk_pipeline * pipeline, struct csc_vk_renderpass * renderpass, VkCommandPool commandpool)
 {
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
@@ -106,16 +98,16 @@ void cleanup (struct csc_vk_device * dev, struct csc_vk_swapchain * swapchain)
 		vkDestroyFence (dev->logical, inFlightFences[i], nullptr);
 	}
 
-	vkDestroyCommandPool (dev->logical, commandPool, nullptr);
+	vkDestroyCommandPool (dev->logical, commandpool, nullptr);
 
 	for (auto framebuffer : swapChainFramebuffers)
 	{
 		vkDestroyFramebuffer (dev->logical, framebuffer, nullptr);
 	}
 
-	vkDestroyPipeline (dev->logical, graphicsPipeline, nullptr);
-	vkDestroyPipelineLayout (dev->logical, pipelineLayout, nullptr);
-	vkDestroyRenderPass (dev->logical, renderPass, nullptr);
+	vkDestroyPipeline (dev->logical, pipeline->graphicsPipeline, nullptr);
+	vkDestroyPipelineLayout (dev->logical, pipeline->pipelineLayout, nullptr);
+	vkDestroyRenderPass (dev->logical, renderpass->renderpass, nullptr);
 
 	for (auto imageView : swapChainImageViews)
 	{
@@ -351,7 +343,7 @@ void createImageViews (struct csc_vk_device * dev, struct csc_vk_swapchain * swa
 		createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		createInfo.image = swapchain->swapChainImages[i];
 		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		createInfo.format = swapChainImageFormat;
+		createInfo.format = swapchain->swapChainImageFormat;
 		createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
 		createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
 		createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -369,10 +361,10 @@ void createImageViews (struct csc_vk_device * dev, struct csc_vk_swapchain * swa
 	}
 }
 
-void createRenderPass (struct csc_vk_device * dev)
+void createRenderPass (struct csc_vk_device * dev, struct csc_vk_swapchain * swapchain, struct csc_vk_renderpass * renderpass)
 {
 	VkAttachmentDescription colorAttachment = {};
-	colorAttachment.format = swapChainImageFormat;
+	colorAttachment.format = swapchain->swapChainImageFormat;
 	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -407,7 +399,7 @@ void createRenderPass (struct csc_vk_device * dev)
 	renderPassInfo.dependencyCount = 1;
 	renderPassInfo.pDependencies = &dependency;
 
-	if (vkCreateRenderPass (dev->logical, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS)
+	if (vkCreateRenderPass (dev->logical, &renderPassInfo, nullptr, &renderpass->renderpass) != VK_SUCCESS)
 	{
 		perror ("failed to create render pass!");
 		exit (EXIT_FAILURE);
@@ -434,7 +426,7 @@ VkShaderModule createShaderModule (struct csc_vk_device * dev, char const * file
 }
 
 
-void createGraphicsPipeline (struct csc_vk_device * dev)
+void createGraphicsPipeline (struct csc_vk_device * dev, struct csc_vk_swapchain * swapchain, struct csc_vk_pipeline * pipeline, struct csc_vk_renderpass * renderpass)
 {
 	VkShaderModule vertShaderModule = createShaderModule (dev, "../vkhello/shader.vert.spv");
 	VkShaderModule fragShaderModule = createShaderModule (dev, "../vkhello/shader.frag.spv");
@@ -466,14 +458,14 @@ void createGraphicsPipeline (struct csc_vk_device * dev)
 	VkViewport viewport = {};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width = (float) swapChainExtent.width;
-	viewport.height = (float) swapChainExtent.height;
+	viewport.width = (float) swapchain->swapChainExtent.width;
+	viewport.height = (float) swapchain->swapChainExtent.height;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 
 	VkRect2D scissor = {};
 	scissor.offset = {0, 0};
-	scissor.extent = swapChainExtent;
+	scissor.extent = swapchain->swapChainExtent;
 
 	VkPipelineViewportStateCreateInfo viewportState = {};
 	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -517,7 +509,7 @@ void createGraphicsPipeline (struct csc_vk_device * dev)
 	pipelineLayoutInfo.setLayoutCount = 0;
 	pipelineLayoutInfo.pushConstantRangeCount = 0;
 
-	if (vkCreatePipelineLayout (dev->logical, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
+	if (vkCreatePipelineLayout (dev->logical, &pipelineLayoutInfo, nullptr, &pipeline->pipelineLayout) != VK_SUCCESS)
 	{
 		perror ("failed to create pipeline layout!");
 		exit (EXIT_FAILURE);
@@ -533,12 +525,12 @@ void createGraphicsPipeline (struct csc_vk_device * dev)
 	pipelineInfo.pRasterizationState = &rasterizer;
 	pipelineInfo.pMultisampleState = &multisampling;
 	pipelineInfo.pColorBlendState = &colorBlending;
-	pipelineInfo.layout = pipelineLayout;
-	pipelineInfo.renderPass = renderPass;
+	pipelineInfo.layout = pipeline->pipelineLayout;
+	pipelineInfo.renderPass = renderpass->renderpass;
 	pipelineInfo.subpass = 0;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-	if (vkCreateGraphicsPipelines (dev->logical, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)
+	if (vkCreateGraphicsPipelines (dev->logical, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline->graphicsPipeline) != VK_SUCCESS)
 	{
 		perror ("failed to create graphics pipeline!");
 		exit (EXIT_FAILURE);
@@ -548,7 +540,7 @@ void createGraphicsPipeline (struct csc_vk_device * dev)
 	vkDestroyShaderModule (dev->logical, vertShaderModule, nullptr);
 }
 
-void createFramebuffers (struct csc_vk_device * dev)
+void createFramebuffers (struct csc_vk_device * dev, struct csc_vk_swapchain * swapchain, struct csc_vk_renderpass * renderpass)
 {
 	swapChainFramebuffers.resize (swapChainImageViews.size());
 	for (size_t i = 0; i < swapChainImageViews.size(); i++)
@@ -560,11 +552,11 @@ void createFramebuffers (struct csc_vk_device * dev)
 
 		VkFramebufferCreateInfo framebufferInfo = {};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferInfo.renderPass = renderPass;
+		framebufferInfo.renderPass = renderpass->renderpass;
 		framebufferInfo.attachmentCount = 1;
 		framebufferInfo.pAttachments = attachments;
-		framebufferInfo.width = swapChainExtent.width;
-		framebufferInfo.height = swapChainExtent.height;
+		framebufferInfo.width = swapchain->swapChainExtent.width;
+		framebufferInfo.height = swapchain->swapChainExtent.height;
 		framebufferInfo.layers = 1;
 
 		if (vkCreateFramebuffer (dev->logical, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS)
@@ -575,25 +567,25 @@ void createFramebuffers (struct csc_vk_device * dev)
 	}
 }
 
-void createCommandPool (struct csc_vk_device * dev)
+void createCommandPool (struct csc_vk_device * dev, VkCommandPool * commandpool)
 {
 	VkCommandPoolCreateInfo poolInfo = {};
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	poolInfo.queueFamilyIndex = dev->family_gfx;
-	if (vkCreateCommandPool (dev->logical, &poolInfo, nullptr, &commandPool) != VK_SUCCESS)
+	if (vkCreateCommandPool (dev->logical, &poolInfo, nullptr, commandpool) != VK_SUCCESS)
 	{
 		perror ("failed to create command pool!");
 		exit (EXIT_FAILURE);
 	}
 }
 
-void createCommandBuffers (struct csc_vk_device * dev)
+void createCommandBuffers (struct csc_vk_device * dev, struct csc_vk_swapchain * swapchain, struct csc_vk_pipeline * pipeline, struct csc_vk_renderpass * renderpass, VkCommandPool commandpool)
 {
 	commandBuffers.resize(swapChainFramebuffers.size());
 
 	VkCommandBufferAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.commandPool = commandPool;
+	allocInfo.commandPool = commandpool;
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	allocInfo.commandBufferCount = (uint32_t) commandBuffers.size();
 
@@ -616,10 +608,10 @@ void createCommandBuffers (struct csc_vk_device * dev)
 
 		VkRenderPassBeginInfo renderPassInfo = {};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo.renderPass = renderPass;
+		renderPassInfo.renderPass = renderpass->renderpass;
 		renderPassInfo.framebuffer = swapChainFramebuffers[i];
 		renderPassInfo.renderArea.offset = {0, 0};
-		renderPassInfo.renderArea.extent = swapChainExtent;
+		renderPassInfo.renderArea.extent = swapchain->swapChainExtent;
 
 		VkClearValue clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
 		renderPassInfo.clearValueCount = 1;
@@ -627,7 +619,7 @@ void createCommandBuffers (struct csc_vk_device * dev)
 
 		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->graphicsPipeline);
 
 		vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
 
@@ -821,8 +813,8 @@ void createSwapChain (struct csc_vk_device * dev, VkSurfaceKHR surface, struct c
 	swapchain->swapChainImages = (VkImage*)malloc (sizeof (VkImage) * swapchain->swapChainImagesCount);
 	vkGetSwapchainImagesKHR (dev->logical, swapchain->swapChain, &swapchain->swapChainImagesCount, swapchain->swapChainImages);
 
-	swapChainImageFormat = surfaceFormat.format;
-	swapChainExtent = extent;
+	swapchain->swapChainImageFormat = surfaceFormat.format;
+	swapchain->swapChainExtent = extent;
 }
 
 
@@ -837,6 +829,9 @@ void run()
 	GLFWwindow* window = glfwCreateWindow (WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
 	struct csc_vk_device dev;
 	struct csc_vk_swapchain swapchain;
+	struct csc_vk_pipeline pipeline;
+	struct csc_vk_renderpass renderpass;
+	VkCommandPool commandPool;
 	createInstance (&instance);
 	setupDebugMessenger (instance, &debugMessenger);
 	if (glfwCreateWindowSurface (instance, window, nullptr, &surface) != VK_SUCCESS)
@@ -848,11 +843,11 @@ void run()
 	createLogicalDevice (&dev);
 	createSwapChain (&dev, surface, &swapchain);
 	createImageViews (&dev, &swapchain);
-	createRenderPass (&dev);
-	createGraphicsPipeline(&dev);
-	createFramebuffers (&dev);
-	createCommandPool (&dev);
-	createCommandBuffers (&dev);
+	createRenderPass (&dev, &swapchain, &renderpass);
+	createGraphicsPipeline (&dev, &swapchain, &pipeline, &renderpass);
+	createFramebuffers (&dev, &swapchain, &renderpass);
+	createCommandPool (&dev, &commandPool);
+	createCommandBuffers (&dev, &swapchain, &pipeline, &renderpass, commandPool);
 	createSyncObjects (&dev);
 	while (!glfwWindowShouldClose (window))
 	{
@@ -860,7 +855,7 @@ void run()
 		drawFrame (&dev, &swapchain);
 	}
 	vkDeviceWaitIdle (dev.logical);
-	cleanup (&dev, &swapchain);
+	cleanup (&dev, &swapchain, &pipeline, &renderpass, commandPool);
 	if (enableValidationLayers)
 	{
 		DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);

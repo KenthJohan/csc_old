@@ -41,6 +41,15 @@ struct csc_vk_device
 	VkQueue presentQueue;
 };
 
+
+struct csc_vk_swapchain
+{
+	VkSwapchainKHR swapChain;
+	VkImage * swapChainImages;
+	uint32_t swapChainImagesCount;
+};
+
+
 #define CSC_VK_LAYER_COUNT 32
 int csc_vk_layer_exist (char const * layername)
 {

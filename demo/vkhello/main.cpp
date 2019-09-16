@@ -44,10 +44,10 @@ const bool enableValidationLayers = true;
 VkResult CreateDebugUtilsMessengerEXT
 (VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger)
 {
-	auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-	if (func != nullptr)
+	PFN_vkCreateDebugUtilsMessengerEXT func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+	if (func != NULL)
 	{
-		return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+		return func (instance, pCreateInfo, pAllocator, pDebugMessenger);
 	}
 	else
 	{
@@ -58,22 +58,12 @@ VkResult CreateDebugUtilsMessengerEXT
 void DestroyDebugUtilsMessengerEXT
 (VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator)
 {
-	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-	if (func != nullptr)
+	PFN_vkDestroyDebugUtilsMessengerEXT func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+	if (func != NULL)
 	{
-		func(instance, debugMessenger, pAllocator);
+		func (instance, debugMessenger, pAllocator);
 	}
 }
-
-struct QueueFamilyIndices
-{
-	std::optional<uint32_t> graphicsFamily;
-	std::optional<uint32_t> presentFamily;
-	bool isComplete()
-	{
-		return graphicsFamily.has_value() && presentFamily.has_value();
-	}
-};
 
 struct SwapChainSupportDetails
 {
@@ -83,12 +73,12 @@ struct SwapChainSupportDetails
 };
 
 
-static VkInstance instance;
-static VkDebugUtilsMessengerEXT debugMessenger;
-static VkSurfaceKHR surface;
 
-static VkSwapchainKHR swapChain;
-static std::vector<VkImage> swapChainImages;
+
+
+
+
+
 static VkFormat swapChainImageFormat;
 static VkExtent2D swapChainExtent;
 static std::vector<VkImageView> swapChainImageViews;
@@ -107,7 +97,7 @@ static std::vector<VkFence> inFlightFences;
 static size_t currentFrame = 0;
 
 
-void cleanup (struct csc_vk_device * dev)
+void cleanup (struct csc_vk_device * dev, struct csc_vk_swapchain * swapchain)
 {
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
@@ -132,16 +122,8 @@ void cleanup (struct csc_vk_device * dev)
 		vkDestroyImageView (dev->logical, imageView, nullptr);
 	}
 
-	vkDestroySwapchainKHR (dev->logical, swapChain, nullptr);
+	vkDestroySwapchainKHR (dev->logical, swapchain->swapChain, nullptr);
 	vkDestroyDevice (dev->logical, nullptr);
-
-	if (enableValidationLayers)
-	{
-		DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
-	}
-
-	vkDestroySurfaceKHR (instance, surface, nullptr);
-	vkDestroyInstance (instance, nullptr);
 }
 
 
@@ -150,10 +132,10 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback
 {
 	(VkDebugUtilsMessageTypeFlagsEXT)messageType;
 	(VkDebugUtilsMessengerCallbackDataEXT*)pUserData;
-	if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) {fprintf (stderr, "VERBOSE|");};
-	if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {fprintf (stderr, "VERBOSE|");};
-	if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {fprintf (stderr, "VERBOSE|");};
-	if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {fprintf (stderr, "VERBOSE");};
+	if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) {fprintf (stderr, "VERBOSE|");}
+	if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {fprintf (stderr, "VERBOSE|");}
+	if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {fprintf (stderr, "VERBOSE|");}
+	if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {fprintf (stderr, "VERBOSE");}
 	fprintf (stderr, "\n");
 	fprintf (stderr, "validation layer: %s\n", pCallbackData->pMessage);
 	return VK_FALSE;
@@ -169,13 +151,13 @@ void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& create
 	createInfo.pfnUserCallback = debugCallback;
 }
 
-void setupDebugMessenger ()
+void setupDebugMessenger (VkInstance instance, VkDebugUtilsMessengerEXT * debugMessenger)
 {
 	if (!enableValidationLayers) {return;};
 	VkDebugUtilsMessengerCreateInfoEXT createInfo;
 	populateDebugMessengerCreateInfo (createInfo);
 
-	if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS)
+	if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, debugMessenger) != VK_SUCCESS)
 	{
 		perror ("failed to set up debug messenger!");
 		exit (EXIT_FAILURE);
@@ -184,7 +166,7 @@ void setupDebugMessenger ()
 
 
 
-void createInstance()
+void createInstance (VkInstance * instance)
 {
 	if (enableValidationLayers && !csc_vk_layers_exist (validationLayers, VALIDATON_LAYER_COUNT))
 	{
@@ -226,7 +208,7 @@ void createInstance()
 
 		createInfo.pNext = nullptr;
 	}
-	if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS)
+	if (vkCreateInstance(&createInfo, nullptr, instance) != VK_SUCCESS)
 	{
 		perror ("failed to create instance!");
 		exit (EXIT_FAILURE);
@@ -249,7 +231,7 @@ bool checkDeviceExtensionSupport(VkPhysicalDevice device)
 	return requiredExtensions.empty();
 }
 
-SwapChainSupportDetails querySwapChainSupport (VkPhysicalDevice device)
+SwapChainSupportDetails querySwapChainSupport (VkPhysicalDevice device, VkSurfaceKHR surface)
 {
 	SwapChainSupportDetails details;
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
@@ -270,7 +252,7 @@ SwapChainSupportDetails querySwapChainSupport (VkPhysicalDevice device)
 	return details;
 }
 
-void pickPhysicalDevice (struct csc_vk_device * dev)
+void pickPhysicalDevice (VkInstance instance, struct csc_vk_device * dev, VkSurfaceKHR surface)
 {
 	VkPhysicalDevice phys [10];
 	uint32_t n = 10;
@@ -360,14 +342,14 @@ void createLogicalDevice (struct csc_vk_device * dev)
 }
 
 
-void createImageViews (struct csc_vk_device * dev)
+void createImageViews (struct csc_vk_device * dev, struct csc_vk_swapchain * swapchain)
 {
-	swapChainImageViews.resize(swapChainImages.size());
-	for (size_t i = 0; i < swapChainImages.size(); i++)
+	swapChainImageViews.resize (swapchain->swapChainImagesCount);
+	for (size_t i = 0; i < swapchain->swapChainImagesCount; i++)
 	{
 		VkImageViewCreateInfo createInfo = {};
 		createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		createInfo.image = swapChainImages[i];
+		createInfo.image = swapchain->swapChainImages[i];
 		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 		createInfo.format = swapChainImageFormat;
 		createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -684,13 +666,13 @@ void createSyncObjects (struct csc_vk_device * dev)
 	}
 }
 
-void drawFrame (struct csc_vk_device * dev)
+void drawFrame (struct csc_vk_device * dev, struct csc_vk_swapchain * swapchain)
 {
 	vkWaitForFences (dev->logical, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 	vkResetFences (dev->logical, 1, &inFlightFences[currentFrame]);
 
 	uint32_t imageIndex;
-	vkAcquireNextImageKHR (dev->logical, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+	vkAcquireNextImageKHR (dev->logical, swapchain->swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
 
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -720,7 +702,7 @@ void drawFrame (struct csc_vk_device * dev)
 	presentInfo.waitSemaphoreCount = 1;
 	presentInfo.pWaitSemaphores = signalSemaphores;
 
-	VkSwapchainKHR swapChains[] = {swapChain};
+	VkSwapchainKHR swapChains[] = {swapchain->swapChain};
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = swapChains;
 
@@ -777,9 +759,9 @@ VkExtent2D chooseSwapExtent (const VkSurfaceCapabilitiesKHR& capabilities)
 
 
 
-void createSwapChain (struct csc_vk_device * dev)
+void createSwapChain (struct csc_vk_device * dev, VkSurfaceKHR surface, struct csc_vk_swapchain * swapchain)
 {
-	SwapChainSupportDetails swapChainSupport = querySwapChainSupport (dev->phys);
+	SwapChainSupportDetails swapChainSupport = querySwapChainSupport (dev->phys, surface);
 
 	VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
 	VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
@@ -829,15 +811,15 @@ void createSwapChain (struct csc_vk_device * dev)
 
 	createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-	if (vkCreateSwapchainKHR (dev->logical, &createInfo, nullptr, &swapChain) != VK_SUCCESS)
+	if (vkCreateSwapchainKHR (dev->logical, &createInfo, nullptr, &swapchain->swapChain) != VK_SUCCESS)
 	{
 		perror ("failed to create swap chain!");
 		exit (EXIT_FAILURE);
 	}
 
-	vkGetSwapchainImagesKHR (dev->logical, swapChain, &imageCount, nullptr);
-	swapChainImages.resize(imageCount);
-	vkGetSwapchainImagesKHR (dev->logical, swapChain, &imageCount, swapChainImages.data());
+	vkGetSwapchainImagesKHR (dev->logical, swapchain->swapChain, &swapchain->swapChainImagesCount, nullptr);
+	swapchain->swapChainImages = (VkImage*)malloc (sizeof (VkImage) * swapchain->swapChainImagesCount);
+	vkGetSwapchainImagesKHR (dev->logical, swapchain->swapChain, &swapchain->swapChainImagesCount, swapchain->swapChainImages);
 
 	swapChainImageFormat = surfaceFormat.format;
 	swapChainExtent = extent;
@@ -846,22 +828,26 @@ void createSwapChain (struct csc_vk_device * dev)
 
 void run()
 {
-	glfwInit();
-	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+	VkSurfaceKHR surface;
+	VkInstance instance;
+	VkDebugUtilsMessengerEXT debugMessenger;
+	glfwInit ();
+	glfwWindowHint (GLFW_CLIENT_API, GLFW_NO_API);
+	glfwWindowHint (GLFW_RESIZABLE, GLFW_FALSE);
+	GLFWwindow* window = glfwCreateWindow (WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
 	struct csc_vk_device dev;
-	createInstance();
-	setupDebugMessenger();
+	struct csc_vk_swapchain swapchain;
+	createInstance (&instance);
+	setupDebugMessenger (instance, &debugMessenger);
 	if (glfwCreateWindowSurface (instance, window, nullptr, &surface) != VK_SUCCESS)
 	{
 		perror ("failed to create window surface!");
 		exit (EXIT_FAILURE);
 	}
-	pickPhysicalDevice (&dev);
+	pickPhysicalDevice (instance, &dev, surface);
 	createLogicalDevice (&dev);
-	createSwapChain (&dev);
-	createImageViews (&dev);
+	createSwapChain (&dev, surface, &swapchain);
+	createImageViews (&dev, &swapchain);
 	createRenderPass (&dev);
 	createGraphicsPipeline(&dev);
 	createFramebuffers (&dev);
@@ -871,10 +857,16 @@ void run()
 	while (!glfwWindowShouldClose (window))
 	{
 		glfwPollEvents ();
-		drawFrame (&dev);
+		drawFrame (&dev, &swapchain);
 	}
 	vkDeviceWaitIdle (dev.logical);
-	cleanup (&dev);
+	cleanup (&dev, &swapchain);
+	if (enableValidationLayers)
+	{
+		DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
+	}
+	vkDestroySurfaceKHR (instance, surface, nullptr);
+	vkDestroyInstance (instance, nullptr);
 	glfwDestroyWindow (window);
 	glfwTerminate ();
 }

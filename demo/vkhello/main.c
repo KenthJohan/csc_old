@@ -51,39 +51,8 @@ void DestroyDebugUtilsMessengerEXT
 	}
 }
 
-struct SwapChainSupportDetails
-{
-	//VkSurfaceCapabilitiesKHR capabilities;
-	//std::vector<VkSurfaceFormatKHR> formats;
-	//std::vector<VkPresentModeKHR> presentModes;
-};
-
 
 static size_t currentFrame = 0;
-
-
-void cleanup (struct csc_vk_device * dev, struct csc_vk_swapchain * swapchain, struct csc_vk_pipeline * pipeline, struct csc_vk_renderpass * renderpass, VkCommandPool commandpool)
-{
-
-	vkDestroyCommandPool (dev->logical, commandpool, NULL);
-
-	for (uint32_t i = 0; i < swapchain->count; i++)
-	{
-		vkDestroyFramebuffer (dev->logical, swapchain->framebuffers [i], NULL);
-	}
-
-	vkDestroyPipeline (dev->logical, pipeline->graphicsPipeline, NULL);
-	vkDestroyPipelineLayout (dev->logical, pipeline->pipelineLayout, NULL);
-	vkDestroyRenderPass (dev->logical, renderpass->renderpass, NULL);
-
-	for (uint32_t i = 0; i < swapchain->count; i++)
-	{
-		vkDestroyImageView (dev->logical, swapchain->imageviews [i], NULL);
-	}
-
-	vkDestroySwapchainKHR (dev->logical, swapchain->swapchain, NULL);
-	vkDestroyDevice (dev->logical, NULL);
-}
 
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback
@@ -816,7 +785,20 @@ void run()
 		vkDestroySemaphore (dev.logical, imageAvailableSemaphores[i], NULL);
 		vkDestroyFence (dev.logical, inFlightFences[i], NULL);
 	}
-	cleanup (&dev, &swapchain, &pipeline, &renderpass, commandPool);
+	vkDestroyCommandPool (dev.logical, commandPool, NULL);
+	for (uint32_t i = 0; i < swapchain.count; i++)
+	{
+		vkDestroyFramebuffer (dev.logical, swapchain.framebuffers [i], NULL);
+	}
+	vkDestroyPipeline (dev.logical, pipeline.graphicsPipeline, NULL);
+	vkDestroyPipelineLayout (dev.logical, pipeline.pipelineLayout, NULL);
+	vkDestroyRenderPass (dev.logical, renderpass.renderpass, NULL);
+	for (uint32_t i = 0; i < swapchain.count; i++)
+	{
+		vkDestroyImageView (dev.logical, swapchain.imageviews [i], NULL);
+	}
+	vkDestroySwapchainKHR (dev.logical, swapchain.swapchain, NULL);
+	vkDestroyDevice (dev.logical, NULL);
 	if (enableValidationLayers)
 	{
 		DestroyDebugUtilsMessengerEXT(instance, debugMessenger, NULL);

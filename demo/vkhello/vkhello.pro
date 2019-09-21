@@ -7,8 +7,8 @@ CONFIG += c++17
 #QMAKE_CXXFLAGS += -std=c++17
 
 SOURCES += \
-    main.cpp \
-    #main2.cpp
+    main.c
+     #main2.cpp
 
 
 

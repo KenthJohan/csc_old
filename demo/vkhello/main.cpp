@@ -3,16 +3,7 @@
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan.h>
 
-#include <iostream>
-#include <fstream>
-#include <stdexcept>
-#include <algorithm>
-#include <vector>
-#include <cstring>
-#include <cstdlib>
-#include <cstdint>
-#include <optional>
-#include <set>
+#include <string.h>
 
 #include <csc_malloc_file.h>
 #include <csc_basic.h>
@@ -31,9 +22,9 @@ static char const * validationLayers [VALIDATON_LAYER_COUNT] =
 };
 
 #ifdef NDEBUG
-const bool enableValidationLayers = false;
+int enableValidationLayers = 0;
 #else
-const bool enableValidationLayers = true;
+int enableValidationLayers = 1;
 #endif
 
 VkResult CreateDebugUtilsMessengerEXT
@@ -62,9 +53,9 @@ void DestroyDebugUtilsMessengerEXT
 
 struct SwapChainSupportDetails
 {
-	VkSurfaceCapabilitiesKHR capabilities;
-	std::vector<VkSurfaceFormatKHR> formats;
-	std::vector<VkPresentModeKHR> presentModes;
+	//VkSurfaceCapabilitiesKHR capabilities;
+	//std::vector<VkSurfaceFormatKHR> formats;
+	//std::vector<VkPresentModeKHR> presentModes;
 };
 
 
@@ -74,24 +65,24 @@ static size_t currentFrame = 0;
 void cleanup (struct csc_vk_device * dev, struct csc_vk_swapchain * swapchain, struct csc_vk_pipeline * pipeline, struct csc_vk_renderpass * renderpass, VkCommandPool commandpool)
 {
 
-	vkDestroyCommandPool (dev->logical, commandpool, nullptr);
+	vkDestroyCommandPool (dev->logical, commandpool, NULL);
 
 	for (uint32_t i = 0; i < swapchain->count; i++)
 	{
-		vkDestroyFramebuffer (dev->logical, swapchain->framebuffers [i], nullptr);
+		vkDestroyFramebuffer (dev->logical, swapchain->framebuffers [i], NULL);
 	}
 
-	vkDestroyPipeline (dev->logical, pipeline->graphicsPipeline, nullptr);
-	vkDestroyPipelineLayout (dev->logical, pipeline->pipelineLayout, nullptr);
-	vkDestroyRenderPass (dev->logical, renderpass->renderpass, nullptr);
+	vkDestroyPipeline (dev->logical, pipeline->graphicsPipeline, NULL);
+	vkDestroyPipelineLayout (dev->logical, pipeline->pipelineLayout, NULL);
+	vkDestroyRenderPass (dev->logical, renderpass->renderpass, NULL);
 
 	for (uint32_t i = 0; i < swapchain->count; i++)
 	{
-		vkDestroyImageView (dev->logical, swapchain->imageviews [i], nullptr);
+		vkDestroyImageView (dev->logical, swapchain->imageviews [i], NULL);
 	}
 
-	vkDestroySwapchainKHR (dev->logical, swapchain->swapchain, nullptr);
-	vkDestroyDevice (dev->logical, nullptr);
+	vkDestroySwapchainKHR (dev->logical, swapchain->swapchain, NULL);
+	vkDestroyDevice (dev->logical, NULL);
 }
 
 
@@ -110,22 +101,22 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback
 }
 
 
-void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo)
+void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT * createInfo)
 {
-	createInfo = {};
-	createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-	createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-	createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-	createInfo.pfnUserCallback = debugCallback;
+	memset (createInfo, 0, sizeof (VkDebugUtilsMessengerCreateInfoEXT));
+	createInfo->sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+	createInfo->messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+	createInfo->messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+	createInfo->pfnUserCallback = debugCallback;
 }
 
 void setupDebugMessenger (VkInstance instance, VkDebugUtilsMessengerEXT * debugMessenger)
 {
 	if (!enableValidationLayers) {return;}
 	VkDebugUtilsMessengerCreateInfoEXT createInfo;
-	populateDebugMessengerCreateInfo (createInfo);
+	populateDebugMessengerCreateInfo (&createInfo);
 
-	if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, debugMessenger) != VK_SUCCESS)
+	if (CreateDebugUtilsMessengerEXT(instance, &createInfo, NULL, debugMessenger) != VK_SUCCESS)
 	{
 		perror ("failed to set up debug messenger!");
 		exit (EXIT_FAILURE);
@@ -167,41 +158,20 @@ void createInstance (VkInstance * instance)
 		createInfo.enabledLayerCount = VALIDATON_LAYER_COUNT;
 		createInfo.ppEnabledLayerNames = validationLayers;
 
-		populateDebugMessengerCreateInfo(debugCreateInfo);
+		populateDebugMessengerCreateInfo (&debugCreateInfo);
 		createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*) &debugCreateInfo;
 	}
 	else
 	{
 		createInfo.enabledLayerCount = 0;
 
-		createInfo.pNext = nullptr;
+		createInfo.pNext = NULL;
 	}
-	if (vkCreateInstance(&createInfo, nullptr, instance) != VK_SUCCESS)
+	if (vkCreateInstance(&createInfo, NULL, instance) != VK_SUCCESS)
 	{
 		perror ("failed to create instance!");
 		exit (EXIT_FAILURE);
 	}
-}
-
-SwapChainSupportDetails querySwapChainSupport (VkPhysicalDevice device, VkSurfaceKHR surface)
-{
-	SwapChainSupportDetails details;
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
-	uint32_t formatCount;
-	vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
-	if (formatCount != 0)
-	{
-		details.formats.resize(formatCount);
-		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
-	}
-	uint32_t presentModeCount;
-	vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
-	if (presentModeCount != 0)
-	{
-		details.presentModes.resize(presentModeCount);
-		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data());
-	}
-	return details;
 }
 
 void pickPhysicalDevice (VkInstance instance, struct csc_vk_device * dev, VkSurfaceKHR surface)
@@ -288,7 +258,7 @@ void createLogicalDevice (struct csc_vk_device * dev)
 		info.enabledLayerCount = 0;
 		info.ppEnabledLayerNames = NULL;
 	}
-	if (vkCreateDevice (dev->phys, &info, nullptr, &dev->logical) != VK_SUCCESS)
+	if (vkCreateDevice (dev->phys, &info, NULL, &dev->logical) != VK_SUCCESS)
 	{
 		perror ("failed to create logical device!");
 		exit (EXIT_FAILURE);
@@ -316,7 +286,7 @@ void createImageViews (VkDevice logical, struct csc_vk_swapchain * swapchain)
 		createInfo.subresourceRange.levelCount = 1;
 		createInfo.subresourceRange.baseArrayLayer = 0;
 		createInfo.subresourceRange.layerCount = 1;
-		if (vkCreateImageView (logical, &createInfo, nullptr, &swapchain->imageviews[i]) != VK_SUCCESS)
+		if (vkCreateImageView (logical, &createInfo, NULL, &swapchain->imageviews[i]) != VK_SUCCESS)
 		{
 			perror ("failed to create image views!");
 			exit (EXIT_FAILURE);
@@ -362,7 +332,7 @@ void createRenderPass (struct csc_vk_device * dev, struct csc_vk_swapchain * swa
 	renderPassInfo.dependencyCount = 1;
 	renderPassInfo.pDependencies = &dependency;
 
-	if (vkCreateRenderPass (dev->logical, &renderPassInfo, nullptr, &renderpass->renderpass) != VK_SUCCESS)
+	if (vkCreateRenderPass (dev->logical, &renderPassInfo, NULL, &renderpass->renderpass) != VK_SUCCESS)
 	{
 		perror ("failed to create render pass!");
 		exit (EXIT_FAILURE);
@@ -381,7 +351,7 @@ VkShaderModule createShaderModule (struct csc_vk_device * dev, char const * file
 	//Any memory that's allocated dynamically via new or malloc is guaranteed to be properly aligned for objects of any type
 	createInfo.pCode = (uint32_t const*) code;
 	VkShaderModule shaderModule;
-	if (vkCreateShaderModule (dev->logical, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+	if (vkCreateShaderModule (dev->logical, &createInfo, NULL, &shaderModule) != VK_SUCCESS)
 	{
 		perror ("failed to create shader module!");
 		exit (EXIT_FAILURE);
@@ -428,7 +398,8 @@ void createGraphicsPipeline (struct csc_vk_device * dev, struct csc_vk_swapchain
 	viewport.maxDepth = 1.0f;
 
 	VkRect2D scissor = {};
-	scissor.offset = {0, 0};
+	scissor.offset.x = 0;
+	scissor.offset.y = 0;
 	scissor.extent = swapchain->extent;
 
 	VkPipelineViewportStateCreateInfo viewportState = {};
@@ -473,7 +444,7 @@ void createGraphicsPipeline (struct csc_vk_device * dev, struct csc_vk_swapchain
 	pipelineLayoutInfo.setLayoutCount = 0;
 	pipelineLayoutInfo.pushConstantRangeCount = 0;
 
-	if (vkCreatePipelineLayout (dev->logical, &pipelineLayoutInfo, nullptr, &pipeline->pipelineLayout) != VK_SUCCESS)
+	if (vkCreatePipelineLayout (dev->logical, &pipelineLayoutInfo, NULL, &pipeline->pipelineLayout) != VK_SUCCESS)
 	{
 		perror ("failed to create pipeline layout!");
 		exit (EXIT_FAILURE);
@@ -494,14 +465,14 @@ void createGraphicsPipeline (struct csc_vk_device * dev, struct csc_vk_swapchain
 	pipelineInfo.subpass = 0;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-	if (vkCreateGraphicsPipelines (dev->logical, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline->graphicsPipeline) != VK_SUCCESS)
+	if (vkCreateGraphicsPipelines (dev->logical, VK_NULL_HANDLE, 1, &pipelineInfo, NULL, &pipeline->graphicsPipeline) != VK_SUCCESS)
 	{
 		perror ("failed to create graphics pipeline!");
 		exit (EXIT_FAILURE);
 	}
 
-	vkDestroyShaderModule (dev->logical, fragShaderModule, nullptr);
-	vkDestroyShaderModule (dev->logical, vertShaderModule, nullptr);
+	vkDestroyShaderModule (dev->logical, fragShaderModule, NULL);
+	vkDestroyShaderModule (dev->logical, vertShaderModule, NULL);
 }
 
 void createFramebuffers (struct csc_vk_device * dev, struct csc_vk_swapchain * swapchain, struct csc_vk_renderpass * renderpass)
@@ -523,7 +494,7 @@ void createFramebuffers (struct csc_vk_device * dev, struct csc_vk_swapchain * s
 		framebufferInfo.height = swapchain->extent.height;
 		framebufferInfo.layers = 1;
 
-		if (vkCreateFramebuffer (dev->logical, &framebufferInfo, nullptr, &swapchain->framebuffers[i]) != VK_SUCCESS)
+		if (vkCreateFramebuffer (dev->logical, &framebufferInfo, NULL, &swapchain->framebuffers[i]) != VK_SUCCESS)
 		{
 			perror ("failed to create framebuffer!");
 			exit (EXIT_FAILURE);
@@ -536,7 +507,7 @@ void createCommandPool (struct csc_vk_device * dev, VkCommandPool * commandpool)
 	VkCommandPoolCreateInfo poolInfo = {};
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	poolInfo.queueFamilyIndex = dev->family_gfx;
-	if (vkCreateCommandPool (dev->logical, &poolInfo, nullptr, commandpool) != VK_SUCCESS)
+	if (vkCreateCommandPool (dev->logical, &poolInfo, NULL, commandpool) != VK_SUCCESS)
 	{
 		perror ("failed to create command pool!");
 		exit (EXIT_FAILURE);
@@ -574,7 +545,8 @@ void createCommandBuffers (struct csc_vk_device * dev, struct csc_vk_swapchain *
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		renderPassInfo.renderPass = renderpass->renderpass;
 		renderPassInfo.framebuffer = swapchain->framebuffers [i];
-		renderPassInfo.renderArea.offset = {0, 0};
+		renderPassInfo.renderArea.offset.x = 0;
+		renderPassInfo.renderArea.offset.y = 0;
 		renderPassInfo.renderArea.extent = swapchain->extent;
 
 		VkClearValue clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
@@ -608,9 +580,9 @@ void createSyncObjects (struct csc_vk_device * dev, VkSemaphore imageAvailableSe
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
-		if (vkCreateSemaphore (dev->logical, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
-		vkCreateSemaphore (dev->logical, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
-		vkCreateFence (dev->logical, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS)
+		if (vkCreateSemaphore (dev->logical, &semaphoreInfo, NULL, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
+		vkCreateSemaphore (dev->logical, &semaphoreInfo, NULL, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
+		vkCreateFence (dev->logical, &fenceInfo, NULL, &inFlightFences[i]) != VK_SUCCESS)
 		{
 			perror ("failed to create synchronization objects for a frame!");
 			exit (EXIT_FAILURE);
@@ -665,43 +637,42 @@ void drawFrame (struct csc_vk_device * dev, struct csc_vk_swapchain * swapchain,
 	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-VkSurfaceFormatKHR chooseSwapSurfaceFormat (const std::vector<VkSurfaceFormatKHR>& availableFormats)
+uint32_t chooseSwapSurfaceFormat (const VkSurfaceFormatKHR * availableFormats, uint32_t count)
 {
-	for (const auto& availableFormat : availableFormats)
+	for (uint32_t i = 0; i < count; ++i)
 	{
-		if (availableFormat.format == VK_FORMAT_B8G8R8A8_UNORM && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+		if (availableFormats [i].format == VK_FORMAT_B8G8R8A8_UNORM && availableFormats [i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
 		{
-			return availableFormat;
+			return i;
 		}
 	}
-
-	return availableFormats[0];
+	return 0;
 }
 
-VkPresentModeKHR chooseSwapPresentMode (const std::vector<VkPresentModeKHR>& availablePresentModes)
+enum VkPresentModeKHR chooseSwapPresentMode (enum VkPresentModeKHR const * availablePresentModes, uint32_t count)
 {
-	for (const auto& availablePresentMode : availablePresentModes)
+	for (uint32_t i = 0; i < count; ++i)
 	{
-		if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
+		if (availablePresentModes [i] == VK_PRESENT_MODE_MAILBOX_KHR)
 		{
-			return availablePresentMode;
+			return availablePresentModes [i];
 		}
 	}
 	return VK_PRESENT_MODE_FIFO_KHR;
 }
 
-VkExtent2D chooseSwapExtent (const VkSurfaceCapabilitiesKHR& capabilities)
+VkExtent2D chooseSwapExtent (VkSurfaceCapabilitiesKHR const * capabilities, VkExtent2D * extent)
 {
-	if (capabilities.currentExtent.width != UINT32_MAX)
+	if (capabilities->currentExtent.width != UINT32_MAX)
 	{
-		return capabilities.currentExtent;
+		memcpy (extent, &capabilities->currentExtent, sizeof (VkExtent2D));
 	}
 	else
 	{
 		VkExtent2D actualExtent = {WIDTH, HEIGHT};
-		actualExtent.width  = CLAMP (actualExtent.width,  capabilities.minImageExtent.width,  capabilities.maxImageExtent.width);
-		actualExtent.height = CLAMP (actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
-		return actualExtent;
+		actualExtent.width  = CLAMP (actualExtent.width,  capabilities->minImageExtent.width,  capabilities->maxImageExtent.width);
+		actualExtent.height = CLAMP (actualExtent.height, capabilities->minImageExtent.height, capabilities->maxImageExtent.height);
+		memcpy (extent, &actualExtent, sizeof (VkExtent2D));
 	}
 }
 
@@ -713,27 +684,43 @@ VkExtent2D chooseSwapExtent (const VkSurfaceCapabilitiesKHR& capabilities)
 
 void createSwapChain (struct csc_vk_device * dev, VkSurfaceKHR surface, struct csc_vk_swapchain * swapchain)
 {
-	SwapChainSupportDetails swapChainSupport = querySwapChainSupport (dev->phys, surface);
+	VkSurfaceFormatKHR * formats;
+	uint32_t formatCount;
+	vkGetPhysicalDeviceSurfaceFormatsKHR (dev->phys, surface, &formatCount, NULL);
+	formats = (VkSurfaceFormatKHR*)malloc (sizeof (VkSurfaceFormatKHR) * formatCount);
+	vkGetPhysicalDeviceSurfaceFormatsKHR (dev->phys, surface, &formatCount, formats);
+	//SwapChainSupportDetails swapChainSupport = querySwapChainSupport (dev->phys, surface);
 
-	VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
-	VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
-	VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities);
 
-	uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
-	if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount)
+	enum VkPresentModeKHR * presentModes;
+	uint32_t presentModeCount;
+	vkGetPhysicalDeviceSurfacePresentModesKHR (dev->phys, surface, &presentModeCount, NULL);
+	presentModes = (enum VkPresentModeKHR*)malloc (sizeof (enum VkPresentModeKHR) * presentModeCount);
+	vkGetPhysicalDeviceSurfacePresentModesKHR (dev->phys, surface, &presentModeCount, presentModes);
+
+	VkSurfaceCapabilitiesKHR capabilities;
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR (dev->phys, surface, &capabilities);
+
+	uint32_t surfaceFormat = chooseSwapSurfaceFormat (formats, formatCount);
+	VkPresentModeKHR presentMode = chooseSwapPresentMode (presentModes, presentModeCount);
+	//VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities);
+
+	uint32_t imageCount = capabilities.minImageCount + 1;
+	if (capabilities.maxImageCount > 0 && imageCount > capabilities.maxImageCount)
 	{
-		imageCount = swapChainSupport.capabilities.maxImageCount;
+		imageCount = capabilities.maxImageCount;
 	}
 
 	VkSwapchainCreateInfoKHR createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 	createInfo.surface = surface;
 	createInfo.minImageCount = imageCount;
-	createInfo.imageFormat = surfaceFormat.format;
-	createInfo.imageColorSpace = surfaceFormat.colorSpace;
-	createInfo.imageExtent = extent;
+	createInfo.imageFormat = formats [surfaceFormat].format;
+	createInfo.imageColorSpace = formats [surfaceFormat].colorSpace;
+	//createInfo.imageExtent = extent;
 	createInfo.imageArrayLayers = 1;
 	createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	chooseSwapExtent (&capabilities, &createInfo.imageExtent);
 
 	csc_vk_pinfo_qf (dev->phys, surface);
 
@@ -756,28 +743,30 @@ void createSwapChain (struct csc_vk_device * dev, VkSurfaceKHR surface, struct c
 		createInfo.pQueueFamilyIndices = NULL;
 	}
 
-	createInfo.preTransform = swapChainSupport.capabilities.currentTransform;
+	createInfo.preTransform = capabilities.currentTransform;
 	createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 	createInfo.presentMode = presentMode;
 	createInfo.clipped = VK_TRUE;
 
 	createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-	if (vkCreateSwapchainKHR (dev->logical, &createInfo, nullptr, &swapchain->swapchain) != VK_SUCCESS)
+	if (vkCreateSwapchainKHR (dev->logical, &createInfo, NULL, &swapchain->swapchain) != VK_SUCCESS)
 	{
 		perror ("failed to create swap chain!");
 		exit (EXIT_FAILURE);
 	}
 
-	vkGetSwapchainImagesKHR (dev->logical, swapchain->swapchain, &swapchain->count, nullptr);
+	vkGetSwapchainImagesKHR (dev->logical, swapchain->swapchain, &swapchain->count, NULL);
 	swapchain->images = (VkImage*)malloc (sizeof (VkImage) * swapchain->count);
 	swapchain->imageviews = (VkImageView*)malloc (sizeof (VkImageView) * swapchain->count);
 	swapchain->framebuffers = (VkFramebuffer*)malloc (sizeof (VkFramebuffer) * swapchain->count);
 	swapchain->commandbuffers = (VkCommandBuffer*)malloc (sizeof (VkCommandBuffer) * swapchain->count);
 	vkGetSwapchainImagesKHR (dev->logical, swapchain->swapchain, &swapchain->count, swapchain->images);
 
-	swapchain->format = surfaceFormat.format;
-	swapchain->extent = extent;
+	swapchain->format = formats [surfaceFormat].format;
+	swapchain->extent = createInfo.imageExtent;
+	//swapchain->extent = extent;
+	//chooseSwapExtent (&swapChainSupport.capabilities, &swapchain->extent);
 }
 
 
@@ -789,7 +778,7 @@ void run()
 	glfwInit ();
 	glfwWindowHint (GLFW_CLIENT_API, GLFW_NO_API);
 	glfwWindowHint (GLFW_RESIZABLE, GLFW_FALSE);
-	GLFWwindow* window = glfwCreateWindow (WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow (WIDTH, HEIGHT, "Vulkan", NULL, NULL);
 	struct csc_vk_device dev;
 	struct csc_vk_swapchain swapchain;
 	struct csc_vk_pipeline pipeline;
@@ -800,7 +789,7 @@ void run()
 	VkCommandPool commandPool;
 	createInstance (&instance);
 	setupDebugMessenger (instance, &debugMessenger);
-	if (glfwCreateWindowSurface (instance, window, nullptr, &surface) != VK_SUCCESS)
+	if (glfwCreateWindowSurface (instance, window, NULL, &surface) != VK_SUCCESS)
 	{
 		perror ("failed to create window surface!");
 		exit (EXIT_FAILURE);
@@ -823,17 +812,17 @@ void run()
 	vkDeviceWaitIdle (dev.logical);
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
-		vkDestroySemaphore (dev.logical, renderFinishedSemaphores[i], nullptr);
-		vkDestroySemaphore (dev.logical, imageAvailableSemaphores[i], nullptr);
-		vkDestroyFence (dev.logical, inFlightFences[i], nullptr);
+		vkDestroySemaphore (dev.logical, renderFinishedSemaphores[i], NULL);
+		vkDestroySemaphore (dev.logical, imageAvailableSemaphores[i], NULL);
+		vkDestroyFence (dev.logical, inFlightFences[i], NULL);
 	}
 	cleanup (&dev, &swapchain, &pipeline, &renderpass, commandPool);
 	if (enableValidationLayers)
 	{
-		DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
+		DestroyDebugUtilsMessengerEXT(instance, debugMessenger, NULL);
 	}
-	vkDestroySurfaceKHR (instance, surface, nullptr);
-	vkDestroyInstance (instance, nullptr);
+	vkDestroySurfaceKHR (instance, surface, NULL);
+	vkDestroyInstance (instance, NULL);
 	glfwDestroyWindow (window);
 	glfwTerminate ();
 }

@@ -19,20 +19,15 @@
 #include <csc_vk.h>
 #include <csc_glfw.h>
 
-const int WIDTH = 800;
-const int HEIGHT = 600;
-
-const int MAX_FRAMES_IN_FLIGHT = 2;
+#define WIDTH 800
+#define HEIGHT 600
+#define MAX_FRAMES_IN_FLIGHT 2
 
 #define VALIDATON_LAYER_COUNT 1
 static char const * validationLayers [VALIDATON_LAYER_COUNT] =
 {
 "VK_LAYER_KHRONOS_validation"
 //"VK_LAYER_LUNARG_standard_validation"
-};
-
-const std::vector<const char*> deviceExtensions = {
-VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
 #ifdef NDEBUG
@@ -73,48 +68,29 @@ struct SwapChainSupportDetails
 };
 
 
-
-
-
-
-
-
-
-static std::vector<VkImageView> swapChainImageViews;
-static std::vector<VkFramebuffer> swapChainFramebuffers;
-static std::vector<VkCommandBuffer> commandBuffers;
-static std::vector<VkSemaphore> imageAvailableSemaphores;
-static std::vector<VkSemaphore> renderFinishedSemaphores;
-static std::vector<VkFence> inFlightFences;
 static size_t currentFrame = 0;
 
 
 void cleanup (struct csc_vk_device * dev, struct csc_vk_swapchain * swapchain, struct csc_vk_pipeline * pipeline, struct csc_vk_renderpass * renderpass, VkCommandPool commandpool)
 {
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-	{
-		vkDestroySemaphore (dev->logical, renderFinishedSemaphores[i], nullptr);
-		vkDestroySemaphore (dev->logical, imageAvailableSemaphores[i], nullptr);
-		vkDestroyFence (dev->logical, inFlightFences[i], nullptr);
-	}
 
 	vkDestroyCommandPool (dev->logical, commandpool, nullptr);
 
-	for (auto framebuffer : swapChainFramebuffers)
+	for (uint32_t i = 0; i < swapchain->count; i++)
 	{
-		vkDestroyFramebuffer (dev->logical, framebuffer, nullptr);
+		vkDestroyFramebuffer (dev->logical, swapchain->framebuffers [i], nullptr);
 	}
 
 	vkDestroyPipeline (dev->logical, pipeline->graphicsPipeline, nullptr);
 	vkDestroyPipelineLayout (dev->logical, pipeline->pipelineLayout, nullptr);
 	vkDestroyRenderPass (dev->logical, renderpass->renderpass, nullptr);
 
-	for (auto imageView : swapChainImageViews)
+	for (uint32_t i = 0; i < swapchain->count; i++)
 	{
-		vkDestroyImageView (dev->logical, imageView, nullptr);
+		vkDestroyImageView (dev->logical, swapchain->imageviews [i], nullptr);
 	}
 
-	vkDestroySwapchainKHR (dev->logical, swapchain->swapChain, nullptr);
+	vkDestroySwapchainKHR (dev->logical, swapchain->swapchain, nullptr);
 	vkDestroyDevice (dev->logical, nullptr);
 }
 
@@ -145,7 +121,7 @@ void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& create
 
 void setupDebugMessenger (VkInstance instance, VkDebugUtilsMessengerEXT * debugMessenger)
 {
-	if (!enableValidationLayers) {return;};
+	if (!enableValidationLayers) {return;}
 	VkDebugUtilsMessengerCreateInfoEXT createInfo;
 	populateDebugMessengerCreateInfo (createInfo);
 
@@ -205,22 +181,6 @@ void createInstance (VkInstance * instance)
 		perror ("failed to create instance!");
 		exit (EXIT_FAILURE);
 	}
-}
-
-
-
-bool checkDeviceExtensionSupport(VkPhysicalDevice device)
-{
-	uint32_t extensionCount;
-	vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
-	std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-	vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
-	std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
-	for (const auto& extension : availableExtensions)
-	{
-		requiredExtensions.erase(extension.extensionName);
-	}
-	return requiredExtensions.empty();
 }
 
 SwapChainSupportDetails querySwapChainSupport (VkPhysicalDevice device, VkSurfaceKHR surface)
@@ -312,8 +272,12 @@ void createLogicalDevice (struct csc_vk_device * dev)
 	info.queueCreateInfoCount = n;
 	info.pQueueCreateInfos = q;
 	info.pEnabledFeatures = &deviceFeatures;
-	info.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
-	info.ppEnabledExtensionNames = deviceExtensions.data();
+	char const * ext[] =
+	{
+	VK_KHR_SWAPCHAIN_EXTENSION_NAME
+	};
+	info.enabledExtensionCount = countof (ext);
+	info.ppEnabledExtensionNames = ext;
 	if (enableValidationLayers)
 	{
 		info.enabledLayerCount = VALIDATON_LAYER_COUNT;
@@ -334,16 +298,15 @@ void createLogicalDevice (struct csc_vk_device * dev)
 }
 
 
-void createImageViews (struct csc_vk_device * dev, struct csc_vk_swapchain * swapchain)
+void createImageViews (VkDevice logical, struct csc_vk_swapchain * swapchain)
 {
-	swapChainImageViews.resize (swapchain->swapChainImagesCount);
-	for (size_t i = 0; i < swapchain->swapChainImagesCount; i++)
+	for (uint32_t i = 0; i < swapchain->count; i++)
 	{
 		VkImageViewCreateInfo createInfo = {};
 		createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		createInfo.image = swapchain->swapChainImages[i];
+		createInfo.image = swapchain->images[i];
 		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		createInfo.format = swapchain->swapChainImageFormat;
+		createInfo.format = swapchain->format;
 		createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
 		createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
 		createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -353,7 +316,7 @@ void createImageViews (struct csc_vk_device * dev, struct csc_vk_swapchain * swa
 		createInfo.subresourceRange.levelCount = 1;
 		createInfo.subresourceRange.baseArrayLayer = 0;
 		createInfo.subresourceRange.layerCount = 1;
-		if (vkCreateImageView (dev->logical, &createInfo, nullptr, &swapChainImageViews[i]) != VK_SUCCESS)
+		if (vkCreateImageView (logical, &createInfo, nullptr, &swapchain->imageviews[i]) != VK_SUCCESS)
 		{
 			perror ("failed to create image views!");
 			exit (EXIT_FAILURE);
@@ -364,7 +327,7 @@ void createImageViews (struct csc_vk_device * dev, struct csc_vk_swapchain * swa
 void createRenderPass (struct csc_vk_device * dev, struct csc_vk_swapchain * swapchain, struct csc_vk_renderpass * renderpass)
 {
 	VkAttachmentDescription colorAttachment = {};
-	colorAttachment.format = swapchain->swapChainImageFormat;
+	colorAttachment.format = swapchain->format;
 	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -413,8 +376,9 @@ VkShaderModule createShaderModule (struct csc_vk_device * dev, char const * file
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	long length = 0;
 	char const * code = csc_malloc_file1 (filename, &length);
-	ASSERT (length > 0);
+	ASSERT (length > 0)
 	createInfo.codeSize = (size_t) length;
+	//Any memory that's allocated dynamically via new or malloc is guaranteed to be properly aligned for objects of any type
 	createInfo.pCode = (uint32_t const*) code;
 	VkShaderModule shaderModule;
 	if (vkCreateShaderModule (dev->logical, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
@@ -458,14 +422,14 @@ void createGraphicsPipeline (struct csc_vk_device * dev, struct csc_vk_swapchain
 	VkViewport viewport = {};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width = (float) swapchain->swapChainExtent.width;
-	viewport.height = (float) swapchain->swapChainExtent.height;
+	viewport.width = (float) swapchain->extent.width;
+	viewport.height = (float) swapchain->extent.height;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 
 	VkRect2D scissor = {};
 	scissor.offset = {0, 0};
-	scissor.extent = swapchain->swapChainExtent;
+	scissor.extent = swapchain->extent;
 
 	VkPipelineViewportStateCreateInfo viewportState = {};
 	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -542,12 +506,12 @@ void createGraphicsPipeline (struct csc_vk_device * dev, struct csc_vk_swapchain
 
 void createFramebuffers (struct csc_vk_device * dev, struct csc_vk_swapchain * swapchain, struct csc_vk_renderpass * renderpass)
 {
-	swapChainFramebuffers.resize (swapChainImageViews.size());
-	for (size_t i = 0; i < swapChainImageViews.size(); i++)
+	//swapChainFramebuffers.resize (swapchain->count);
+	for (size_t i = 0; i < swapchain->count; i++)
 	{
 		VkImageView attachments[] =
 		{
-		swapChainImageViews[i]
+		swapchain->imageviews[i]
 		};
 
 		VkFramebufferCreateInfo framebufferInfo = {};
@@ -555,11 +519,11 @@ void createFramebuffers (struct csc_vk_device * dev, struct csc_vk_swapchain * s
 		framebufferInfo.renderPass = renderpass->renderpass;
 		framebufferInfo.attachmentCount = 1;
 		framebufferInfo.pAttachments = attachments;
-		framebufferInfo.width = swapchain->swapChainExtent.width;
-		framebufferInfo.height = swapchain->swapChainExtent.height;
+		framebufferInfo.width = swapchain->extent.width;
+		framebufferInfo.height = swapchain->extent.height;
 		framebufferInfo.layers = 1;
 
-		if (vkCreateFramebuffer (dev->logical, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS)
+		if (vkCreateFramebuffer (dev->logical, &framebufferInfo, nullptr, &swapchain->framebuffers[i]) != VK_SUCCESS)
 		{
 			perror ("failed to create framebuffer!");
 			exit (EXIT_FAILURE);
@@ -581,26 +545,26 @@ void createCommandPool (struct csc_vk_device * dev, VkCommandPool * commandpool)
 
 void createCommandBuffers (struct csc_vk_device * dev, struct csc_vk_swapchain * swapchain, struct csc_vk_pipeline * pipeline, struct csc_vk_renderpass * renderpass, VkCommandPool commandpool)
 {
-	commandBuffers.resize(swapChainFramebuffers.size());
+	//commandBuffers.resize (swapchain->count);
 
 	VkCommandBufferAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	allocInfo.commandPool = commandpool;
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocInfo.commandBufferCount = (uint32_t) commandBuffers.size();
+	allocInfo.commandBufferCount = (uint32_t) swapchain->count;
 
-	if (vkAllocateCommandBuffers (dev->logical, &allocInfo, commandBuffers.data()) != VK_SUCCESS)
+	if (vkAllocateCommandBuffers (dev->logical, &allocInfo, swapchain->commandbuffers) != VK_SUCCESS)
 	{
 		perror ("failed to allocate command buffers!");
 		exit (EXIT_FAILURE);
 	}
 
-	for (size_t i = 0; i < commandBuffers.size(); i++)
+	for (size_t i = 0; i < swapchain->count; i++)
 	{
 		VkCommandBufferBeginInfo beginInfo = {};
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
-		if (vkBeginCommandBuffer(commandBuffers[i], &beginInfo) != VK_SUCCESS)
+		if (vkBeginCommandBuffer(swapchain->commandbuffers [i], &beginInfo) != VK_SUCCESS)
 		{
 			perror ("failed to begin recording command buffer!");
 			exit (EXIT_FAILURE);
@@ -609,23 +573,23 @@ void createCommandBuffers (struct csc_vk_device * dev, struct csc_vk_swapchain *
 		VkRenderPassBeginInfo renderPassInfo = {};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		renderPassInfo.renderPass = renderpass->renderpass;
-		renderPassInfo.framebuffer = swapChainFramebuffers[i];
+		renderPassInfo.framebuffer = swapchain->framebuffers [i];
 		renderPassInfo.renderArea.offset = {0, 0};
-		renderPassInfo.renderArea.extent = swapchain->swapChainExtent;
+		renderPassInfo.renderArea.extent = swapchain->extent;
 
 		VkClearValue clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
 		renderPassInfo.clearValueCount = 1;
 		renderPassInfo.pClearValues = &clearColor;
 
-		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdBeginRenderPass (swapchain->commandbuffers [i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->graphicsPipeline);
+		vkCmdBindPipeline (swapchain->commandbuffers [i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->graphicsPipeline);
 
-		vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+		vkCmdDraw (swapchain->commandbuffers [i], 3, 1, 0, 0);
 
-		vkCmdEndRenderPass(commandBuffers[i]);
+		vkCmdEndRenderPass (swapchain->commandbuffers [i]);
 
-		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
+		if (vkEndCommandBuffer (swapchain->commandbuffers [i]) != VK_SUCCESS)
 		{
 			perror("failed to record command buffer!");
 			exit (EXIT_FAILURE);
@@ -633,12 +597,8 @@ void createCommandBuffers (struct csc_vk_device * dev, struct csc_vk_swapchain *
 	}
 }
 
-void createSyncObjects (struct csc_vk_device * dev)
+void createSyncObjects (struct csc_vk_device * dev, VkSemaphore imageAvailableSemaphores[], VkSemaphore renderFinishedSemaphores[], VkFence inFlightFences[])
 {
-	imageAvailableSemaphores.resize (MAX_FRAMES_IN_FLIGHT);
-	renderFinishedSemaphores.resize (MAX_FRAMES_IN_FLIGHT);
-	inFlightFences.resize (MAX_FRAMES_IN_FLIGHT);
-
 	VkSemaphoreCreateInfo semaphoreInfo = {};
 	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
@@ -658,13 +618,13 @@ void createSyncObjects (struct csc_vk_device * dev)
 	}
 }
 
-void drawFrame (struct csc_vk_device * dev, struct csc_vk_swapchain * swapchain)
+void drawFrame (struct csc_vk_device * dev, struct csc_vk_swapchain * swapchain, VkSemaphore imageAvailableSemaphores[], VkSemaphore renderFinishedSemaphores [], VkFence inFlightFences[])
 {
 	vkWaitForFences (dev->logical, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 	vkResetFences (dev->logical, 1, &inFlightFences[currentFrame]);
 
 	uint32_t imageIndex;
-	vkAcquireNextImageKHR (dev->logical, swapchain->swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+	vkAcquireNextImageKHR (dev->logical, swapchain->swapchain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
 
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -676,7 +636,7 @@ void drawFrame (struct csc_vk_device * dev, struct csc_vk_swapchain * swapchain)
 	submitInfo.pWaitDstStageMask = waitStages;
 
 	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
+	submitInfo.pCommandBuffers = &swapchain->commandbuffers [imageIndex];
 
 	VkSemaphore signalSemaphores[] = {renderFinishedSemaphores[currentFrame]};
 	submitInfo.signalSemaphoreCount = 1;
@@ -694,7 +654,7 @@ void drawFrame (struct csc_vk_device * dev, struct csc_vk_swapchain * swapchain)
 	presentInfo.waitSemaphoreCount = 1;
 	presentInfo.pWaitSemaphores = signalSemaphores;
 
-	VkSwapchainKHR swapChains[] = {swapchain->swapChain};
+	VkSwapchainKHR swapChains[] = {swapchain->swapchain};
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = swapChains;
 
@@ -803,18 +763,21 @@ void createSwapChain (struct csc_vk_device * dev, VkSurfaceKHR surface, struct c
 
 	createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-	if (vkCreateSwapchainKHR (dev->logical, &createInfo, nullptr, &swapchain->swapChain) != VK_SUCCESS)
+	if (vkCreateSwapchainKHR (dev->logical, &createInfo, nullptr, &swapchain->swapchain) != VK_SUCCESS)
 	{
 		perror ("failed to create swap chain!");
 		exit (EXIT_FAILURE);
 	}
 
-	vkGetSwapchainImagesKHR (dev->logical, swapchain->swapChain, &swapchain->swapChainImagesCount, nullptr);
-	swapchain->swapChainImages = (VkImage*)malloc (sizeof (VkImage) * swapchain->swapChainImagesCount);
-	vkGetSwapchainImagesKHR (dev->logical, swapchain->swapChain, &swapchain->swapChainImagesCount, swapchain->swapChainImages);
+	vkGetSwapchainImagesKHR (dev->logical, swapchain->swapchain, &swapchain->count, nullptr);
+	swapchain->images = (VkImage*)malloc (sizeof (VkImage) * swapchain->count);
+	swapchain->imageviews = (VkImageView*)malloc (sizeof (VkImageView) * swapchain->count);
+	swapchain->framebuffers = (VkFramebuffer*)malloc (sizeof (VkFramebuffer) * swapchain->count);
+	swapchain->commandbuffers = (VkCommandBuffer*)malloc (sizeof (VkCommandBuffer) * swapchain->count);
+	vkGetSwapchainImagesKHR (dev->logical, swapchain->swapchain, &swapchain->count, swapchain->images);
 
-	swapchain->swapChainImageFormat = surfaceFormat.format;
-	swapchain->swapChainExtent = extent;
+	swapchain->format = surfaceFormat.format;
+	swapchain->extent = extent;
 }
 
 
@@ -831,6 +794,9 @@ void run()
 	struct csc_vk_swapchain swapchain;
 	struct csc_vk_pipeline pipeline;
 	struct csc_vk_renderpass renderpass;
+	VkSemaphore imageAvailableSemaphores [MAX_FRAMES_IN_FLIGHT];
+	VkSemaphore renderFinishedSemaphores [MAX_FRAMES_IN_FLIGHT];
+	VkFence inFlightFences [MAX_FRAMES_IN_FLIGHT];
 	VkCommandPool commandPool;
 	createInstance (&instance);
 	setupDebugMessenger (instance, &debugMessenger);
@@ -842,19 +808,25 @@ void run()
 	pickPhysicalDevice (instance, &dev, surface);
 	createLogicalDevice (&dev);
 	createSwapChain (&dev, surface, &swapchain);
-	createImageViews (&dev, &swapchain);
+	createImageViews (dev.logical, &swapchain);
 	createRenderPass (&dev, &swapchain, &renderpass);
 	createGraphicsPipeline (&dev, &swapchain, &pipeline, &renderpass);
 	createFramebuffers (&dev, &swapchain, &renderpass);
 	createCommandPool (&dev, &commandPool);
 	createCommandBuffers (&dev, &swapchain, &pipeline, &renderpass, commandPool);
-	createSyncObjects (&dev);
+	createSyncObjects (&dev, imageAvailableSemaphores, renderFinishedSemaphores, inFlightFences);
 	while (!glfwWindowShouldClose (window))
 	{
 		glfwPollEvents ();
-		drawFrame (&dev, &swapchain);
+		drawFrame (&dev, &swapchain, imageAvailableSemaphores, renderFinishedSemaphores, inFlightFences);
 	}
 	vkDeviceWaitIdle (dev.logical);
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	{
+		vkDestroySemaphore (dev.logical, renderFinishedSemaphores[i], nullptr);
+		vkDestroySemaphore (dev.logical, imageAvailableSemaphores[i], nullptr);
+		vkDestroyFence (dev.logical, inFlightFences[i], nullptr);
+	}
 	cleanup (&dev, &swapchain, &pipeline, &renderpass, commandPool);
 	if (enableValidationLayers)
 	{
@@ -869,18 +841,6 @@ void run()
 
 int main()
 {
-	//HelloTriangleApplication app;
-
-
-	try
-	{
-		run ();
-	}
-	catch (const std::exception& e)
-	{
-		std::cerr << e.what() << std::endl;
-		return EXIT_FAILURE;
-	}
-
+	run ();
 	return EXIT_SUCCESS;
 }

@@ -33,3 +33,4 @@ SOFTWARE.
 #define SWAPX(a, b)	((a)^=(b),(b)^=(a),(a)^=(b))
 
 #define container_of(ptr, type, member) ((type *)(void *)((char *)(ptr) - offsetof(type, member)))
+#define countof(array) (sizeof(array) / sizeof(array[0]))

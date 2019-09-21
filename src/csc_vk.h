@@ -44,11 +44,14 @@ struct csc_vk_device
 
 struct csc_vk_swapchain
 {
-	VkSwapchainKHR swapChain;
-	VkImage * swapChainImages;
-	uint32_t swapChainImagesCount;
-	VkFormat swapChainImageFormat;
-	VkExtent2D swapChainExtent;
+	VkSwapchainKHR swapchain;
+	VkImage * images;
+	VkImageView * imageviews;
+	VkFramebuffer * framebuffers;
+	VkCommandBuffer * commandbuffers;
+	uint32_t count;
+	VkFormat format;
+	VkExtent2D extent;
 };
 
 

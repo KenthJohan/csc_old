@@ -630,7 +630,7 @@ enum VkPresentModeKHR chooseSwapPresentMode (enum VkPresentModeKHR const * avail
 	return VK_PRESENT_MODE_FIFO_KHR;
 }
 
-VkExtent2D chooseSwapExtent (VkSurfaceCapabilitiesKHR const * capabilities, VkExtent2D * extent)
+void chooseSwapExtent (VkSurfaceCapabilitiesKHR const * capabilities, VkExtent2D * extent)
 {
 	if (capabilities->currentExtent.width != UINT32_MAX)
 	{

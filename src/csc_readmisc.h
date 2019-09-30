@@ -31,9 +31,10 @@ SOFTWARE.
 #include <io.h>
 
 
-int csc_blksread (int fd, char * block [], unsigned block_count, unsigned block_size)
+int csc_readmisc_blks (int fd, char * block [], unsigned block_count, unsigned block_size)
 {
 	//The (bz) is amount of memory left in the block:
+	//It starts with zero to initialize the first block (notice the if zero statement in the while loop).
 	unsigned bz = 0;
 
 	//The (bn) is amount of blocks left:
@@ -92,3 +93,73 @@ int csc_blksread (int fd, char * block [], unsigned block_count, unsigned block_
 		bz -= (unsigned)n;
 	}
 }
+
+
+
+char * csc_readmisc_realloc (int fd, unsigned * count)
+{
+	unsigned nread = 0;
+	unsigned navailable = (*count);
+	char * buf = (char*) malloc (navailable);
+	char * tmp;
+	if (buf == NULL) {return NULL;}
+
+	while (1)
+	{
+		int r = read (fd, buf + nread, navailable - nread);
+		//Check if end of file has been reached:
+		if (r == 0)
+		{
+			break;
+		}
+		//Check for read error:
+		else if (r < 0)
+		{
+			if (errno == EINTR) {continue;}
+			goto error;
+		}
+
+		assert (r >= 0);
+		nread += (unsigned) r;
+
+		//Check if we need more memory:
+		if (navailable - nread < (*count))
+		{
+			navailable *= 2;
+			tmp = realloc (buf, navailable);
+			if (tmp == NULL)
+			{
+				goto error;
+			}
+			//printf ("realloc %i\n", navailable);
+			buf = tmp;
+		}
+	}
+
+	//Check if we need less memory:
+	if (navailable != nread)
+	{
+		tmp = realloc (buf, nread);
+		if (tmp == NULL)
+		{
+			goto error;
+		}
+		//printf ("realloc %i\n", nread);
+		buf = tmp;
+	}
+
+	(*count) = nread;
+	return buf;
+
+error:
+	free (buf);
+	return NULL;
+}
+
+
+
+
+
+
+
+

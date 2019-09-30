@@ -11,7 +11,7 @@
 #include <pthread.h>
 #include <errno.h>
 
-#include <csc_blksread.h>
+#include <csc_readmisc.h>
 
 
 #define TEST_COUNT 14
@@ -72,21 +72,13 @@ void create_threads (pthread_t t [], unsigned n, struct lfds711_stack_state * ss
 void open_process ()
 {
 	int r;
-	char * block [BLOCK_COUNT] = {NULL};
+	unsigned n = 2;
+	char * buf = NULL;
 	FILE * fp = popen ("netstat", "r");
-	r = csc_blksread (fileno (fp), block, BLOCK_COUNT, BLOCK_SIZE);
-	printf ("reader %i\n", r);
-	if (r < 0)
-	{
-		perror ("reader failed");
-	}
-
-	printf ("Block %i:\n%.*s\n", 0, BLOCK_SIZE, block [0]);
-	printf ("Block %i:\n%.*s\n", 1, BLOCK_SIZE, block [1]);
-	printf ("Block %i:\n%.*s\n", 2, BLOCK_SIZE, block [2]);
-	printf ("Block %i:\n%.*s\n", 3, BLOCK_SIZE, block [3]);
+	buf = csc_readmisc_realloc (fileno (fp), &n);
+	assert (buf);
+	printf ("Size %i\n%.*s\n", n, n, buf);
 	r = pclose (fp);
-	printf ("r %i\n", r);
 }
 
 

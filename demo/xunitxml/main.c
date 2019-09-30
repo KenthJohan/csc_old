@@ -163,6 +163,8 @@ int main (int argc, char const * argv [])
 	argparse_init(&argparse, options, usage, 0);
 	argparse_describe(&argparse, DESCRIPTION0, DESCRIPTION1);
 	argc = argparse_parse(&argparse, argc, argv);
+
+	printf ("\n\nargparse result:\n");
 	printf ("thread_count: %d\n", thread_count);
 	printf ("thread_policy: %d\n", thread_policy);
 	printf ("thread_priority: %d\n", thread_priority);

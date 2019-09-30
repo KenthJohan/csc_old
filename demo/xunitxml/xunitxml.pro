@@ -14,4 +14,5 @@ LIBS += -lmxml -llfds711
 SOURCES += main.c xunit.c
 
 HEADERS += $$PWD/xunit.h
+HEADERS += $$PWD/../../src/csc_blksread.h
 HEADERS += $$files($$PWD/../../liblfds711/inc/*.h, true)

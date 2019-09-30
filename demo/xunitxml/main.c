@@ -14,46 +14,19 @@
 #include <csc_readmisc.h>
 
 
-#define TEST_COUNT 14
-#define THREADS 3
-//#define POLICY SCHED_FIFO
-//#define POLICY SCHED_OTHER
-#define POLICY SCHED_RR
-#define PRIORITY 1
-#define BLOCK_COUNT 4
-#define BLOCK_SIZE 64
+#define TCASE_COUNT 11
+#define TCASE_START_MEMORY_SIZE 128
+#define TCASE_FILENAME_MAXLEN 128
 
-
-struct test_data
-{
-	struct lfds711_stack_element se;
-	int long long unsigned user_id;
-	int last;
-	char * block [BLOCK_COUNT];
-};
+#define THREAD_COUNT 2
+#define THREAD_PRIORITY 1
+#define THREAD_POLICY SCHED_RR
+//#define THREAD_POLICY SCHED_FIFO
+//#define THREAD_POLICY SCHED_OTHER
 
 
 
-
-static void * worker (void *arg)
-{
-	assert (arg);
-	struct lfds711_stack_state * ss = arg;
-	while (1)
-	{
-		struct lfds711_stack_element * se;
-		struct test_data * td;
-		int r = lfds711_stack_pop (ss, &se);
-		sleep (rand() % 7);
-		if (r == 0) {break;}
-		td = LFDS711_STACK_GET_VALUE_FROM_ELEMENT (*se);
-		printf ("user_id = %llu\n", td->user_id);
-	}
-	return NULL;
-}
-
-
-void create_threads (pthread_t t [], unsigned n, struct lfds711_stack_state * ss, int policy, int priority)
+void threads_create (pthread_t t [], unsigned n, void *(* func)(void *), struct lfds711_stack_state * ss, int policy, int priority)
 {
 	pthread_attr_t a;
 	pthread_attr_init(&a);
@@ -64,51 +37,103 @@ void create_threads (pthread_t t [], unsigned n, struct lfds711_stack_state * ss
 	pthread_attr_setschedparam (&a, &p);
 	while (n--)
 	{
-		pthread_create (t + n, &a, worker, ss);
+		pthread_create (t + n, &a, func, ss);
 	}
 }
 
 
-void open_process ()
+void threads_join (pthread_t t [], size_t n)
+{
+	while (n--)
+	{
+		pthread_join (t[n], NULL);
+	}
+}
+
+struct caseinfo
+{
+	struct lfds711_stack_element se;
+	int id;
+	unsigned memory_size;
+	char * memory;
+	char * filename;
+};
+
+
+void caseinfo_popen (struct caseinfo * item)
 {
 	int r;
-	unsigned n = 2;
-	char * buf = NULL;
 	FILE * fp = popen ("netstat", "r");
-	buf = csc_readmisc_realloc (fileno (fp), &n);
-	assert (buf);
-	printf ("Size %i\n%.*s\n", n, n, buf);
+	item->memory_size = TCASE_START_MEMORY_SIZE;
+	item->memory = csc_readmisc_realloc (fileno (fp), &item->memory_size);
 	r = pclose (fp);
+	assert (item->memory);
+}
+
+
+void * caseinfo_runner (void * arg)
+{
+	assert (arg);
+	struct lfds711_stack_state * ss = arg;
+	while (1)
+	{
+		struct lfds711_stack_element * se;
+		struct caseinfo * td;
+		int r = lfds711_stack_pop (ss, &se);
+		sleep (rand() % 3);
+		if (r == 0) {break;}
+		td = LFDS711_STACK_GET_VALUE_FROM_ELEMENT (*se);
+		caseinfo_popen (td);
+		printf ("===========\nid %i. n %i. pclose %i\n%.*s\n", td->id, td->memory_size, r, 64, td->memory);
+	}
+	return NULL;
+}
+
+
+void caseinfo_populate_filename (struct caseinfo items [], size_t n, char const * cmd)
+{
+	assert (items);
+	printf ("cmd %s\n", cmd);
+	FILE * fp = popen (cmd, "r");
+	assert (fp);
+	while (n--)
+	{
+		items [n].filename = malloc (TCASE_FILENAME_MAXLEN);
+		assert (items [n].filename);
+		char * r = fgets (items [n].filename, TCASE_FILENAME_MAXLEN, fp);
+		if (r == NULL) {break;}
+		fputs (items [n].filename, stdout);
+	}
+	int r = pclose (fp);
+	printf ("pclose %i\n", r);
+}
+
+
+void caseinfo_populate_ss (struct caseinfo items [], size_t n, struct lfds711_stack_state * ss)
+{
+	assert (items);
+	assert (ss);
+	while (n--)
+	{
+		items [n].id = (int)n;
+		LFDS711_STACK_SET_VALUE_IN_ELEMENT (items[n].se, &items[n]);
+		lfds711_stack_push (ss, &items[n].se);
+	}
 }
 
 
 int main (int argc, char * argv [])
 {
-	/*
 	struct lfds711_stack_state ss;
-	struct test_data *td;
 	lfds711_stack_init_valid_on_current_logical_core (&ss, NULL);
-	td = malloc( sizeof(struct test_data) * TEST_COUNT );
-	for (int long long unsigned i = 0; i < TEST_COUNT; ++i)
-	{
-		td[i].user_id = i;
-		LFDS711_STACK_SET_VALUE_IN_ELEMENT (td[i].se, &td[i]);
-		lfds711_stack_push (&ss, &td[i].se);
-	}
-
-	pthread_t threads[THREADS];
-	create_threads (threads, THREADS, &ss, POLICY, PRIORITY);
-	for (int i = 0; i < THREADS; i++)
-	{
-		pthread_join(threads[i], NULL);
-	}
-
+	struct caseinfo * tcases = malloc (sizeof(struct caseinfo) * TCASE_COUNT);
+	caseinfo_populate_filename (tcases, TCASE_COUNT, "find ../ -name \"*.h\"");
+	caseinfo_populate_ss (tcases, TCASE_COUNT, &ss);
+	pthread_t threads [THREAD_COUNT];
+	threads_create (threads, THREAD_COUNT, caseinfo_runner, &ss, THREAD_POLICY, THREAD_PRIORITY);
+	threads_join (threads, THREAD_COUNT);
 	lfds711_stack_cleanup (&ss, NULL);
-	free (td);
-	*/
-	open_process ();
-
-
+	free (tcases);
 	return EXIT_SUCCESS;
 }
 

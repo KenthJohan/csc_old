@@ -27,17 +27,18 @@ struct textlog_instance
 	struct textlog_message * messages;
 	pthread_t thread;
 	uint32_t flag;
+	FILE * fdes;
 };
 
 
 void textlog_print (struct textlog_instance * instance, char const * text)
 {
-	fputs (text, stdout);
+	fputs (text, instance->fdes);
 }
 
 void textlog_vprintf (struct textlog_instance * instance, char const * fmt, va_list va)
 {
-	vfprintf (stdout, fmt, va);
+	vfprintf (instance->fdes, fmt, va);
 }
 
 
@@ -99,7 +100,7 @@ static void * textlog_runner (void * arg)
 			sleep (1);
 			continue;
 		}
-		sleep (4);
+		sleep (1);
 		struct textlog_message * msg = LFDS711_FREELIST_GET_VALUE_FROM_ELEMENT(*fe);
 		textlog_print (instance, msg->buffer);
 		LFDS711_FREELIST_SET_VALUE_IN_ELEMENT (msg->fe, msg);
@@ -117,6 +118,7 @@ static void textlog_init (struct textlog_instance * instance)
 {
 	instance->flag = 0;
 	instance->messages_count = 0;
+	instance->fdes = stdout;
 }
 
 

@@ -12,7 +12,7 @@ LIBS += -L$$PWD/../../mxml-3.1
 LIBS += -L$$PWD/../../liblfds711/bin
 LIBS += -lmxml -llfds711
 
-SOURCES += main.c xunit.c textlog.c $$PWD/../../argparse/argparse.c
+SOURCES += main.c xunit.c $$PWD/../../argparse/argparse.c
 
 HEADERS += $$PWD/xunit.h
 HEADERS += $$PWD/textlog.h

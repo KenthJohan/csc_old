@@ -120,7 +120,7 @@ NULL,
 int main (int argc, char const * argv [])
 {
 	setbuf (stdout, NULL);
-	textlog_init (&textlogger, 10);
+	textlog_init (&textlogger);
 	int thread_count = THREAD_COUNT;
 	int thread_policy = THREAD_POLICY;
 	int thread_priority = THREAD_PRIORITY;
@@ -161,6 +161,7 @@ int main (int argc, char const * argv [])
 
 
 
+	textlog_start (&textlogger, 20);
 	struct lfds711_stack_state ss;
 	lfds711_stack_init_valid_on_current_logical_core (&ss, NULL);
 	struct caseinfo * tcases = malloc (sizeof(struct caseinfo) * (size_t)caseinfo_count);
@@ -169,6 +170,7 @@ int main (int argc, char const * argv [])
 	pthread_t * threads = malloc (sizeof (pthread_t) * (size_t)thread_count);
 	threads_create (threads, (size_t)thread_count, caseinfo_runner, &ss, thread_policy, thread_priority);
 	threads_join (threads, (size_t)thread_count);
+	printf ("TEXTLOG_FLAG_QUIT\n");
 	textlogger.flag = TEXTLOG_FLAG_QUIT;
 	pthread_join (textlogger.thread, NULL);
 	lfds711_stack_cleanup (&ss, NULL);

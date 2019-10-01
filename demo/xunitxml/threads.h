@@ -2,7 +2,7 @@
 #include <pthread.h>
 
 
-void threads_create (pthread_t t [], size_t n, void *(* func)(void *), void * arg, int policy, int priority)
+static void threads_create (pthread_t t [], size_t n, void *(* func)(void *), void * arg, int policy, int priority)
 {
 	pthread_attr_t a;
 	pthread_attr_init(&a);
@@ -18,7 +18,7 @@ void threads_create (pthread_t t [], size_t n, void *(* func)(void *), void * ar
 }
 
 
-void threads_join (pthread_t t [], size_t n)
+static void threads_join (pthread_t t [], size_t n)
 {
 	while (n--)
 	{

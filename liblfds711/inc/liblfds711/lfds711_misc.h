@@ -219,7 +219,7 @@ static LFDS711_PAL_INLINE void lfds711_misc_force_store( void );
 void lfds711_misc_query( enum lfds711_misc_query query_type, void *query_input, void *query_output );
 
 /***** public in-line functions *****/
-#pragma prefast( disable : 28112, "blah" )
+//#pragma prefast( disable : 28112, "blah" )
 
 static LFDS711_PAL_INLINE void lfds711_misc_force_store()
 {

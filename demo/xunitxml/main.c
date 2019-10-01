@@ -14,7 +14,9 @@
 #include <csc_readmisc.h>
 
 
-#include <argparse.h>
+#include "argparse.h"
+#include "textlog.h"
+#include "threads.h"
 
 
 #define CASEINFO_COUNT 11
@@ -28,38 +30,12 @@
 //#define THREAD_POLICY SCHED_FIFO
 //#define THREAD_POLICY SCHED_OTHER
 
-
-
 #define DESCRIPTION0 \
 "\nThis is test-runner. It will find test and then run them in a thread pool."
 #define DESCRIPTION1 \
 "\nNo additional description of the program is available in this version."
 
-
-void threads_create (pthread_t t [], size_t n, void *(* func)(void *), struct lfds711_stack_state * ss, int policy, int priority)
-{
-	pthread_attr_t a;
-	pthread_attr_init(&a);
-	pthread_attr_setschedpolicy (&a, policy);
-	struct sched_param p;
-	pthread_attr_getschedparam (&a, &p);
-	p.sched_priority = priority;
-	pthread_attr_setschedparam (&a, &p);
-	while (n--)
-	{
-		pthread_create (t + n, &a, func, ss);
-	}
-}
-
-
-void threads_join (pthread_t t [], size_t n)
-{
-	while (n--)
-	{
-		pthread_join (t[n], NULL);
-	}
-}
-
+static struct textlog_instance textlogger;
 
 struct caseinfo
 {
@@ -77,7 +53,7 @@ void caseinfo_popen (struct caseinfo * item)
 	item->memory_size = CASEINFO_START_MEMORY_SIZE;
 	item->memory = csc_readmisc_realloc (fileno (fp), &item->memory_size);
 	int r = pclose (fp);
-	printf ("pclose %i\n", r);
+	textlog_addf (&textlogger, "caseinfo_popen : pclose %i\n", r);
 	assert (item->memory);
 }
 
@@ -92,10 +68,11 @@ void * caseinfo_runner (void * arg)
 		struct caseinfo * cinfo;
 		int r = lfds711_stack_pop (ss, &se);
 		if (r == 0) {break;}
-		sleep (rand() % 2); //Sleep just for simulation
 		cinfo = LFDS711_STACK_GET_VALUE_FROM_ELEMENT (*se);
+		textlog_addf (&textlogger, "lfds711_stack_pop %i\n", cinfo->id);
+		sleep (rand() % 2); //Sleep just for simulation
 		caseinfo_popen (cinfo);
-		printf ("===========\nid %i. n %i. pclose %i\n%.*s\n", cinfo->id, cinfo->memory_size, r, 64, cinfo->memory);
+		textlog_addf (&textlogger, "===========\nid %i. n %i. pclose %i\n%.*s\n", cinfo->id, cinfo->memory_size, r, 64, cinfo->memory);
 	}
 	return NULL;
 }
@@ -105,7 +82,7 @@ void caseinfo_populate_filename (struct caseinfo items [], size_t n, char const 
 {
 	if (n == 0) {return;}
 	assert (items);
-	printf ("cmd %s\n", cmd);
+	textlog_addf (&textlogger, "cmd %s\n", cmd);
 	FILE * fp = popen (cmd, "r");
 	assert (fp);
 	while (n--)
@@ -117,7 +94,7 @@ void caseinfo_populate_filename (struct caseinfo items [], size_t n, char const 
 		fputs (items [n].filename, stdout);
 	}
 	int r = pclose (fp);
-	printf ("pclose %i\n", r);
+	textlog_addf (&textlogger, "pclose %i\n", r);
 }
 
 
@@ -143,6 +120,7 @@ NULL,
 int main (int argc, char const * argv [])
 {
 	setbuf (stdout, NULL);
+	textlog_init (&textlogger, 10);
 	int thread_count = THREAD_COUNT;
 	int thread_policy = THREAD_POLICY;
 	int thread_priority = THREAD_PRIORITY;
@@ -181,6 +159,8 @@ int main (int argc, char const * argv [])
 	assert (caseinfo_count >= 0);
 	assert (thread_policy == SCHED_RR || thread_policy == SCHED_FIFO || thread_policy == SCHED_OTHER);
 
+
+
 	struct lfds711_stack_state ss;
 	lfds711_stack_init_valid_on_current_logical_core (&ss, NULL);
 	struct caseinfo * tcases = malloc (sizeof(struct caseinfo) * (size_t)caseinfo_count);
@@ -189,6 +169,8 @@ int main (int argc, char const * argv [])
 	pthread_t * threads = malloc (sizeof (pthread_t) * (size_t)thread_count);
 	threads_create (threads, (size_t)thread_count, caseinfo_runner, &ss, thread_policy, thread_priority);
 	threads_join (threads, (size_t)thread_count);
+	textlogger.flag = TEXTLOG_FLAG_QUIT;
+	pthread_join (textlogger.thread, NULL);
 	lfds711_stack_cleanup (&ss, NULL);
 	free (tcases);
 	return EXIT_SUCCESS;

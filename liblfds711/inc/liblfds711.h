@@ -4,9 +4,9 @@
   #define LIBLFDS711_H
 
   /***** pragmas on *****/
-  #pragma warning( push )
-  #pragma warning( disable : 4324 )                                          // TRD : 4324 disables MSVC warnings for structure alignment padding due to alignment specifiers
-  #pragma prefast( disable : 28113 28182 28183, "blah" )
+//#pragma warning( push )
+//#pragma warning( disable : 4324 )                                          // TRD : 4324 disables MSVC warnings for structure alignment padding due to alignment specifiers
+//#pragma prefast( disable : 28113 28182 28183, "blah" )
 
   /***** includes *****/
   #include "liblfds711/lfds711_porting_abstraction_layer_compiler.h"
@@ -27,7 +27,7 @@
   #include "liblfds711/lfds711_stack.h"
 
   /***** pragmas off *****/
-  #pragma warning( pop )
+//#pragma warning( pop )
 
 #endif
 

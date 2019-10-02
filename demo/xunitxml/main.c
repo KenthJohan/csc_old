@@ -15,7 +15,7 @@
 
 
 #include "argparse.h"
-#include "textlog.h"
+#include "biqueue.h"
 #include "threads.h"
 #include "tsuite.h"
 
@@ -33,7 +33,7 @@
 #define DESCRIPTION1 \
 "\nNo additional description of the program is available in this version."
 
-static struct textlog_instance textlogger;
+static struct biqueue textlogger;
 
 
 
@@ -44,10 +44,38 @@ static const char *const usage[] =
 NULL,
 };
 
+
+void * runner_suite (void * arg)
+{
+	struct tsuite * suite = arg;
+	assert (suite);
+	while (1)
+	{
+		if (suite->flags & TSUITE_FLAG_COMPLETE) {break;}
+		sleep (1);
+		tsuite_runner0 (suite);
+	}
+	return NULL;
+}
+
+
+void * runner_textlog (void * arg)
+{
+	struct biqueue * tlog = arg;
+	assert (tlog);
+	while (1)
+	{
+		if (tlog->flags & BIQUEUE_FLAG_COMPLETE) {break;}
+		biqueue_runner0 (tlog);
+	}
+	return NULL;
+}
+
+
 int main (int argc, char const * argv [])
 {
 	setbuf (stdout, NULL);
-	textlog_init (&textlogger);
+	biqueue_init (&textlogger);
 	int thread_count = THREAD_COUNT;
 	int thread_policy = THREAD_POLICY;
 	int thread_priority = THREAD_PRIORITY;
@@ -93,22 +121,32 @@ int main (int argc, char const * argv [])
 	assert (caseinfo_count >= 0);
 	assert (thread_policy == SCHED_RR || thread_policy == SCHED_FIFO || thread_policy == SCHED_OTHER);
 
-	textlog_start (&textlogger, 20);
+
+
+
+	biqueue_start (&textlogger, 5);
 
 	struct tsuite suite;
 	suite.logger = &textlogger;
 	suite.tcases_count = (size_t)caseinfo_count;
-	suite.threads_count = (size_t)thread_count;
 	suite.findcmd = findcmd;
-	suite.thread_policy = thread_policy;
-	suite.thread_priority = thread_priority;
-	tsuite_start (&suite);
-	threads_join (suite.threads, suite.threads_count);
+	tsuite_init (&suite);
 
-	printf ("TEXTLOG_FLAG_QUIT\n");
-	textlogger.flag = TEXTLOG_FLAG_QUIT;
-	pthread_join (textlogger.thread, NULL);
-
+	pthread_t thread_textlog;
+	textlogger.flags = BIQUEUE_FLAG_RUNNING;
+	pthread_create (&thread_textlog, NULL, runner_textlog, &textlogger);
+	pthread_t * threads = calloc ((size_t)thread_count, sizeof (pthread_t));
+	for (int i = 0; i < thread_count; ++i)
+	{
+		biqueue_addf(&textlogger, "pthread_create %i of %i\n", i, thread_count-1);
+		pthread_create (threads + i, NULL, runner_suite, &suite);
+	}
+	for (int i = 0; i < thread_count; ++i)
+	{
+		pthread_join (threads [i], NULL);
+	}
+	textlogger.flags |= BIQUEUE_FLAG_QUIT_SOFT;
+	pthread_join (thread_textlog, NULL);
 	return EXIT_SUCCESS;
 }
 

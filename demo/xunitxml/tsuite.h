@@ -7,16 +7,14 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-#include "queue_async.h"
+#include "qasync.h"
 #include "threads.h"
 
 
-#define CASEINFO_COUNT 11
-#define CASEINFO_START_MEMORY_SIZE 128
-#define CASEINFO_FILENAME_MAXLEN 128
+#define TSUITE_START_MEMORY_SIZE 128
+#define TSUITE_FILENAME_MAXLEN 128
+#define TSUITE_FLAG_EMPTY (uint32_t)0x0001
 
-
-#define TSUITE_FLAG_COMPLETE 0x0001
 
 struct tsuite_caseinfo
 {
@@ -34,7 +32,7 @@ struct tsuite
 	struct lfds711_stack_state ss;
 	size_t tc_count;
 	struct tsuite_caseinfo * tc;
-	struct queue_async * resultq;
+	struct qasync * resultq;
 	size_t channel_xunit;
 	size_t channel_info;
 	char const * findcmd;
@@ -45,31 +43,40 @@ struct tsuite
 
 void tsuite_info (struct tsuite * suite, char const * text)
 {
-	queue_async_add (suite->resultq, suite->channel_info, text);
+	assert (suite);
+	assert (text);
+	qasync_add (suite->resultq, suite->channel_info, text);
 }
+
 
 void tsuite_infof (struct tsuite * suite, char const * format, ...)
 {
+	assert (suite);
+	assert (format);
 	va_list va;
 	va_start (va, format);
-	queue_async_addfv (suite->resultq, suite->channel_info, format, va);
+	qasync_addfv (suite->resultq, suite->channel_info, format, va);
 	va_end (va);
 }
 
+
 void tsuite_tc_result (struct tsuite * suite, struct tsuite_caseinfo * tc)
 {
-	queue_async_addf (suite->resultq, suite->channel_xunit, "===========\nid %i. n %i. pclose %i\n%.*s\n", tc->id, tc->memory_size, tc->rcode, 64, tc->memory);
+	assert (suite);
+	assert (tc);
+	qasync_addf (suite->resultq, suite->channel_xunit, "===========\nid %i. n %i. pclose %i\n%.*s\n", tc->id, tc->memory_size, tc->rcode, 64, tc->memory);
 }
 
 
 void tsuite_runner0 (struct tsuite * suite)
 {
+	assert (suite);
 	struct lfds711_stack_element * se;
 	struct tsuite_caseinfo * tc;
 	int pop_result = lfds711_stack_pop (&suite->ss, &se);
 	if (pop_result == 0)
 	{
-		suite->flags |= TSUITE_FLAG_COMPLETE;
+		suite->flags |= TSUITE_FLAG_EMPTY;
 		return;
 	}
 	tc = LFDS711_STACK_GET_VALUE_FROM_ELEMENT (*se);
@@ -77,7 +84,7 @@ void tsuite_runner0 (struct tsuite * suite)
 	sleep (rand() % 2); //Sleep just for simulation
 	assert (suite->workcmd);
 	FILE * fp = popen (suite->workcmd, "r");
-	tc->memory_size = CASEINFO_START_MEMORY_SIZE;
+	tc->memory_size = TSUITE_START_MEMORY_SIZE;
 	tc->memory = csc_readmisc_realloc (fileno (fp), &tc->memory_size);
 	tc->rcode = pclose (fp);
 	assert (tc->memory);
@@ -99,9 +106,9 @@ void tsuite_init (struct tsuite * suite)
 	size_t i;
 	for (i = 0; i < suite->tc_count; ++i)
 	{
-		suite->tc [i].filename = malloc (CASEINFO_FILENAME_MAXLEN);
+		suite->tc [i].filename = calloc (TSUITE_FILENAME_MAXLEN, sizeof (char));
 		assert (suite->tc [i].filename);
-		char * r = fgets (suite->tc [i].filename, CASEINFO_FILENAME_MAXLEN, fp);
+		char * r = fgets (suite->tc [i].filename, TSUITE_FILENAME_MAXLEN, fp);
 		if (r == NULL) {break;}
 		tsuite_infof (suite, "filename %s\n", suite->tc [i].filename);
 	}
@@ -126,6 +133,7 @@ void tsuite_init (struct tsuite * suite)
 
 void tsuite_cleanup (struct tsuite * item)
 {
+	assert (item);
 	lfds711_stack_cleanup (&item->ss, NULL);
 	if (item->tc)
 	{

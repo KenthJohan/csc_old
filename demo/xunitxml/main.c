@@ -16,19 +16,15 @@
 
 
 #include "argparse.h"
-#include "queue_async.h"
+#include "qasync.h"
 #include "threads.h"
 #include "tsuite.h"
 
 
-
-
-
-
-
-#define DESCRIPTION0 \
+#define APP_DESCRIPTION0 \
 "\nThis is test-runner. It will find test and then run them in a thread pool."
-#define DESCRIPTION1 \
+
+#define APP_DESCRIPTION1 \
 "\nNo additional description of the program is available in this version."
 
 #define APP_XUNIT_FILENAME "default.xml"
@@ -37,6 +33,7 @@
 #define APP_MSG_MEM_SIZE 1024
 #define APP_WORKCMD "netstat"
 #define APP_THREAD_COUNT 2
+#define APP_CASEINFO_COUNT 11
 
 enum app_channel
 {
@@ -52,7 +49,10 @@ static const char *const usage[] =
 NULL,
 };
 
+
+//Should put this in a struct somewhere?:
 static pthread_cond_t condition;
+
 
 void * runner_suite (void * arg)
 {
@@ -60,28 +60,31 @@ void * runner_suite (void * arg)
 	assert (suite);
 	while (1)
 	{
-		if (suite->flags & TSUITE_FLAG_COMPLETE) {break;}
+		if (suite->flags & TSUITE_FLAG_EMPTY) {break;}
 		sleep (1);
 		tsuite_runner0 (suite);
 		pthread_cond_signal (&condition);
-		//queue_async_add(suite->logger, APP_CHANNEL_STDOUT, "Hello\n");
+		//qasync_add(suite->logger, APP_CHANNEL_STDOUT, "Hello\n");
 	}
 	return NULL;
 }
-
 
 
 void * runner_textlog (void * arg)
 {
 	pthread_mutex_t mutex;
 	pthread_mutex_init (&mutex, NULL);
-	struct queue_async * tlog = arg;
+	struct qasync * tlog = arg;
 	assert (tlog);
 	while (1)
 	{
-		queue_async_runner0 (tlog);
-		if (tlog->flags & QUEUE_ASYNC_FLAG_EMPTY)
+		qasync_runner0 (tlog);
+		if (tlog->flags & QASYNC_FLAG_EMPTY)
 		{
+			//Soft quit, need to wait for queue to be empty:
+			if (tlog->flags & QASYNC_FLAG_QUIT) {break;}
+			//Prevent busy wait by using (pthread_cond_timedwait):
+			//Other threads can signal this thread that there is data waiting in the freelist:
 			struct timespec ts;
 			clock_gettime(CLOCK_REALTIME, &ts);
 			ts.tv_sec += 1;
@@ -89,9 +92,23 @@ void * runner_textlog (void * arg)
 			pthread_cond_timedwait (&condition, &mutex, &ts);
 			pthread_mutex_unlock (&mutex);
 		}
-		if (tlog->flags & QUEUE_ASYNC_FLAG_COMPLETE) {break;}
 	}
 	return NULL;
+}
+
+
+void main_info (struct qasync * qa, char const * text)
+{
+	qasync_add (qa, APP_CHANNEL_INFO, text);
+}
+
+
+void main_infof (struct qasync * qa, char const * format, ...)
+{
+	va_list va;
+	va_start (va, format);
+	qasync_addfv (qa, APP_CHANNEL_INFO, format, va);
+	va_end (va);
 }
 
 
@@ -102,18 +119,19 @@ int main (int argc, char const * argv [])
 
 	//Use (appresult) to store any result from multiple threads or single thread:
 	//It is designed to be thread safe:
-	struct queue_async resultq = {0};
+	struct qasync resultq = {0};
+	resultq.msg_count = APP_MSG_COUNT;
 	resultq.fdes = calloc (2, sizeof (FILE*));
 	resultq.fdes [APP_CHANNEL_INFO] = stdout;
 	resultq.fdes [APP_CHANNEL_XUNITFILE] = NULL; //The destination will be defined later.
 
 	//Init default program options:
 	int thread_count = APP_THREAD_COUNT;
-	int caseinfo_count = CASEINFO_COUNT;
+	int caseinfo_count = APP_CASEINFO_COUNT;
 	const char *findcmd = NULL;
 	const char *workcmd = NULL;
-	const char *logfilename = NULL;
-	const char *xunitfilename = NULL;
+	const char *info_filename = NULL;
+	const char *xunit_filename = NULL;
 
 	//Define different program options:
 	struct argparse_option options[] =
@@ -124,31 +142,31 @@ int main (int argc, char const * argv [])
 		OPT_INTEGER('k', "caseinfo_count", &caseinfo_count, "Maximum number of testcases", NULL, 0, 0),
 		OPT_STRING('f', "findcmd", &findcmd, "Use linux 'find' command here to find files to test", NULL, 0, 0),
 		OPT_STRING('w', "jobcmd", &workcmd, "The command which is spread out among threads.", NULL, 0, 0),
-		OPT_STRING('l', "logfilename", &logfilename, "Store log messages in logfilename", NULL, 0, 0),
-		OPT_STRING('x', "xunitfilename", &xunitfilename, "Store xunit result in xunitfilename", NULL, 0, 0),
+		OPT_STRING('l', "info_filename", &info_filename, "Store info messages in info_filename", NULL, 0, 0),
+		OPT_STRING('x', "xunit_filename", &xunit_filename, "Store xunit result in xunit_filename", NULL, 0, 0),
 		OPT_END()
 	};
 
 	//Parse program options:
 	struct argparse argparse;
 	argparse_init (&argparse, options, usage, 0);
-	argparse_describe (&argparse, DESCRIPTION0, DESCRIPTION1);
+	argparse_describe (&argparse, APP_DESCRIPTION0, APP_DESCRIPTION1);
 	argc = argparse_parse (&argparse, argc, argv);
 
 	//Default:
 	if (findcmd == NULL) {findcmd = APP_FINDCMD;}
 	if (workcmd == NULL) {workcmd = APP_WORKCMD;}
-	if (xunitfilename == NULL) {xunitfilename = APP_XUNIT_FILENAME;}
+	if (xunit_filename == NULL) {xunit_filename = APP_XUNIT_FILENAME;}
 
 	//Print selected program options:
-	queue_async_add (&resultq, APP_CHANNEL_INFO, "\n\nargparse result:\n");
-	queue_async_addf (&resultq, APP_CHANNEL_INFO, "options [0].flags %x\n", options [0].flags);
-	queue_async_addf (&resultq, APP_CHANNEL_INFO, "thread_count: %d\n", thread_count);
-	queue_async_addf (&resultq, APP_CHANNEL_INFO, "caseinfo_count: %d\n", caseinfo_count);
-	queue_async_addf (&resultq, APP_CHANNEL_INFO, "findcmd: %s\n", findcmd);
-	queue_async_addf (&resultq, APP_CHANNEL_INFO, "workcmd: %s\n", workcmd);
-	queue_async_addf (&resultq, APP_CHANNEL_INFO, "logfilename: %s\n", logfilename);
-	queue_async_addf (&resultq, APP_CHANNEL_INFO, "xunitfilename: %s\n", xunitfilename);
+	main_info (&resultq, "\n\nargparse result:\n");
+	main_infof (&resultq, "options [0].flags %x\n", options [0].flags);
+	main_infof (&resultq, "thread_count: %d\n", thread_count);
+	main_infof (&resultq, "caseinfo_count: %d\n", caseinfo_count);
+	main_infof (&resultq, "findcmd: %s\n", findcmd);
+	main_infof (&resultq, "workcmd: %s\n", workcmd);
+	main_infof (&resultq, "logfilename: %s\n", info_filename);
+	main_infof (&resultq, "xunitfilename: %s\n", xunit_filename);
 
 	//Quit when help options is enabled:
 	if (options [0].flags & OPT_ENABLED)
@@ -157,15 +175,15 @@ int main (int argc, char const * argv [])
 	}
 
 	//Use logfile if (logfilename) option is enabled:
-	if (logfilename)
+	if (info_filename)
 	{
-		resultq.fdes [APP_CHANNEL_INFO] = fopen (logfilename, "w+");
+		resultq.fdes [APP_CHANNEL_INFO] = fopen (info_filename, "w+");
 		assert (resultq.fdes [APP_CHANNEL_INFO]);
 	}
 
-	if (xunitfilename)
+	if (xunit_filename)
 	{
-		resultq.fdes [APP_CHANNEL_XUNITFILE] = fopen (xunitfilename, "w+");
+		resultq.fdes [APP_CHANNEL_XUNITFILE] = fopen (xunit_filename, "w+");
 		assert (resultq.fdes [APP_CHANNEL_XUNITFILE]);
 	}
 
@@ -186,14 +204,14 @@ int main (int argc, char const * argv [])
 
 	//Start (textlogger) thread:
 	pthread_t thread_textlog;
-	queue_async_init (&resultq, APP_MSG_COUNT, APP_MSG_MEM_SIZE);
+	qasync_init (&resultq, APP_MSG_MEM_SIZE);
 	pthread_create (&thread_textlog, NULL, runner_textlog, &resultq);
 
 	//Start all worker threads:
 	pthread_t * threads = calloc ((size_t)thread_count, sizeof (pthread_t));
 	for (int i = 0; i < thread_count; ++i)
 	{
-		queue_async_addf (&resultq, APP_CHANNEL_INFO, "pthread_create %i of %i\n", i, thread_count-1);
+		main_infof (&resultq, "pthread_create %i of %i\n", i, thread_count-1);
 		pthread_create (threads + i, NULL, runner_suite, &suite);
 	}
 	//sleep (4);
@@ -204,15 +222,15 @@ int main (int argc, char const * argv [])
 	}
 
 	//When all worker threads are complete quit the textlogger:
-	resultq.flags |= QUEUE_ASYNC_FLAG_QUIT_SOFT;
+	resultq.flags |= QASYNC_FLAG_QUIT;
 	pthread_join (thread_textlog, NULL);
 
 	//If we have (logfilename) then we know (fdes) is a file so we can call (fclose):
-	if (logfilename && resultq.fdes [APP_CHANNEL_INFO])
+	if (info_filename && resultq.fdes [APP_CHANNEL_INFO])
 	{
 		fclose (resultq.fdes [APP_CHANNEL_INFO]);
 	}
-	if (xunitfilename && resultq.fdes [APP_CHANNEL_XUNITFILE])
+	if (xunit_filename && resultq.fdes [APP_CHANNEL_XUNITFILE])
 	{
 		fclose (resultq.fdes [APP_CHANNEL_XUNITFILE]);
 	}

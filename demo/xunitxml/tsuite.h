@@ -25,93 +25,101 @@ struct tsuite_caseinfo
 	unsigned memory_size;
 	char * memory;
 	char * filename;
+	int rcode;
 };
 
 
 struct tsuite
 {
 	struct lfds711_stack_state ss;
-	size_t tcases_count;
-	struct tsuite_caseinfo * tcases;
-	struct queue_async * logger;
+	size_t tc_count;
+	struct tsuite_caseinfo * tc;
+	struct queue_async * resultq;
 	size_t channel_xunit;
-	size_t channel_logging;
+	size_t channel_info;
 	char const * findcmd;
 	char const * workcmd;
 	uint32_t flags;
 };
 
 
+void tsuite_info (struct tsuite * suite, char const * text)
+{
+	queue_async_add (suite->resultq, suite->channel_info, text);
+}
+
+void tsuite_infof (struct tsuite * suite, char const * format, ...)
+{
+	va_list va;
+	va_start (va, format);
+	queue_async_addfv (suite->resultq, suite->channel_info, format, va);
+	va_end (va);
+}
+
+void tsuite_tc_result (struct tsuite * suite, struct tsuite_caseinfo * tc)
+{
+	queue_async_addf (suite->resultq, suite->channel_xunit, "===========\nid %i. n %i. pclose %i\n%.*s\n", tc->id, tc->memory_size, tc->rcode, 64, tc->memory);
+}
+
+
 void tsuite_runner0 (struct tsuite * suite)
 {
 	struct lfds711_stack_element * se;
-	struct tsuite_caseinfo * cinfo;
+	struct tsuite_caseinfo * tc;
 	int pop_result = lfds711_stack_pop (&suite->ss, &se);
 	if (pop_result == 0)
 	{
 		suite->flags |= TSUITE_FLAG_COMPLETE;
 		return;
 	}
-	cinfo = LFDS711_STACK_GET_VALUE_FROM_ELEMENT (*se);
-	queue_async_addf (suite->logger, suite->channel_logging, "lfds711_stack_pop %i\n", cinfo->id);
+	tc = LFDS711_STACK_GET_VALUE_FROM_ELEMENT (*se);
+	tsuite_infof (suite, "lfds711_stack_pop %i\n", tc->id);
 	sleep (rand() % 2); //Sleep just for simulation
 	assert (suite->workcmd);
 	FILE * fp = popen (suite->workcmd, "r");
-	cinfo->memory_size = CASEINFO_START_MEMORY_SIZE;
-	cinfo->memory = csc_readmisc_realloc (fileno (fp), &cinfo->memory_size);
-	int pcloser = pclose (fp);
-	queue_async_addf (suite->logger, suite->channel_xunit, "caseinfo_popen : pclose %i\n", pcloser);
-	assert (cinfo->memory);
-	queue_async_addf (suite->logger, suite->channel_xunit, "===========\nid %i. n %i. pclose %i\n%.*s\n", cinfo->id, cinfo->memory_size, pcloser, 64, cinfo->memory);
+	tc->memory_size = CASEINFO_START_MEMORY_SIZE;
+	tc->memory = csc_readmisc_realloc (fileno (fp), &tc->memory_size);
+	tc->rcode = pclose (fp);
+	assert (tc->memory);
+	tsuite_tc_result (suite, tc);
 }
 
-
-void * tsuite_runner (void * arg)
-{
-	assert (arg);
-	struct tsuite * suite = arg;
-	while (1)
-	{
-		tsuite_runner0 (suite);
-	}
-	return NULL;
-}
 
 void tsuite_init (struct tsuite * suite)
 {
 	assert (suite);
-	assert (suite->logger);
-	suite->tcases = calloc (suite->tcases_count, sizeof(struct tsuite_caseinfo));
-	assert (suite->tcases);
+	assert (suite->resultq);
+	suite->tc = calloc (suite->tc_count, sizeof(struct tsuite_caseinfo));
+	assert (suite->tc);
 	lfds711_stack_init_valid_on_current_logical_core (&suite->ss, NULL);
-	queue_async_addf (suite->logger, suite->channel_logging, "findcmd %s\n", suite->findcmd);
+	tsuite_infof (suite, "findcmd %s\n", suite->findcmd);
 	FILE * fp = popen (suite->findcmd, "r");
 	assert (fp);
 	//Populate filenames:
 	size_t i;
-	for (i = 0; i < suite->tcases_count; ++i)
+	for (i = 0; i < suite->tc_count; ++i)
 	{
-		suite->tcases [i].filename = malloc (CASEINFO_FILENAME_MAXLEN);
-		assert (suite->tcases [i].filename);
-		char * r = fgets (suite->tcases [i].filename, CASEINFO_FILENAME_MAXLEN, fp);
+		suite->tc [i].filename = malloc (CASEINFO_FILENAME_MAXLEN);
+		assert (suite->tc [i].filename);
+		char * r = fgets (suite->tc [i].filename, CASEINFO_FILENAME_MAXLEN, fp);
 		if (r == NULL) {break;}
-		queue_async_addf (suite->logger, suite->channel_logging, "filename %s\n", suite->tcases [i].filename);
+		tsuite_infof (suite, "filename %s\n", suite->tc [i].filename);
 	}
-	suite->tcases_count = i;
-	void * mem = realloc (suite->tcases, suite->tcases_count * sizeof(struct tsuite_caseinfo));
+	suite->tc_count = i;
+	void * mem = realloc (suite->tc, suite->tc_count * sizeof(struct tsuite_caseinfo));
 	if (mem)
 	{
-		suite->tcases = mem;
+		suite->tc = mem;
 	}
-	queue_async_addf (suite->logger, suite->channel_logging, "Find complete %i testcases found\n", suite->tcases_count);
+	tsuite_infof (suite, "Find complete %i testcases found\n", suite->tc_count);
 	int r = pclose (fp);
-	queue_async_addf (suite->logger, suite->channel_logging, "pclose %i\n", r);
+	tsuite_infof (suite, "pclose %i\n", r);
 	//Populate stack for proccessing later:
-	for (size_t i = 0; i < suite->tcases_count; ++i)
+	for (size_t i = 0; i < suite->tc_count; ++i)
 	{
-		suite->tcases [i].id = (int)i;
-		LFDS711_STACK_SET_VALUE_IN_ELEMENT (suite->tcases [i].se, suite->tcases + i);
-		lfds711_stack_push (&suite->ss, &suite->tcases [i].se);
+		suite->tc [i].id = (int)i;
+		LFDS711_STACK_SET_VALUE_IN_ELEMENT (suite->tc [i].se, suite->tc + i);
+		lfds711_stack_push (&suite->ss, &suite->tc [i].se);
 	}
 }
 
@@ -119,7 +127,14 @@ void tsuite_init (struct tsuite * suite)
 void tsuite_cleanup (struct tsuite * item)
 {
 	lfds711_stack_cleanup (&item->ss, NULL);
-	free (item->tcases);
-	item->tcases = NULL;
-	item->tcases_count = 0;
+	if (item->tc)
+	{
+		free (item->tc);
+		item->tc = NULL;
+		item->tc_count = 0;
+	}
+	else
+	{
+		assert (item->tc_count == 0);
+	}
 }

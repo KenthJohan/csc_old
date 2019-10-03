@@ -40,7 +40,7 @@
 
 enum app_channel
 {
-	APP_CHANNEL_STDOUT,
+	APP_CHANNEL_INFO,
 	APP_CHANNEL_XUNITFILE
 };
 
@@ -102,10 +102,10 @@ int main (int argc, char const * argv [])
 
 	//Use (appresult) to store any result from multiple threads or single thread:
 	//It is designed to be thread safe:
-	struct queue_async appresult = {0};
-	appresult.fdes = calloc (2, sizeof (FILE*));
-	appresult.fdes [APP_CHANNEL_STDOUT] = stdout;
-	appresult.fdes [APP_CHANNEL_XUNITFILE] = NULL; //The destination will be defined later.
+	struct queue_async resultq = {0};
+	resultq.fdes = calloc (2, sizeof (FILE*));
+	resultq.fdes [APP_CHANNEL_INFO] = stdout;
+	resultq.fdes [APP_CHANNEL_XUNITFILE] = NULL; //The destination will be defined later.
 
 	//Init default program options:
 	int thread_count = APP_THREAD_COUNT;
@@ -141,14 +141,14 @@ int main (int argc, char const * argv [])
 	if (xunitfilename == NULL) {xunitfilename = APP_XUNIT_FILENAME;}
 
 	//Print selected program options:
-	queue_async_add (&appresult, APP_CHANNEL_STDOUT, "\n\nargparse result:\n");
-	queue_async_addf (&appresult, APP_CHANNEL_STDOUT, "options [0].flags %x\n", options [0].flags);
-	queue_async_addf (&appresult, APP_CHANNEL_STDOUT, "thread_count: %d\n", thread_count);
-	queue_async_addf (&appresult, APP_CHANNEL_STDOUT, "caseinfo_count: %d\n", caseinfo_count);
-	queue_async_addf (&appresult, APP_CHANNEL_STDOUT, "findcmd: %s\n", findcmd);
-	queue_async_addf (&appresult, APP_CHANNEL_STDOUT, "workcmd: %s\n", workcmd);
-	queue_async_addf (&appresult, APP_CHANNEL_STDOUT, "logfilename: %s\n", logfilename);
-	queue_async_addf (&appresult, APP_CHANNEL_STDOUT, "xunitfilename: %s\n", xunitfilename);
+	queue_async_add (&resultq, APP_CHANNEL_INFO, "\n\nargparse result:\n");
+	queue_async_addf (&resultq, APP_CHANNEL_INFO, "options [0].flags %x\n", options [0].flags);
+	queue_async_addf (&resultq, APP_CHANNEL_INFO, "thread_count: %d\n", thread_count);
+	queue_async_addf (&resultq, APP_CHANNEL_INFO, "caseinfo_count: %d\n", caseinfo_count);
+	queue_async_addf (&resultq, APP_CHANNEL_INFO, "findcmd: %s\n", findcmd);
+	queue_async_addf (&resultq, APP_CHANNEL_INFO, "workcmd: %s\n", workcmd);
+	queue_async_addf (&resultq, APP_CHANNEL_INFO, "logfilename: %s\n", logfilename);
+	queue_async_addf (&resultq, APP_CHANNEL_INFO, "xunitfilename: %s\n", xunitfilename);
 
 	//Quit when help options is enabled:
 	if (options [0].flags & OPT_ENABLED)
@@ -159,14 +159,14 @@ int main (int argc, char const * argv [])
 	//Use logfile if (logfilename) option is enabled:
 	if (logfilename)
 	{
-		appresult.fdes [APP_CHANNEL_STDOUT] = fopen (logfilename, "w+");
-		assert (appresult.fdes [APP_CHANNEL_STDOUT]);
+		resultq.fdes [APP_CHANNEL_INFO] = fopen (logfilename, "w+");
+		assert (resultq.fdes [APP_CHANNEL_INFO]);
 	}
 
 	if (xunitfilename)
 	{
-		appresult.fdes [APP_CHANNEL_XUNITFILE] = fopen (xunitfilename, "w+");
-		assert (appresult.fdes [APP_CHANNEL_XUNITFILE]);
+		resultq.fdes [APP_CHANNEL_XUNITFILE] = fopen (xunitfilename, "w+");
+		assert (resultq.fdes [APP_CHANNEL_XUNITFILE]);
 	}
 
 	//Guard:
@@ -175,25 +175,25 @@ int main (int argc, char const * argv [])
 
 	//Configure the (tsuite) which will merge test results:
 	struct tsuite suite = {0};
-	suite.logger = &appresult;
-	suite.tcases_count = (size_t)caseinfo_count;
+	suite.resultq = &resultq;
+	suite.tc_count = (size_t)caseinfo_count;
 	suite.findcmd = findcmd;
 	suite.workcmd = workcmd;
 	suite.channel_xunit = APP_CHANNEL_XUNITFILE;
-	suite.channel_logging = APP_CHANNEL_STDOUT;
+	suite.channel_info = APP_CHANNEL_INFO;
 	suite.flags = 0;
 	tsuite_init (&suite);
 
 	//Start (textlogger) thread:
 	pthread_t thread_textlog;
-	queue_async_init (&appresult, APP_MSG_COUNT, APP_MSG_MEM_SIZE);
-	pthread_create (&thread_textlog, NULL, runner_textlog, &appresult);
+	queue_async_init (&resultq, APP_MSG_COUNT, APP_MSG_MEM_SIZE);
+	pthread_create (&thread_textlog, NULL, runner_textlog, &resultq);
 
 	//Start all worker threads:
 	pthread_t * threads = calloc ((size_t)thread_count, sizeof (pthread_t));
 	for (int i = 0; i < thread_count; ++i)
 	{
-		queue_async_addf (&appresult, APP_CHANNEL_STDOUT, "pthread_create %i of %i\n", i, thread_count-1);
+		queue_async_addf (&resultq, APP_CHANNEL_INFO, "pthread_create %i of %i\n", i, thread_count-1);
 		pthread_create (threads + i, NULL, runner_suite, &suite);
 	}
 	//sleep (4);
@@ -204,17 +204,17 @@ int main (int argc, char const * argv [])
 	}
 
 	//When all worker threads are complete quit the textlogger:
-	appresult.flags |= QUEUE_ASYNC_FLAG_QUIT_SOFT;
+	resultq.flags |= QUEUE_ASYNC_FLAG_QUIT_SOFT;
 	pthread_join (thread_textlog, NULL);
 
 	//If we have (logfilename) then we know (fdes) is a file so we can call (fclose):
-	if (logfilename && appresult.fdes [APP_CHANNEL_STDOUT])
+	if (logfilename && resultq.fdes [APP_CHANNEL_INFO])
 	{
-		fclose (appresult.fdes [APP_CHANNEL_STDOUT]);
+		fclose (resultq.fdes [APP_CHANNEL_INFO]);
 	}
-	if (xunitfilename && appresult.fdes [APP_CHANNEL_XUNITFILE])
+	if (xunitfilename && resultq.fdes [APP_CHANNEL_XUNITFILE])
 	{
-		fclose (appresult.fdes [APP_CHANNEL_XUNITFILE]);
+		fclose (resultq.fdes [APP_CHANNEL_XUNITFILE]);
 	}
 
 	return EXIT_SUCCESS;

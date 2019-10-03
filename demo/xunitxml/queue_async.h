@@ -77,25 +77,31 @@ static void queue_async_add (struct queue_async * self, size_t channel, char con
 }
 
 
-static void queue_async_addf (struct queue_async * bq, size_t channel, char const * fmt, ...)
+static void queue_async_addfv (struct queue_async * self, size_t channel, char const * format, va_list va)
 {
-	va_list va;
-	va_start (va, fmt);
-	if (bq->flags & QUEUE_ASYNC_FLAG_THREAD_OK)
+	if (self->flags & QUEUE_ASYNC_FLAG_THREAD_OK)
 	{
 		struct lfds711_freelist_element * fe;
-		int r = lfds711_freelist_pop (&bq->fls_pool, &fe, NULL);
+		int r = lfds711_freelist_pop (&self->fls_pool, &fe, NULL);
 		assert (r == 1);
 		struct queue_async_msg * msg = LFDS711_FREELIST_GET_VALUE_FROM_ELEMENT(*fe);
-		vsnprintf (msg->memory, msg->memory_size, fmt, va);
+		vsnprintf (msg->memory, msg->memory_size, format, va);
 		msg->channel = channel;
 		LFDS711_FREELIST_SET_VALUE_IN_ELEMENT (msg->fe, msg);
-		lfds711_freelist_push (&bq->fls_comm, &msg->fe, NULL);
+		lfds711_freelist_push (&self->fls_comm, &msg->fe, NULL);
 	}
 	else
 	{
-		queue_async_vprintf (bq, channel, fmt, va);
+		queue_async_vprintf (self, channel, format, va);
 	}
+}
+
+
+static void queue_async_addf (struct queue_async * self, size_t channel, char const * format, ...)
+{
+	va_list va;
+	va_start (va, format);
+	queue_async_addfv (self, channel, format, va);
 	va_end (va);
 }
 

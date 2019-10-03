@@ -17,7 +17,7 @@ SOURCES += xunit.c
 SOURCES += $$PWD/../../argparse/argparse.c
 
 HEADERS += xunit.h
-HEADERS += biqueue.h
+HEADERS += queue_async.h
 HEADERS += threads.h
 HEADERS += tsuite.h
 HEADERS += $$PWD/../../src/csc_readmisc.h

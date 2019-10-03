@@ -35,6 +35,10 @@
 #define APP_THREAD_COUNT 2
 #define APP_CASEINFO_COUNT 11
 
+
+//Channel is used for different write destinations:
+//INFO channel is for logging debug information:
+//XUNITFILE channel is for storing the xunit result from the test cases in a file:
 enum app_channel
 {
 	APP_CHANNEL_INFO,
@@ -54,6 +58,7 @@ NULL,
 static pthread_cond_t condition;
 
 
+//Producer thread, multiple may be used:
 void * runner_suite (void * arg)
 {
 	struct tsuite * suite = arg;
@@ -70,7 +75,8 @@ void * runner_suite (void * arg)
 }
 
 
-void * runner_textlog (void * arg)
+//Consumer thread, only one will be used:
+void * runner_qasync (void * arg)
 {
 	pthread_mutex_t mutex;
 	pthread_mutex_init (&mutex, NULL);
@@ -97,6 +103,7 @@ void * runner_textlog (void * arg)
 }
 
 
+
 void main_info (struct qasync * qa, char const * text)
 {
 	qasync_add (qa, APP_CHANNEL_INFO, text);
@@ -117,12 +124,12 @@ int main (int argc, char const * argv [])
 	setbuf (stdout, NULL);
 	pthread_cond_init (&condition, NULL);
 
-	//Use (appresult) to store any result from multiple threads or single thread:
+	//Use (resultq) to store any result from multiple threads or single thread:
 	//It is designed to be thread safe:
 	struct qasync resultq = {0};
 	resultq.msg_count = APP_MSG_COUNT;
 	resultq.fdes = calloc (2, sizeof (FILE*));
-	resultq.fdes [APP_CHANNEL_INFO] = stdout;
+	resultq.fdes [APP_CHANNEL_INFO] = stdout; //At this stage the stdout will be used for logging information.
 	resultq.fdes [APP_CHANNEL_XUNITFILE] = NULL; //The destination will be defined later.
 
 	//Init default program options:
@@ -202,10 +209,10 @@ int main (int argc, char const * argv [])
 	suite.flags = 0;
 	tsuite_init (&suite);
 
-	//Start (textlogger) thread:
+	//Start (qasync) thread:
 	pthread_t thread_textlog;
 	qasync_init (&resultq, APP_MSG_MEM_SIZE);
-	pthread_create (&thread_textlog, NULL, runner_textlog, &resultq);
+	pthread_create (&thread_textlog, NULL, runner_qasync, &resultq);
 
 	//Start all worker threads:
 	pthread_t * threads = calloc ((size_t)thread_count, sizeof (pthread_t));

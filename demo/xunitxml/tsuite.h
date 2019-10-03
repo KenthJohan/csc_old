@@ -79,13 +79,17 @@ void * tsuite_runner (void * arg)
 
 void tsuite_init (struct tsuite * suite)
 {
-	suite->tcases = malloc (sizeof(struct tsuite_caseinfo) * suite->tcases_count);
+	assert (suite);
+	assert (suite->logger);
+	suite->tcases = calloc (suite->tcases_count, sizeof(struct tsuite_caseinfo));
+	assert (suite->tcases);
 	lfds711_stack_init_valid_on_current_logical_core (&suite->ss, NULL);
 	queue_async_addf (suite->logger, suite->channel_logging, "findcmd %s\n", suite->findcmd);
 	FILE * fp = popen (suite->findcmd, "r");
 	assert (fp);
 	//Populate filenames:
-	for (size_t i = 0; i < suite->tcases_count; ++i)
+	size_t i;
+	for (i = 0; i < suite->tcases_count; ++i)
 	{
 		suite->tcases [i].filename = malloc (CASEINFO_FILENAME_MAXLEN);
 		assert (suite->tcases [i].filename);
@@ -93,6 +97,13 @@ void tsuite_init (struct tsuite * suite)
 		if (r == NULL) {break;}
 		queue_async_addf (suite->logger, suite->channel_logging, "filename %s\n", suite->tcases [i].filename);
 	}
+	suite->tcases_count = i;
+	void * mem = realloc (suite->tcases, suite->tcases_count * sizeof(struct tsuite_caseinfo));
+	if (mem)
+	{
+		suite->tcases = mem;
+	}
+	queue_async_addf (suite->logger, suite->channel_logging, "Find complete %i testcases found\n", suite->tcases_count);
 	int r = pclose (fp);
 	queue_async_addf (suite->logger, suite->channel_logging, "pclose %i\n", r);
 	//Populate stack for proccessing later:
@@ -109,4 +120,6 @@ void tsuite_cleanup (struct tsuite * item)
 {
 	lfds711_stack_cleanup (&item->ss, NULL);
 	free (item->tcases);
+	item->tcases = NULL;
+	item->tcases_count = 0;
 }

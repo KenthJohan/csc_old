@@ -6,9 +6,13 @@
 #include <unistd.h>
 #include <liblfds711.h>
 
-#define QUEUE_ASYNC_MESSAGE_BUFFER_SIZE 1024
+//Indicates that the queue will be complete after its empty:
 #define QUEUE_ASYNC_FLAG_QUIT_SOFT   (uint32_t)0x0001
-#define QUEUE_ASYNC_FLAG_QUEUED      (uint32_t)0x0004
+
+//Indicates that its ok to add messages from threads:
+#define QUEUE_ASYNC_FLAG_THREAD_OK   (uint32_t)0x0004
+
+//Indicates that its ok to exit the thread:
 #define QUEUE_ASYNC_FLAG_COMPLETE    (uint32_t)0x0008
 
 struct queue_async_msg
@@ -23,11 +27,18 @@ struct queue_async_msg
 
 struct queue_async
 {
+	//Message pool stores all messages that is available to use:
 	struct lfds711_freelist_state fls_pool;
+	//Message comm stores all messages that is queued to process:
 	struct lfds711_freelist_state fls_comm;
+
 	size_t msg_count;
 	struct queue_async_msg * msg;
+
 	uint32_t flags;
+
+	//Use multiple destinations (note double pointer),
+	//a message stores a channel index indicting which (fdes) to use:
 	FILE ** fdes;
 };
 
@@ -45,7 +56,7 @@ void queue_async_vprintf (struct queue_async * self, size_t channel, char const 
 
 static void queue_async_add (struct queue_async * self, size_t channel, char const * text)
 {
-	if (self->flags & QUEUE_ASYNC_FLAG_QUEUED)
+	if (self->flags & QUEUE_ASYNC_FLAG_THREAD_OK)
 	{
 		struct lfds711_freelist_element * fe;
 		int r = lfds711_freelist_pop (&self->fls_pool, &fe, NULL);
@@ -67,7 +78,7 @@ static void queue_async_addf (struct queue_async * bq, size_t channel, char cons
 {
 	va_list va;
 	va_start (va, fmt);
-	if (bq->flags & QUEUE_ASYNC_FLAG_QUEUED)
+	if (bq->flags & QUEUE_ASYNC_FLAG_THREAD_OK)
 	{
 		struct lfds711_freelist_element * fe;
 		int r = lfds711_freelist_pop (&bq->fls_pool, &fe, NULL);
@@ -89,7 +100,7 @@ static void queue_async_addf (struct queue_async * bq, size_t channel, char cons
 void queue_async_runner0 (struct queue_async * self)
 {
 	assert (self);
-	assert (self->flags & QUEUE_ASYNC_FLAG_QUEUED);
+	assert (self->flags & QUEUE_ASYNC_FLAG_THREAD_OK);
 	struct lfds711_freelist_element * fe;
 	int r = lfds711_freelist_pop (&self->fls_comm, &fe, NULL);
 	//printf ("lfds711_freelist_pop %i\n", r);
@@ -128,19 +139,23 @@ void queue_async_cleanup (struct queue_async * self)
 
 static void queue_async_init (struct queue_async * self, size_t msg_count, size_t msg_mem_size)
 {
-	self->flags = QUEUE_ASYNC_FLAG_QUEUED;
 	lfds711_freelist_init_valid_on_current_logical_core (&self->fls_pool, NULL, 0, NULL);
 	lfds711_freelist_init_valid_on_current_logical_core (&self->fls_comm, NULL, 0, NULL);
+	//Allocate all messages:
 	self->msg = calloc (msg_count, sizeof (struct queue_async_msg));
 	self->msg_count = msg_count;
 	for (size_t i = 0; i < msg_count ; ++i)
 	{
+		//Allocate each message memory:
 		self->msg [i].memory = calloc (msg_mem_size, sizeof (char));
 		assert (self->msg [i].memory);
 		self->msg [i].memory_size = msg_mem_size;
+		//Add all allocated messages to the message pool.
 		LFDS711_FREELIST_SET_VALUE_IN_ELEMENT (self->msg [i].fe, &self->msg [i]);
 		lfds711_freelist_push (&self->fls_pool, &self->msg [i].fe, NULL);
 	}
+	//Now it should be ok to start using threads:
+	self->flags = QUEUE_ASYNC_FLAG_THREAD_OK;
 }
 
 

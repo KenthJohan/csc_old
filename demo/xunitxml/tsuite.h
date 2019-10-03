@@ -37,6 +37,7 @@ struct tsuite
 	size_t channel_xunit;
 	size_t channel_logging;
 	char const * findcmd;
+	char const * workcmd;
 	uint32_t flags;
 };
 
@@ -54,7 +55,8 @@ void tsuite_runner0 (struct tsuite * suite)
 	cinfo = LFDS711_STACK_GET_VALUE_FROM_ELEMENT (*se);
 	queue_async_addf (suite->logger, suite->channel_logging, "lfds711_stack_pop %i\n", cinfo->id);
 	sleep (rand() % 2); //Sleep just for simulation
-	FILE * fp = popen ("netstat", "r");
+	assert (suite->workcmd);
+	FILE * fp = popen (suite->workcmd, "r");
 	cinfo->memory_size = CASEINFO_START_MEMORY_SIZE;
 	cinfo->memory = csc_readmisc_realloc (fileno (fp), &cinfo->memory_size);
 	int pcloser = pclose (fp);

@@ -35,6 +35,9 @@
 
 #define APP_XUNIT_FILENAME "default.xml"
 #define APP_FINDCMD "find ../ -name \"*.c\""
+#define APP_MSG_COUNT 10
+#define APP_MSG_MEM_SIZE 1024
+
 
 enum app_channel
 {
@@ -168,7 +171,7 @@ int main (int argc, char const * argv [])
 
 	//Start (textlogger) thread:
 	pthread_t thread_textlog;
-	queue_async_init (&textlogger, 5);
+	queue_async_init (&textlogger, APP_MSG_COUNT, APP_MSG_MEM_SIZE);
 	pthread_create (&thread_textlog, NULL, runner_textlog, &textlogger);
 
 	//Start all worker threads:
@@ -178,7 +181,7 @@ int main (int argc, char const * argv [])
 		queue_async_addf (&textlogger, APP_CHANNEL_STDOUT, "pthread_create %i of %i\n", i, thread_count-1);
 		pthread_create (threads + i, NULL, runner_suite, &suite);
 	}
-	sleep (4);
+	//sleep (4);
 	//Wait for all worker threads to complete:
 	for (int i = 0; i < thread_count; ++i)
 	{

@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <assert.h>
 #include <unistd.h>
+#include <time.h>
 
 #include <mxml.h>
 #include <liblfds711.h>
@@ -32,7 +33,7 @@
 
 #define APP_XUNIT_FILENAME "default.xml"
 #define APP_FINDCMD "find ../ -name \"*.c\""
-#define APP_MSG_COUNT 10
+#define APP_MSG_COUNT 100
 #define APP_MSG_MEM_SIZE 1024
 #define APP_WORKCMD "netstat"
 #define APP_THREAD_COUNT 2
@@ -51,6 +52,7 @@ static const char *const usage[] =
 NULL,
 };
 
+static pthread_cond_t condition;
 
 void * runner_suite (void * arg)
 {
@@ -61,19 +63,33 @@ void * runner_suite (void * arg)
 		if (suite->flags & TSUITE_FLAG_COMPLETE) {break;}
 		sleep (1);
 		tsuite_runner0 (suite);
+		pthread_cond_signal (&condition);
+		//queue_async_add(suite->logger, APP_CHANNEL_STDOUT, "Hello\n");
 	}
 	return NULL;
 }
 
 
+
 void * runner_textlog (void * arg)
 {
+	pthread_mutex_t mutex;
+	pthread_mutex_init (&mutex, NULL);
 	struct queue_async * tlog = arg;
 	assert (tlog);
 	while (1)
 	{
-		if (tlog->flags & QUEUE_ASYNC_FLAG_COMPLETE) {break;}
 		queue_async_runner0 (tlog);
+		if (tlog->flags & QUEUE_ASYNC_FLAG_EMPTY)
+		{
+			struct timespec ts;
+			clock_gettime(CLOCK_REALTIME, &ts);
+			ts.tv_sec += 1;
+			pthread_mutex_lock (&mutex);
+			pthread_cond_timedwait (&condition, &mutex, &ts);
+			pthread_mutex_unlock (&mutex);
+		}
+		if (tlog->flags & QUEUE_ASYNC_FLAG_COMPLETE) {break;}
 	}
 	return NULL;
 }
@@ -82,6 +98,7 @@ void * runner_textlog (void * arg)
 int main (int argc, char const * argv [])
 {
 	setbuf (stdout, NULL);
+	pthread_cond_init (&condition, NULL);
 
 	//Use (appresult) to store any result from multiple threads or single thread:
 	//It is designed to be thread safe:

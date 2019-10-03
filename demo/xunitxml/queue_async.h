@@ -15,6 +15,9 @@
 //Indicates that its ok to exit the thread:
 #define QUEUE_ASYNC_FLAG_COMPLETE    (uint32_t)0x0008
 
+//Indicates
+#define QUEUE_ASYNC_FLAG_EMPTY       (uint32_t)0x0010
+
 struct queue_async_msg
 {
 	struct lfds711_freelist_element fe;
@@ -107,6 +110,7 @@ void queue_async_runner0 (struct queue_async * self)
 	//Check if list is empty:
 	if (r == 0)
 	{
+		self->flags |= QUEUE_ASYNC_FLAG_EMPTY;
 		if (self->flags & QUEUE_ASYNC_FLAG_QUIT_SOFT)
 		{
 			self->flags |= QUEUE_ASYNC_FLAG_COMPLETE;
@@ -114,6 +118,7 @@ void queue_async_runner0 (struct queue_async * self)
 	}
 	else
 	{
+		self->flags &= ~QUEUE_ASYNC_FLAG_EMPTY;
 		struct queue_async_msg * msg = LFDS711_FREELIST_GET_VALUE_FROM_ELEMENT(*fe);
 		queue_async_print (self, msg->channel, msg->memory);
 		LFDS711_FREELIST_SET_VALUE_IN_ELEMENT (msg->fe, msg);

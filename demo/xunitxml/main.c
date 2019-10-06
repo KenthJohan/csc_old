@@ -42,7 +42,7 @@
 enum app_channel
 {
 	APP_CHANNEL_INFO,
-	APP_CHANNEL_XUNITFILE
+	APP_CHANNEL_INFO2
 };
 
 
@@ -90,7 +90,7 @@ void * runner_qasync (void * arg)
 			//Soft quit, need to wait for queue to be empty:
 			if (tlog->flags & QASYNC_FLAG_QUIT) {break;}
 			//Prevent busy wait by using (pthread_cond_timedwait):
-			//Other threads can signal this thread that there is data waiting in the freelist:
+			//Other threads can signal this thread that there might be data waiting in the queue:
 			struct timespec ts;
 			clock_gettime(CLOCK_REALTIME, &ts);
 			ts.tv_sec += 1;
@@ -119,6 +119,90 @@ void main_infof (struct qasync * qa, char const * format, ...)
 }
 
 
+
+const char * whitespace_cb (mxml_node_t *node, int where)
+{
+	const char *element = mxmlGetElement (node);
+
+	if
+	(
+	!strcmp(element, "testsuite") ||
+	!strcmp(element, "testcase") ||
+	!strcmp(element, "error")
+	)
+	{
+		if (where == MXML_WS_BEFORE_OPEN ||where == MXML_WS_AFTER_CLOSE)
+		{
+			return ("\n");
+		}
+	}
+	else if (!strcmp(element, "dl") || !strcmp(element, "ol") || !strcmp(element, "ul"))
+	{
+		return ("\n");
+	}
+	else if (!strcmp(element, "dd") ||!strcmp(element, "dt") ||!strcmp(element, "li"))
+	{
+	if (where == MXML_WS_BEFORE_OPEN) {return ("\t");}
+	else if (where == MXML_WS_AFTER_CLOSE) {return ("\n");}
+	}
+
+	return (NULL);
+}
+
+
+/*
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="nosetests" tests="1" errors="1" failures="0" skip="0">
+	<testcase classname="path_to_test_suite.TestSomething"
+			  name="test_it" time="0">
+		<error type="exceptions.TypeError" message="oops, wrong type">
+		Traceback (most recent call last):
+		...
+		TypeError: oops, wrong type
+		</error>
+	</testcase>
+</testsuite>
+*/
+void main_generate_xmlsuite (struct tsuite * suite, char const * filename)
+{
+	mxmlSetWrapMargin (0);
+	FILE * f = stdout;
+	if (filename)
+	{
+		f = fopen (filename, "w+");
+	}
+	assert (f);
+	size_t errors = 0;
+	size_t failures = 0;
+	size_t skip = 0;
+	for (size_t i = 0; i < suite->tc_count; ++i)
+	{
+		if (suite->tc [i].rcode != 0)
+		{
+			errors ++;
+		}
+		if (suite->tc [i].memory != 0)
+		{
+			failures ++;
+		}
+	}
+	mxml_node_t * xml = mxmlNewXML("1.0");
+	mxml_node_t * xml_suite = mxmlNewElement (xml, "testsuite");
+	mxmlElementSetAttrf (xml_suite, "name", "%s", "Emulator tests");
+	mxmlElementSetAttrf (xml_suite, "tests", "%zu", suite->tc_count);
+	mxmlElementSetAttrf (xml_suite, "errors", "%zu", errors);
+	mxmlElementSetAttrf (xml_suite, "failures", "%zu", failures);
+	mxmlElementSetAttrf (xml_suite, "skip", "%zu", skip);
+	for (size_t i = 0; i < suite->tc_count; ++i)
+	{
+		mxmlAdd (xml_suite, MXML_ADD_BEFORE, MXML_ADD_TO_PARENT, suite->tc [i].node);
+		//printf ("%i:%.*s\n", suite.tc [i].memory_size, suite.tc [i].memory_size, suite.tc [i].memory);
+	}
+	mxmlSaveFile (xml, f, whitespace_cb);
+}
+
+
+
 int main (int argc, char const * argv [])
 {
 	setbuf (stdout, NULL);
@@ -130,7 +214,7 @@ int main (int argc, char const * argv [])
 	resultq.msg_count = APP_MSG_COUNT;
 	resultq.fdes = calloc (2, sizeof (FILE*));
 	resultq.fdes [APP_CHANNEL_INFO] = stdout; //At this stage the stdout will be used for logging information.
-	resultq.fdes [APP_CHANNEL_XUNITFILE] = NULL; //The destination will be defined later.
+	resultq.fdes [APP_CHANNEL_INFO2] = NULL;
 
 	//Init default program options:
 	int thread_count = APP_THREAD_COUNT;
@@ -188,12 +272,6 @@ int main (int argc, char const * argv [])
 		assert (resultq.fdes [APP_CHANNEL_INFO]);
 	}
 
-	if (xunit_filename)
-	{
-		resultq.fdes [APP_CHANNEL_XUNITFILE] = fopen (xunit_filename, "w+");
-		assert (resultq.fdes [APP_CHANNEL_XUNITFILE]);
-	}
-
 	//Guard:
 	assert (thread_count >= 0);
 	assert (caseinfo_count >= 0);
@@ -204,7 +282,7 @@ int main (int argc, char const * argv [])
 	suite.tc_count = (size_t)caseinfo_count;
 	suite.findcmd = findcmd;
 	suite.workcmd = workcmd;
-	suite.channel_xunit = APP_CHANNEL_XUNITFILE;
+	suite.channel_xunit = APP_CHANNEL_INFO2;
 	suite.channel_info = APP_CHANNEL_INFO;
 	suite.flags = 0;
 	tsuite_init (&suite);
@@ -237,11 +315,18 @@ int main (int argc, char const * argv [])
 	{
 		fclose (resultq.fdes [APP_CHANNEL_INFO]);
 	}
-	if (xunit_filename && resultq.fdes [APP_CHANNEL_XUNITFILE])
-	{
-		fclose (resultq.fdes [APP_CHANNEL_XUNITFILE]);
-	}
+
+	main_generate_xmlsuite (&suite, xunit_filename);
+
+	tsuite_cleanup (&suite);
+	qasync_cleanup (&resultq);
 
 	return EXIT_SUCCESS;
 }
+
+
+
+
+
+
 

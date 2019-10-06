@@ -13,10 +13,9 @@ LIBS += -L$$PWD/../../liblfds711/bin
 LIBS += -lmxml -llfds711
 
 SOURCES += main.c
-SOURCES += xunit.c
+SOURCES +=
 SOURCES += $$PWD/../../argparse/argparse.c
 
-HEADERS += xunit.h
 HEADERS += qasync.h
 HEADERS += threads.h
 HEADERS += tsuite.h

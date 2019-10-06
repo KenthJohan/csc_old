@@ -143,12 +143,16 @@ void qasync_cleanup (struct qasync * self)
 	assert (self->msg);
 	lfds711_freelist_cleanup (&self->fls_pool, NULL);
 	lfds711_freelist_cleanup (&self->fls_comm, NULL);
-	for (size_t i = 0; i < self->msg_count ; ++i)
+	if (self->msg)
 	{
-		assert (self->msg [i].memory);
-		free (self->msg [i].memory);
+		assert (self->msg_count > 0);
+		for (size_t i = 0; i < self->msg_count ; ++i)
+		{
+			assert (self->msg [i].memory);
+			free (self->msg [i].memory);
+		}
+		free (self->msg);
 	}
-	free (self->msg);
 }
 
 

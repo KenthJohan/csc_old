@@ -1,11 +1,13 @@
 #pragma once
 
-#include <liblfds711.h>
-#include <csc_readmisc.h>
 #include <assert.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+
+#include <liblfds711.h>
+#include <csc_readmisc.h>
+#include <mxml.h>
 
 #include "qasync.h"
 #include "threads.h"
@@ -16,6 +18,7 @@
 #define TSUITE_FLAG_EMPTY (uint32_t)0x0001
 
 
+
 struct tsuite_caseinfo
 {
 	struct lfds711_stack_element se;
@@ -24,6 +27,7 @@ struct tsuite_caseinfo
 	char * memory;
 	char * filename;
 	int rcode;
+	mxml_node_t * node;
 };
 
 
@@ -60,14 +64,31 @@ void tsuite_infof (struct tsuite * suite, char const * format, ...)
 }
 
 
-void tsuite_tc_result (struct tsuite * suite, struct tsuite_caseinfo * tc)
+char const * rstrstr11 (char const * e, size_t n, char const * substr)
 {
-	assert (suite);
-	assert (tc);
-	qasync_addf (suite->resultq, suite->channel_xunit, "===========\nid %i. n %i. pclose %i\n%.*s\n", tc->id, tc->memory_size, tc->rcode, 64, tc->memory);
+	char const * needle = NULL;
+	while (n--)
+	{
+		needle = strstr (e, substr);
+		if (needle) {break;}
+		e--;
+	}
+	return needle;
 }
 
-
+/*
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="nosetests" tests="1" errors="1" failures="0" skip="0">
+	<testcase classname="path_to_test_suite.TestSomething"
+			  name="test_it" time="0">
+		<error type="exceptions.TypeError" message="oops, wrong type">
+		Traceback (most recent call last):
+		...
+		TypeError: oops, wrong type
+		</error>
+	</testcase>
+</testsuite>
+*/
 void tsuite_runner0 (struct tsuite * suite)
 {
 	assert (suite);
@@ -80,7 +101,7 @@ void tsuite_runner0 (struct tsuite * suite)
 		return;
 	}
 	tc = LFDS711_STACK_GET_VALUE_FROM_ELEMENT (*se);
-	tsuite_infof (suite, "lfds711_stack_pop %i\n", tc->id);
+	tsuite_infof (suite, "lfds711_stack_pop:%i\n", tc->id);
 	sleep (rand() % 2); //Sleep just for simulation
 	assert (suite->workcmd);
 	FILE * fp = popen (suite->workcmd, "r");
@@ -88,7 +109,15 @@ void tsuite_runner0 (struct tsuite * suite)
 	tc->memory = csc_readmisc_realloc (fileno (fp), &tc->memory_size);
 	tc->rcode = pclose (fp);
 	assert (tc->memory);
-	tsuite_tc_result (suite, tc);
+
+	tsuite_infof (suite, "memory_size of %i: %i\n", tc->id, tc->memory_size);
+	tc->node = mxmlNewElement (NULL, "testcase");
+	mxmlElementSetAttr (tc->node, "name", tc->filename);
+	mxml_node_t * terror = mxmlNewElement (tc->node, "error");
+	char const * lastline = rstrstr11 (tc->memory + tc->memory_size, tc->memory_size, "TCP");
+	if (lastline == NULL) {lastline = tc->memory;}
+	mxmlElementSetAttr (terror, "message", lastline);
+	mxmlNewOpaque (terror, tc->memory);
 }
 
 
@@ -146,3 +175,4 @@ void tsuite_cleanup (struct tsuite * item)
 		assert (item->tc_count == 0);
 	}
 }
+

@@ -6,11 +6,14 @@
 #include <assert.h>
 #include <unistd.h>
 #include <time.h>
-
-#include <mxml.h>
-#include <liblfds711.h>
 #include <pthread.h>
 #include <errno.h>
+
+//https://www.msweet.org/mxml/mxml.html
+#include <mxml.h>
+
+//https://www.liblfds.org/mediawiki/index.php?title=r7.1.1:Release_7.1.1_Documentation
+#include <liblfds711.h>
 
 #include <csc_readmisc.h>
 
@@ -151,6 +154,7 @@ const char * whitespace_cb (mxml_node_t *node, int where)
 
 
 /*
+https://nose.readthedocs.io/en/latest/plugins/xunit.html
 <?xml version="1.0" encoding="UTF-8"?>
 <testsuite name="nosetests" tests="1" errors="1" failures="0" skip="0">
 	<testcase classname="path_to_test_suite.TestSomething"
@@ -186,7 +190,7 @@ void main_generate_xmlsuite (struct tsuite * suite, char const * filename)
 			failures ++;
 		}
 	}
-	mxml_node_t * xml = mxmlNewXML("1.0");
+	mxml_node_t * xml = mxmlNewXML ("1.0");
 	mxml_node_t * xml_suite = mxmlNewElement (xml, "testsuite");
 	mxmlElementSetAttrf (xml_suite, "name", "%s", "Emulator tests");
 	mxmlElementSetAttrf (xml_suite, "tests", "%zu", suite->tc_count);
@@ -196,9 +200,10 @@ void main_generate_xmlsuite (struct tsuite * suite, char const * filename)
 	for (size_t i = 0; i < suite->tc_count; ++i)
 	{
 		mxmlAdd (xml_suite, MXML_ADD_BEFORE, MXML_ADD_TO_PARENT, suite->tc [i].node);
-		//printf ("%i:%.*s\n", suite.tc [i].memory_size, suite.tc [i].memory_size, suite.tc [i].memory);
+		printf ("%i:%.*s\n", suite->tc [i].memory_size, suite->tc [i].memory_size, suite->tc [i].memory);
 	}
 	mxmlSaveFile (xml, f, whitespace_cb);
+	mxmlDelete (xml);
 }
 
 

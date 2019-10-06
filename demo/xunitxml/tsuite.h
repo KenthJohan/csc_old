@@ -107,6 +107,7 @@ void tsuite_runner0 (struct tsuite * suite)
 	FILE * fp = popen (suite->workcmd, "r");
 	tc->memory_size = TSUITE_START_MEMORY_SIZE;
 	tc->memory = csc_readmisc_realloc (fileno (fp), &tc->memory_size);
+	tc->memory [tc->memory_size] = '\0';
 	tc->rcode = pclose (fp);
 	assert (tc->memory);
 
@@ -118,6 +119,10 @@ void tsuite_runner0 (struct tsuite * suite)
 	if (lastline == NULL) {lastline = tc->memory;}
 	mxmlElementSetAttr (terror, "message", lastline);
 	mxmlNewOpaque (terror, tc->memory);
+
+	//free (tc->memory);
+	//tc->memory = NULL;
+	//tc->memory_size = 0;
 }
 
 
@@ -164,6 +169,16 @@ void tsuite_cleanup (struct tsuite * item)
 {
 	assert (item);
 	lfds711_stack_cleanup (&item->ss, NULL);
+	for (size_t i = 0; i < item->tc_count; ++i)
+	{
+		if (item->tc [i].memory)
+		{
+			assert (item->tc [i].memory_size > 0);
+			free (item->tc [i].memory);
+			item->tc [i].memory = NULL;
+			item->tc [i].memory_size = 0;
+		}
+	}
 	if (item->tc)
 	{
 		free (item->tc);

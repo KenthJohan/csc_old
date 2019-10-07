@@ -227,8 +227,6 @@ int main (int argc, char const * argv [])
 	//Init default program options:
 	int thread_count = APP_THREAD_COUNT;
 	int caseinfo_count = APP_CASEINFO_COUNT;
-	const char *findcmd = NULL;
-	const char *workcmd = NULL;
 	const char *info_filename = NULL;
 	const char *xunit_filename = NULL;
 
@@ -237,10 +235,10 @@ int main (int argc, char const * argv [])
 	{
 		OPT_HELP(),
 		OPT_GROUP("Basic options"),
-		OPT_INTEGER('j', "thread_count", &thread_count, "number of threads", NULL, 0, 0),
+		OPT_INTEGER('j', "thread_count", &thread_count, "Number of threads. 0 means everything executes sequently.", NULL, 0, 0),
 		OPT_INTEGER('k', "caseinfo_count", &caseinfo_count, "Maximum number of testcases", NULL, 0, 0),
-		OPT_STRING('f', "findcmd", &findcmd, "Use linux 'find' command here to find files to test", NULL, 0, 0),
-		OPT_STRING('w', "jobcmd", &workcmd, "The command which is spread out among threads.", NULL, 0, 0),
+		OPT_STRING('f', "findcmd", &suite.findcmd, "Use linux 'find' command here to find files to test", NULL, 0, 0),
+		OPT_STRING('w', "jobcmd", &suite.workcmd, "The command which is spread out among threads.", NULL, 0, 0),
 		OPT_STRING('l', "info_filename", &info_filename, "Store info messages in info_filename", NULL, 0, 0),
 		OPT_STRING('x', "xunit_filename", &xunit_filename, "Store xunit result in xunit_filename", NULL, 0, 0),
 		OPT_STRING('a', "assertgrep", &suite.assertgrep, "Locate assert string", NULL, 0, 0),
@@ -254,8 +252,8 @@ int main (int argc, char const * argv [])
 	argc = argparse_parse (&argparse, argc, argv);
 
 	//Default:
-	if (findcmd == NULL) {findcmd = APP_FINDCMD;}
-	if (workcmd == NULL) {workcmd = APP_WORKCMD;}
+	if (suite.findcmd == NULL) {suite.findcmd = APP_FINDCMD;}
+	if (suite.workcmd == NULL) {suite.workcmd = APP_WORKCMD;}
 	if (xunit_filename == NULL) {xunit_filename = APP_XUNIT_FILENAME;}
 	if (suite.assertgrep == NULL) {suite.assertgrep = APP_ASSERTGREP;}
 
@@ -264,8 +262,8 @@ int main (int argc, char const * argv [])
 	main_infof (&resultq, "options [0].flags %x\n", options [0].flags);
 	main_infof (&resultq, "thread_count: %d\n", thread_count);
 	main_infof (&resultq, "caseinfo_count: %d\n", caseinfo_count);
-	main_infof (&resultq, "findcmd: %s\n", findcmd);
-	main_infof (&resultq, "workcmd: %s\n", workcmd);
+	main_infof (&resultq, "findcmd: %s\n", suite.findcmd);
+	main_infof (&resultq, "workcmd: %s\n", suite.workcmd);
 	main_infof (&resultq, "logfilename: %s\n", info_filename);
 	main_infof (&resultq, "xunitfilename: %s\n", xunit_filename);
 	main_infof (&resultq, "assertgrep: %s\n", suite.assertgrep);
@@ -290,15 +288,13 @@ int main (int argc, char const * argv [])
 	//Configure the (tsuite) which will merge test results:
 	suite.resultq = &resultq;
 	suite.tc_count = (size_t)caseinfo_count;
-	suite.findcmd = findcmd;
-	suite.workcmd = workcmd;
 	suite.channel_xunit = APP_CHANNEL_INFO2;
 	suite.channel_info = APP_CHANNEL_INFO;
 	suite.flags = 0;
 	tsuite_init (&suite);
 
 	//Start all worker threads:
-	if (thread_count > 1)
+	if (thread_count > 0)
 	{
 		//Start (qasync) thread:
 		pthread_t thread_textlog;

@@ -37,6 +37,7 @@
 #define APP_WORKCMD "build\\spacex7_emu.exe -f %s 2>&1"
 #define APP_THREAD_COUNT 2
 #define APP_CASEINFO_COUNT 11
+#define APP_ASSERTGREP "Assert FAIL"
 
 
 //Channel is used for different write destinations:
@@ -210,12 +211,14 @@ void main_generate_xmlsuite (struct tsuite * suite, char const * filename)
 
 int main (int argc, char const * argv [])
 {
+	struct tsuite suite = {0};
+	struct qasync resultq = {0};
+
 	setbuf (stdout, NULL);
 	pthread_cond_init (&condition, NULL);
 
 	//Use (resultq) to store any result from multiple threads or single thread:
 	//It is designed to be thread safe:
-	struct qasync resultq = {0};
 	resultq.msg_count = APP_MSG_COUNT;
 	resultq.fdes = calloc (2, sizeof (FILE*));
 	resultq.fdes [APP_CHANNEL_INFO] = stdout; //At this stage the stdout will be used for logging information.
@@ -240,6 +243,7 @@ int main (int argc, char const * argv [])
 		OPT_STRING('w', "jobcmd", &workcmd, "The command which is spread out among threads.", NULL, 0, 0),
 		OPT_STRING('l', "info_filename", &info_filename, "Store info messages in info_filename", NULL, 0, 0),
 		OPT_STRING('x', "xunit_filename", &xunit_filename, "Store xunit result in xunit_filename", NULL, 0, 0),
+		OPT_STRING('a', "assertgrep", &suite.assertgrep, "Locate assert string", NULL, 0, 0),
 		OPT_END()
 	};
 
@@ -253,6 +257,7 @@ int main (int argc, char const * argv [])
 	if (findcmd == NULL) {findcmd = APP_FINDCMD;}
 	if (workcmd == NULL) {workcmd = APP_WORKCMD;}
 	if (xunit_filename == NULL) {xunit_filename = APP_XUNIT_FILENAME;}
+	if (suite.assertgrep == NULL) {suite.assertgrep = APP_ASSERTGREP;}
 
 	//Print selected program options:
 	main_info (&resultq, "\n\nargparse result:\n");
@@ -263,6 +268,7 @@ int main (int argc, char const * argv [])
 	main_infof (&resultq, "workcmd: %s\n", workcmd);
 	main_infof (&resultq, "logfilename: %s\n", info_filename);
 	main_infof (&resultq, "xunitfilename: %s\n", xunit_filename);
+	main_infof (&resultq, "assertgrep: %s\n", suite.assertgrep);
 
 	//Quit when help options is enabled:
 	if (options [0].flags & OPT_ENABLED)
@@ -282,7 +288,6 @@ int main (int argc, char const * argv [])
 	assert (caseinfo_count >= 0);
 
 	//Configure the (tsuite) which will merge test results:
-	struct tsuite suite = {0};
 	suite.resultq = &resultq;
 	suite.tc_count = (size_t)caseinfo_count;
 	suite.findcmd = findcmd;

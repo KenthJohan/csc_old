@@ -13,7 +13,6 @@ LIBS += -L$$PWD/../../liblfds711/bin
 LIBS += -lmxml -llfds711
 
 SOURCES += main.c
-SOURCES +=
 SOURCES += $$PWD/../../argparse/argparse.c
 
 HEADERS += qasync.h

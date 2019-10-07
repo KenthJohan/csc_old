@@ -100,7 +100,7 @@ char * csc_readmisc_realloc (int fd, unsigned * count)
 {
 	unsigned nread = 0;
 	unsigned navailable = (*count);
-	char * buf = (char*) malloc (navailable);
+	char * buf = (char*) malloc (navailable+1);
 	char * tmp;
 	if (buf == NULL) {return NULL;}
 
@@ -126,7 +126,7 @@ char * csc_readmisc_realloc (int fd, unsigned * count)
 		if (navailable - nread < (*count))
 		{
 			navailable *= 2;
-			tmp = realloc (buf, navailable);
+			tmp = realloc (buf, navailable+1);
 			if (tmp == NULL)
 			{
 				goto error;
@@ -139,7 +139,7 @@ char * csc_readmisc_realloc (int fd, unsigned * count)
 	//Check if we need less memory:
 	if (navailable != nread)
 	{
-		tmp = realloc (buf, nread);
+		tmp = realloc (buf, nread+1);
 		if (tmp == NULL)
 		{
 			goto error;

@@ -43,6 +43,7 @@ struct tsuite
 	char const * findcmd;
 	char const * workcmd;
 	uint32_t flags;
+	char const * assertgrep;
 };
 
 
@@ -109,7 +110,7 @@ void tsuite_runner1 (struct tsuite * suite, struct tsuite_caseinfo * tc)
 	tc->node = mxmlNewElement (NULL, "testcase");
 	mxmlElementSetAttr (tc->node, "name", tc->filename);
 	//tsuite_infof (suite, "rstrstr11 %i start\n", tc->id);
-	char const * assertline = rstrstr11 (tc->memory + tc->memory_size, MIN(tc->memory_size, 1000), "Assert FAIL");
+	char const * assertline = rstrstr11 (tc->memory + tc->memory_size, MIN(tc->memory_size, 1000), suite->assertgrep);
 	//tsuite_infof (suite, "rstrstr11 %i end\n", tc->id);
 	//mxmlNewCDATA (tc->node, tc->memory);
 	//return;

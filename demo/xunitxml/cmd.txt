@@ -1,0 +1,1 @@
+debug/xunitxml.exe -j10 -w"textgen -p0.0 -f%s -n100000 2>&1" -k100 -f"find ../../ -name \"*.o\"" -aExpression

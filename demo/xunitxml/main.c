@@ -34,7 +34,7 @@
 #define APP_FINDCMD "find . -name \"*.emuTest\""
 #define APP_MSG_COUNT 100
 #define APP_MSG_MEM_SIZE 1024
-#define APP_WORKCMD "build\\spacex7_emu.exe -f %s"
+#define APP_WORKCMD "build\\spacex7_emu.exe -f %s 2>&1"
 #define APP_THREAD_COUNT 2
 #define APP_CASEINFO_COUNT 11
 
@@ -69,7 +69,6 @@ void * runner_suite (void * arg)
 	while (1)
 	{
 		if (suite->flags & TSUITE_FLAG_EMPTY) {break;}
-		sleep (1);
 		tsuite_runner0 (suite);
 		pthread_cond_signal (&condition);
 		//qasync_add(suite->logger, APP_CHANNEL_STDOUT, "Hello\n");
@@ -96,7 +95,8 @@ void * runner_qasync (void * arg)
 			//Other threads can signal this thread that there might be data waiting in the queue:
 			struct timespec ts;
 			clock_gettime(CLOCK_REALTIME, &ts);
-			ts.tv_sec += 1;
+			//ts.tv_sec += 1;
+			ts.tv_nsec += 100000;
 			pthread_mutex_lock (&mutex);
 			pthread_cond_timedwait (&condition, &mutex, &ts);
 			pthread_mutex_unlock (&mutex);
@@ -292,29 +292,43 @@ int main (int argc, char const * argv [])
 	suite.flags = 0;
 	tsuite_init (&suite);
 
-	//Start (qasync) thread:
-	pthread_t thread_textlog;
-	qasync_init (&resultq, APP_MSG_MEM_SIZE);
-	pthread_create (&thread_textlog, NULL, runner_qasync, &resultq);
-
 	//Start all worker threads:
-	pthread_t * threads = calloc ((size_t)thread_count, sizeof (pthread_t));
-	assert (threads);
-	for (int i = 0; i < thread_count; ++i)
+	if (thread_count > 1)
 	{
-		main_infof (&resultq, "pthread_create %i of %i\n", i, thread_count-1);
-		pthread_create (threads + i, NULL, runner_suite, &suite);
-	}
-	//sleep (4);
-	//Wait for all worker threads to complete:
-	for (int i = 0; i < thread_count; ++i)
-	{
-		pthread_join (threads [i], NULL);
-	}
+		//Start (qasync) thread:
+		pthread_t thread_textlog;
+		qasync_init (&resultq, APP_MSG_MEM_SIZE);
+		pthread_create (&thread_textlog, NULL, runner_qasync, &resultq);
 
-	//When all worker threads are complete quit the textlogger:
-	resultq.flags |= QASYNC_FLAG_QUIT;
-	pthread_join (thread_textlog, NULL);
+		pthread_t * threads = calloc ((size_t)thread_count, sizeof (pthread_t));
+		assert (threads);
+		for (int i = 0; i < thread_count; ++i)
+		{
+			main_infof (&resultq, "pthread_create %i of %i\n", i, thread_count-1);
+			pthread_create (threads + i, NULL, runner_suite, &suite);
+		}
+		//sleep (4);
+		//Wait for all worker threads to complete:
+		for (int i = 0; i < thread_count; ++i)
+		{
+			pthread_join (threads [i], NULL);
+			main_infof (&resultq, "Workjob %i finnished\n", i);
+		}
+
+		//When all worker threads are complete quit the textlogger:
+		resultq.flags |= QASYNC_FLAG_QUIT;
+		main_infof (&resultq, "pthread_join\n");
+		pthread_join (thread_textlog, NULL);
+		resultq.flags &= ~QASYNC_FLAG_MULTITHREAD_SUPPORTED;
+	}
+	else
+	{
+		for (size_t i = 0; i < suite.tc_count; ++i)
+		{
+			tsuite_runner1 (&suite, suite.tc + i);
+		}
+		main_infof (&resultq, "runner_suite %s end\n", "");
+	}
 
 	//If we have (logfilename) then we know (fdes) is a file so we can call (fclose):
 	if (info_filename && resultq.fdes [APP_CHANNEL_INFO])
@@ -322,6 +336,8 @@ int main (int argc, char const * argv [])
 		fclose (resultq.fdes [APP_CHANNEL_INFO]);
 	}
 
+
+	main_infof (&resultq, "main_generate_xmlsuite %s\n", xunit_filename);
 	main_generate_xmlsuite (&suite, xunit_filename);
 
 	tsuite_cleanup (&suite);

@@ -140,7 +140,6 @@ void qasync_runner0 (struct qasync * self)
 void qasync_cleanup (struct qasync * self)
 {
 	assert (self);
-	assert (self->msg);
 	lfds711_freelist_cleanup (&self->fls_pool, NULL);
 	lfds711_freelist_cleanup (&self->fls_comm, NULL);
 	if (self->msg)

@@ -7,6 +7,7 @@
 
 #include <liblfds711.h>
 #include <csc_readmisc.h>
+#include <csc_basic.h>
 #include <mxml.h>
 
 #include "qasync.h"
@@ -77,9 +78,6 @@ char const * rstrstr11 (char const * e, size_t n, char const * substr)
 }
 
 
-
-
-
 /*
 <?xml version="1.0" encoding="UTF-8"?>
 <testsuite name="nosetests" tests="1" errors="1" failures="0" skip="0">
@@ -93,19 +91,9 @@ char const * rstrstr11 (char const * e, size_t n, char const * substr)
 	</testcase>
 </testsuite>
 */
-void tsuite_runner0 (struct tsuite * suite)
+void tsuite_runner1 (struct tsuite * suite, struct tsuite_caseinfo * tc)
 {
-	assert (suite);
-	struct lfds711_stack_element * se;
-	struct tsuite_caseinfo * tc;
-	int pop_result = lfds711_stack_pop (&suite->ss, &se);
-	if (pop_result == 0)
-	{
-		suite->flags |= TSUITE_FLAG_EMPTY;
-		return;
-	}
-	tc = LFDS711_STACK_GET_VALUE_FROM_ELEMENT (*se);
-	sleep (rand() % 2); //Sleep just for simulation
+	//sleep (rand() % 2); //Sleep just for simulation
 	assert (suite->workcmd);
 	char cmd [1024] = {0};
 	snprintf (cmd, 1024, suite->workcmd, tc->filename);
@@ -120,9 +108,12 @@ void tsuite_runner0 (struct tsuite * suite)
 	tsuite_infof (suite, "Workjob %i: rc=%i, size=%iB\n", tc->id, tc->rcode, tc->memory_size);
 	tc->node = mxmlNewElement (NULL, "testcase");
 	mxmlElementSetAttr (tc->node, "name", tc->filename);
+	//tsuite_infof (suite, "rstrstr11 %i start\n", tc->id);
+	char const * assertline = rstrstr11 (tc->memory + tc->memory_size, MIN(tc->memory_size, 1000), "Assert FAIL");
+	//tsuite_infof (suite, "rstrstr11 %i end\n", tc->id);
+	//mxmlNewCDATA (tc->node, tc->memory);
+	//return;
 
-
-	char const * assertline = rstrstr11 (tc->memory + tc->memory_size, tc->memory_size, "Assert");
 	if (assertline == NULL)
 	{
 		if (tc->rcode)
@@ -147,7 +138,7 @@ void tsuite_runner0 (struct tsuite * suite)
 		{
 			terror = mxmlNewElement (tc->node, "failure");
 		}
-		char amsg [128];
+		char amsg [128] = {0};
 		char * e = memccpy (amsg, assertline, '\n', 128);
 		if (e) {e [-1] = '\0';}
 		mxmlElementSetAttr (terror, "message", amsg);
@@ -157,6 +148,24 @@ void tsuite_runner0 (struct tsuite * suite)
 	free (tc->memory);
 	tc->memory = NULL;
 	tc->memory_size = 0;
+}
+
+
+
+void tsuite_runner0 (struct tsuite * suite)
+{
+	assert (suite);
+	struct lfds711_stack_element * se;
+	struct tsuite_caseinfo * tc;
+	int pop_result = lfds711_stack_pop (&suite->ss, &se);
+	//tsuite_infof (suite, "lfds711_stack_pop %i\n", pop_result);
+	if (pop_result == 0)
+	{
+		suite->flags |= TSUITE_FLAG_EMPTY;
+		return;
+	}
+	tc = LFDS711_STACK_GET_VALUE_FROM_ELEMENT (*se);
+	tsuite_runner1 (suite, tc);
 }
 
 

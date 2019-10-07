@@ -76,6 +76,10 @@ char const * rstrstr11 (char const * e, size_t n, char const * substr)
 	return needle;
 }
 
+
+
+
+
 /*
 <?xml version="1.0" encoding="UTF-8"?>
 <testsuite name="nosetests" tests="1" errors="1" failures="0" skip="0">
@@ -101,28 +105,58 @@ void tsuite_runner0 (struct tsuite * suite)
 		return;
 	}
 	tc = LFDS711_STACK_GET_VALUE_FROM_ELEMENT (*se);
-	tsuite_infof (suite, "lfds711_stack_pop:%i\n", tc->id);
 	sleep (rand() % 2); //Sleep just for simulation
 	assert (suite->workcmd);
-	FILE * fp = popen (suite->workcmd, "r");
+	char cmd [1024] = {0};
+	snprintf (cmd, 1024, suite->workcmd, tc->filename);
+	tsuite_infof (suite, "lfds711_stack_pop %i: %s\n", tc->id, cmd);
+	FILE * fp = popen (cmd, "r");
 	tc->memory_size = TSUITE_START_MEMORY_SIZE;
 	tc->memory = csc_readmisc_realloc (fileno (fp), &tc->memory_size);
 	tc->memory [tc->memory_size] = '\0';
 	tc->rcode = pclose (fp);
 	assert (tc->memory);
 
-	tsuite_infof (suite, "memory_size of %i: %i\n", tc->id, tc->memory_size);
+	tsuite_infof (suite, "Workjob %i: rc=%i, size=%iB\n", tc->id, tc->rcode, tc->memory_size);
 	tc->node = mxmlNewElement (NULL, "testcase");
 	mxmlElementSetAttr (tc->node, "name", tc->filename);
-	mxml_node_t * terror = mxmlNewElement (tc->node, "error");
-	char const * lastline = rstrstr11 (tc->memory + tc->memory_size, tc->memory_size, "TCP");
-	if (lastline == NULL) {lastline = tc->memory;}
-	mxmlElementSetAttr (terror, "message", lastline);
-	mxmlNewOpaque (terror, tc->memory);
 
-	//free (tc->memory);
-	//tc->memory = NULL;
-	//tc->memory_size = 0;
+
+	char const * assertline = rstrstr11 (tc->memory + tc->memory_size, tc->memory_size, "Assert");
+	if (assertline == NULL)
+	{
+		if (tc->rcode)
+		{
+			mxml_node_t * terror = mxmlNewElement (tc->node, "error");
+			mxmlElementSetAttr (terror, "message", "no assert message found");
+			mxmlNewCDATA (terror, tc->memory);
+		}
+		else
+		{
+			mxmlNewCDATA (tc->node, tc->memory);
+		}
+	}
+	else
+	{
+		mxml_node_t * terror = NULL;
+		if (tc->rcode)
+		{
+			terror = mxmlNewElement (tc->node, "error");
+		}
+		else
+		{
+			terror = mxmlNewElement (tc->node, "failure");
+		}
+		char amsg [128];
+		char * e = memccpy (amsg, assertline, '\n', 128);
+		if (e) {e [-1] = '\0';}
+		mxmlElementSetAttr (terror, "message", amsg);
+		mxmlNewCDATA (terror, tc->memory);
+	}
+
+	free (tc->memory);
+	tc->memory = NULL;
+	tc->memory_size = 0;
 }
 
 
@@ -145,6 +179,8 @@ void tsuite_init (struct tsuite * suite)
 		char * r = fgets (suite->tc [i].filename, TSUITE_FILENAME_MAXLEN, fp);
 		if (r == NULL) {break;}
 		tsuite_infof (suite, "filename %s\n", suite->tc [i].filename);
+		char * e = strchr (suite->tc [i].filename, '\n');
+		if (e) {*e = '\0';}
 	}
 	suite->tc_count = i;
 	void * mem = realloc (suite->tc, suite->tc_count * sizeof(struct tsuite_caseinfo));

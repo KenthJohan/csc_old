@@ -31,10 +31,10 @@
 "\nNo additional description of the program is available in this version."
 
 #define APP_XUNIT_FILENAME "default.xml"
-#define APP_FINDCMD "find ../ -name \"*.c\""
+#define APP_FINDCMD "find . -name \"*.emuTest\""
 #define APP_MSG_COUNT 100
 #define APP_MSG_MEM_SIZE 1024
-#define APP_WORKCMD "netstat"
+#define APP_WORKCMD "build\\spacex7_emu.exe -f %s"
 #define APP_THREAD_COUNT 2
 #define APP_CASEINFO_COUNT 11
 
@@ -193,14 +193,14 @@ void main_generate_xmlsuite (struct tsuite * suite, char const * filename)
 	mxml_node_t * xml = mxmlNewXML ("1.0");
 	mxml_node_t * xml_suite = mxmlNewElement (xml, "testsuite");
 	mxmlElementSetAttrf (xml_suite, "name", "%s", "Emulator tests");
-	mxmlElementSetAttrf (xml_suite, "tests", "%zu", suite->tc_count);
-	mxmlElementSetAttrf (xml_suite, "errors", "%zu", errors);
-	mxmlElementSetAttrf (xml_suite, "failures", "%zu", failures);
-	mxmlElementSetAttrf (xml_suite, "skip", "%zu", skip);
+	mxmlElementSetAttrf (xml_suite, "tests", "%llu", suite->tc_count);
+	mxmlElementSetAttrf (xml_suite, "errors", "%llu", errors);
+	mxmlElementSetAttrf (xml_suite, "failures", "%llu", failures);
+	mxmlElementSetAttrf (xml_suite, "skip", "%llu", skip);
 	for (size_t i = 0; i < suite->tc_count; ++i)
 	{
 		mxmlAdd (xml_suite, MXML_ADD_BEFORE, MXML_ADD_TO_PARENT, suite->tc [i].node);
-		printf ("%i:%.*s\n", suite->tc [i].memory_size, suite->tc [i].memory_size, suite->tc [i].memory);
+		//printf ("%i:%.*s\n", suite->tc [i].memory_size, suite->tc [i].memory_size, suite->tc [i].memory);
 	}
 	mxmlSaveFile (xml, f, whitespace_cb);
 	mxmlDelete (xml);
@@ -299,6 +299,7 @@ int main (int argc, char const * argv [])
 
 	//Start all worker threads:
 	pthread_t * threads = calloc ((size_t)thread_count, sizeof (pthread_t));
+	assert (threads);
 	for (int i = 0; i < thread_count; ++i)
 	{
 		main_infof (&resultq, "pthread_create %i of %i\n", i, thread_count-1);

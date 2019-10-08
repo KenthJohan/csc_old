@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include <liblfds711.h>
 #include <csc_readmisc.h>
@@ -94,26 +95,30 @@ char const * rstrstr11 (char const * e, size_t n, char const * substr)
 */
 void tsuite_runner1 (struct tsuite * suite, struct tsuite_caseinfo * tc)
 {
-	//sleep (rand() % 2); //Sleep just for simulation
 	assert (suite->workcmd);
+	assert (suite->assertgrep);
+	assert (tc->memory == NULL);
+	assert (tc->memory_size == 0);
 	char cmd [1024] = {0};
 	snprintf (cmd, 1024, suite->workcmd, tc->filename);
-	tsuite_infof (suite, "lfds711_stack_pop %i: %s\n", tc->id, cmd);
+	tsuite_infof (suite, "id %i: popen %s\n", tc->id, cmd);
+
+	struct timespec t [2];
+	clock_gettime (CLOCK_REALTIME, t + 0);
 	FILE * fp = popen (cmd, "r");
 	tc->memory_size = TSUITE_START_MEMORY_SIZE;
 	tc->memory = csc_readmisc_realloc (fileno (fp), &tc->memory_size);
 	tc->memory [tc->memory_size] = '\0';
 	tc->rcode = pclose (fp);
 	assert (tc->memory);
+	clock_gettime (CLOCK_REALTIME, t + 1);
+	double spent = (t [1].tv_sec - t [0].tv_sec) + (t [1].tv_nsec + t [1].tv_nsec) / 1000000000.0;
 
-	tsuite_infof (suite, "Workjob %i: rc=%i, size=%iB\n", tc->id, tc->rcode, tc->memory_size);
+	tsuite_infof (suite, "id %i: rc=%i, size=%iB\n", tc->id, tc->rcode, tc->memory_size);
 	tc->node = mxmlNewElement (NULL, "testcase");
 	mxmlElementSetAttr (tc->node, "name", tc->filename);
-	//tsuite_infof (suite, "rstrstr11 %i start\n", tc->id);
-	char const * assertline = rstrstr11 (tc->memory + tc->memory_size, MIN(tc->memory_size, 1000), suite->assertgrep);
-	//tsuite_infof (suite, "rstrstr11 %i end\n", tc->id);
-	//mxmlNewCDATA (tc->node, tc->memory);
-	//return;
+	mxmlElementSetAttrf (tc->node, "time", "%f", spent);
+	char const * assertline = rstrstr11 (tc->memory + tc->memory_size, MIN (tc->memory_size, 1000), suite->assertgrep);
 
 	if (assertline == NULL)
 	{
@@ -159,7 +164,6 @@ void tsuite_runner0 (struct tsuite * suite)
 	struct lfds711_stack_element * se;
 	struct tsuite_caseinfo * tc;
 	int pop_result = lfds711_stack_pop (&suite->ss, &se);
-	//tsuite_infof (suite, "lfds711_stack_pop %i\n", pop_result);
 	if (pop_result == 0)
 	{
 		suite->flags |= TSUITE_FLAG_EMPTY;

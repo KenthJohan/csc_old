@@ -25,7 +25,7 @@
 
 
 #define APP_DESCRIPTION0 \
-"\nThis is test-runner. It will find test and then run them in a thread pool."
+"\nTest runner for emulator test. It will run selected test and compose a xunit xml report."
 
 #define APP_DESCRIPTION1 \
 "\nNo additional description of the program is available in this version."
@@ -227,8 +227,8 @@ int main (int argc, char const * argv [])
 	//Init default program options:
 	int thread_count = APP_THREAD_COUNT;
 	int caseinfo_count = APP_CASEINFO_COUNT;
-	const char *info_filename = NULL;
-	const char *xunit_filename = NULL;
+	const char *loginfo_filename = NULL;
+	const char *xunitxml_filename = NULL;
 
 	//Define different program options:
 	struct argparse_option options[] =
@@ -236,12 +236,12 @@ int main (int argc, char const * argv [])
 		OPT_HELP(),
 		OPT_GROUP("Basic options"),
 		OPT_INTEGER('j', "thread_count", &thread_count, "Number of threads. 0 means everything executes sequently.", NULL, 0, 0),
-		OPT_INTEGER('k', "caseinfo_count", &caseinfo_count, "Maximum number of testcases", NULL, 0, 0),
-		OPT_STRING('f', "findcmd", &suite.findcmd, "Use linux 'find' command here to find files to test", NULL, 0, 0),
-		OPT_STRING('w', "jobcmd", &suite.workcmd, "The command which is spread out among threads.", NULL, 0, 0),
-		OPT_STRING('l', "info_filename", &info_filename, "Store info messages in info_filename", NULL, 0, 0),
-		OPT_STRING('x', "xunit_filename", &xunit_filename, "Store xunit result in xunit_filename", NULL, 0, 0),
-		OPT_STRING('a', "assertgrep", &suite.assertgrep, "Locate assert string", NULL, 0, 0),
+		OPT_INTEGER('k', "caseinfo_count", &caseinfo_count, "Maximum number of testcases.", NULL, 0, 0),
+		OPT_STRING('f', "findcmd", &suite.findcmd, "This command selects testfiles. e.g. (find . -name \"*.emuTest\")", NULL, 0, 0),
+		OPT_STRING('w', "workcmd", &suite.workcmd, "This command is invoked per testfile. Use (%s) to insert each filename in respective command.", NULL, 0, 0),
+		OPT_STRING('l', "loginfo_filename", &loginfo_filename, "If defined then program will create this file and put all loginfo there.", NULL, 0, 0),
+		OPT_STRING('x', "xunitxml_filename", &xunitxml_filename, "Save the xunit xml report in this file.", NULL, 0, 0),
+		OPT_STRING('a', "assertgrep", &suite.assertgrep, "This search-string is used to find the assert message line from (workcmd).", NULL, 0, 0),
 		OPT_END()
 	};
 
@@ -254,19 +254,19 @@ int main (int argc, char const * argv [])
 	//Default:
 	if (suite.findcmd == NULL) {suite.findcmd = APP_FINDCMD;}
 	if (suite.workcmd == NULL) {suite.workcmd = APP_WORKCMD;}
-	if (xunit_filename == NULL) {xunit_filename = APP_XUNIT_FILENAME;}
+	if (xunitxml_filename == NULL) {xunitxml_filename = APP_XUNIT_FILENAME;}
 	if (suite.assertgrep == NULL) {suite.assertgrep = APP_ASSERTGREP;}
 
 	//Print selected program options:
 	main_info (&resultq, "\n\nargparse result:\n");
-	main_infof (&resultq, "options [0].flags %x\n", options [0].flags);
-	main_infof (&resultq, "thread_count: %d\n", thread_count);
-	main_infof (&resultq, "caseinfo_count: %d\n", caseinfo_count);
-	main_infof (&resultq, "findcmd: %s\n", suite.findcmd);
-	main_infof (&resultq, "workcmd: %s\n", suite.workcmd);
-	main_infof (&resultq, "logfilename: %s\n", info_filename);
-	main_infof (&resultq, "xunitfilename: %s\n", xunit_filename);
-	main_infof (&resultq, "assertgrep: %s\n", suite.assertgrep);
+	main_infof (&resultq, "%30.30s : %x\n", "options [0].flags", options [0].flags);
+	main_infof (&resultq, "%30.30s : %d\n", "thread_count", thread_count);
+	main_infof (&resultq, "%30.30s : %d\n", "caseinfo_count", caseinfo_count);
+	main_infof (&resultq, "%30.30s : %s\n", "findcmd", suite.findcmd);
+	main_infof (&resultq, "%30.30s : %s\n", "workcmd", suite.workcmd);
+	main_infof (&resultq, "%30.30s : %s\n", "loginfo_filename", loginfo_filename);
+	main_infof (&resultq, "%30.30s : %s\n", "xunitxml_filename", xunitxml_filename);
+	main_infof (&resultq, "%30.30s : %s\n", "assertgrep", suite.assertgrep);
 
 	//Quit when help options is enabled:
 	if (options [0].flags & OPT_ENABLED)
@@ -275,9 +275,9 @@ int main (int argc, char const * argv [])
 	}
 
 	//Use logfile if (logfilename) option is enabled:
-	if (info_filename)
+	if (loginfo_filename)
 	{
-		resultq.fdes [APP_CHANNEL_INFO] = fopen (info_filename, "w+");
+		resultq.fdes [APP_CHANNEL_INFO] = fopen (loginfo_filename, "w+");
 		assert (resultq.fdes [APP_CHANNEL_INFO]);
 	}
 
@@ -332,14 +332,14 @@ int main (int argc, char const * argv [])
 	}
 
 	//If we have (logfilename) then we know (fdes) is a file so we can call (fclose):
-	if (info_filename && resultq.fdes [APP_CHANNEL_INFO])
+	if (loginfo_filename && resultq.fdes [APP_CHANNEL_INFO])
 	{
 		fclose (resultq.fdes [APP_CHANNEL_INFO]);
 	}
 
 
-	main_infof (&resultq, "main_generate_xmlsuite %s\n", xunit_filename);
-	main_generate_xmlsuite (&suite, xunit_filename);
+	main_infof (&resultq, "main_generate_xmlsuite %s\n", xunitxml_filename);
+	main_generate_xmlsuite (&suite, xunitxml_filename);
 
 	tsuite_cleanup (&suite);
 	qasync_cleanup (&resultq);

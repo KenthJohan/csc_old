@@ -182,7 +182,7 @@ void main_generate_xmlsuite (struct tsuite * suite, char const * filename)
 	size_t skip = 0;
 	for (size_t i = 0; i < suite->tc_count; ++i)
 	{
-		if (suite->tc [i].rcode != 0)
+		if (suite->tc [i].exit_status != 0)
 		{
 			errors ++;
 		}
@@ -305,20 +305,20 @@ int main (int argc, char const * argv [])
 		assert (threads);
 		for (int i = 0; i < thread_count; ++i)
 		{
-			main_infof (&resultq, "pthread_create %i of %i\n", i, thread_count-1);
 			pthread_create (threads + i, NULL, runner_suite, &suite);
+			main_infof (&resultq, "thread=%04i created\n", (unsigned)threads [i]);
 		}
 		//sleep (4);
 		//Wait for all worker threads to complete:
 		for (int i = 0; i < thread_count; ++i)
 		{
 			pthread_join (threads [i], NULL);
-			main_infof (&resultq, "Workjob %i finnished\n", i);
+			main_infof (&resultq, "thread=%04i complete\n", (unsigned)threads [i]);
 		}
 
 		//When all worker threads are complete quit the textlogger:
 		resultq.flags |= QASYNC_FLAG_QUIT;
-		main_infof (&resultq, "pthread_join\n");
+		main_infof (&resultq, "Waiting for loginfo thread to complete\n");
 		pthread_join (thread_textlog, NULL);
 		resultq.flags &= ~QASYNC_FLAG_MULTITHREAD_SUPPORTED;
 	}

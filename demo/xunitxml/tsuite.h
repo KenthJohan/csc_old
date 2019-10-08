@@ -28,7 +28,7 @@ struct tsuite_caseinfo
 	unsigned memory_size;
 	char * memory;
 	char * filename;
-	int rcode;
+	int exit_status;
 	mxml_node_t * node;
 };
 
@@ -101,7 +101,7 @@ void tsuite_runner1 (struct tsuite * suite, struct tsuite_caseinfo * tc)
 	assert (tc->memory_size == 0);
 	char cmd [1024] = {0};
 	snprintf (cmd, 1024, suite->workcmd, tc->filename);
-	tsuite_infof (suite, "id %i: popen %s\n", tc->id, cmd);
+	tsuite_infof (suite, "thread=%04i, workid=%04i: popen (%s)\n", (int unsigned)pthread_self (), tc->id, cmd);
 
 	struct timespec t [2];
 	clock_gettime (CLOCK_REALTIME, t + 0);
@@ -109,12 +109,12 @@ void tsuite_runner1 (struct tsuite * suite, struct tsuite_caseinfo * tc)
 	tc->memory_size = TSUITE_START_MEMORY_SIZE;
 	tc->memory = csc_readmisc_realloc (fileno (fp), &tc->memory_size);
 	tc->memory [tc->memory_size] = '\0';
-	tc->rcode = pclose (fp);
+	tc->exit_status = pclose (fp);
 	assert (tc->memory);
 	clock_gettime (CLOCK_REALTIME, t + 1);
 	double spent = (t [1].tv_sec - t [0].tv_sec) + (t [1].tv_nsec + t [1].tv_nsec) / 1000000000.0;
 
-	tsuite_infof (suite, "id %i: rc=%i, size=%iB\n", tc->id, tc->rcode, tc->memory_size);
+	tsuite_infof (suite, "thread=%04i, workid=%04i: exit_status=%i, size=%iB\n", (int unsigned)pthread_self (), tc->id, tc->exit_status, tc->memory_size);
 	tc->node = mxmlNewElement (NULL, "testcase");
 	mxmlElementSetAttr (tc->node, "name", tc->filename);
 	mxmlElementSetAttrf (tc->node, "time", "%f", spent);
@@ -122,7 +122,7 @@ void tsuite_runner1 (struct tsuite * suite, struct tsuite_caseinfo * tc)
 
 	if (assertline == NULL)
 	{
-		if (tc->rcode)
+		if (tc->exit_status)
 		{
 			mxml_node_t * terror = mxmlNewElement (tc->node, "error");
 			mxmlElementSetAttr (terror, "message", "no assert message found");
@@ -136,7 +136,7 @@ void tsuite_runner1 (struct tsuite * suite, struct tsuite_caseinfo * tc)
 	else
 	{
 		mxml_node_t * terror = NULL;
-		if (tc->rcode)
+		if (tc->exit_status)
 		{
 			terror = mxmlNewElement (tc->node, "error");
 		}
@@ -181,7 +181,7 @@ void tsuite_init (struct tsuite * suite)
 	suite->tc = calloc (suite->tc_count, sizeof(struct tsuite_caseinfo));
 	assert (suite->tc);
 	lfds711_stack_init_valid_on_current_logical_core (&suite->ss, NULL);
-	tsuite_infof (suite, "findcmd %s\n", suite->findcmd);
+	tsuite_infof (suite, "popen findcmd (%s)\n", suite->findcmd);
 	FILE * fp = popen (suite->findcmd, "r");
 	assert (fp);
 	//Populate filenames:
@@ -192,9 +192,9 @@ void tsuite_init (struct tsuite * suite)
 		assert (suite->tc [i].filename);
 		char * r = fgets (suite->tc [i].filename, TSUITE_FILENAME_MAXLEN, fp);
 		if (r == NULL) {break;}
-		tsuite_infof (suite, "filename %s\n", suite->tc [i].filename);
 		char * e = strchr (suite->tc [i].filename, '\n');
 		if (e) {*e = '\0';}
+		tsuite_infof (suite, "filename %s\n", suite->tc [i].filename);
 	}
 	suite->tc_count = i;
 	void * mem = realloc (suite->tc, suite->tc_count * sizeof(struct tsuite_caseinfo));
@@ -202,9 +202,8 @@ void tsuite_init (struct tsuite * suite)
 	{
 		suite->tc = mem;
 	}
-	tsuite_infof (suite, "Find complete %i testcases found\n", suite->tc_count);
 	int r = pclose (fp);
-	tsuite_infof (suite, "pclose %i\n", r);
+	tsuite_infof (suite, "Find complete, %i files found, pclose = %i\n", suite->tc_count, r);
 	//Populate stack for proccessing later:
 	for (size_t i = 0; i < suite->tc_count; ++i)
 	{

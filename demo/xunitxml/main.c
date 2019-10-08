@@ -15,12 +15,9 @@
 //https://www.liblfds.org/mediawiki/index.php?title=r7.1.1:Release_7.1.1_Documentation
 #include <liblfds711.h>
 
-#include <csc_readmisc.h>
-
 
 #include "argparse.h"
 #include "qasync.h"
-#include "threads.h"
 #include "tsuite.h"
 
 
@@ -28,7 +25,7 @@
 "\nTest runner for emulator test. It will run selected test and compose a xunit xml report."
 
 #define APP_DESCRIPTION1 \
-"\nNo additional description of the program is available in this version."
+"\nTip: Use \"time xunitxml -j<threads>\" to find out how many threads gives the best execution time."
 
 #define APP_XUNIT_FILENAME "default.xml"
 #define APP_FINDCMD "find . -name \"*.emuTest\""
@@ -62,7 +59,8 @@ NULL,
 static pthread_cond_t condition;
 
 
-//Producer thread, multiple may be used:
+//Producer thread function.
+//Many threads may be used.
 void * runner_suite (void * arg)
 {
 	struct tsuite * suite = arg;
@@ -78,7 +76,8 @@ void * runner_suite (void * arg)
 }
 
 
-//Consumer thread, only one will be used:
+//Consumer thread function.
+//Only one thread should be used.
 void * runner_qasync (void * arg)
 {
 	pthread_mutex_t mutex;
@@ -107,7 +106,6 @@ void * runner_qasync (void * arg)
 }
 
 
-
 void main_info (struct qasync * qa, char const * text)
 {
 	qasync_add (qa, APP_CHANNEL_INFO, text);
@@ -123,34 +121,22 @@ void main_infof (struct qasync * qa, char const * format, ...)
 }
 
 
-
 const char * whitespace_cb (mxml_node_t *node, int where)
 {
 	const char *element = mxmlGetElement (node);
-
 	if
 	(
-	!strcmp(element, "testsuite") ||
-	!strcmp(element, "testcase") ||
-	!strcmp(element, "error")
+		!strcmp(element, "testsuite") ||
+		!strcmp(element, "testcase") ||
+		!strcmp(element, "error")
 	)
 	{
-		if (where == MXML_WS_BEFORE_OPEN ||where == MXML_WS_AFTER_CLOSE)
+		if (where == MXML_WS_BEFORE_OPEN || where == MXML_WS_AFTER_CLOSE)
 		{
 			return ("\n");
 		}
 	}
-	else if (!strcmp(element, "dl") || !strcmp(element, "ol") || !strcmp(element, "ul"))
-	{
-		return ("\n");
-	}
-	else if (!strcmp(element, "dd") ||!strcmp(element, "dt") ||!strcmp(element, "li"))
-	{
-	if (where == MXML_WS_BEFORE_OPEN) {return ("\t");}
-	else if (where == MXML_WS_AFTER_CLOSE) {return ("\n");}
-	}
-
-	return (NULL);
+	return NULL;
 }
 
 
@@ -206,7 +192,6 @@ void main_generate_xmlsuite (struct tsuite * suite, char const * filename)
 	mxmlSaveFile (xml, f, whitespace_cb);
 	mxmlDelete (xml);
 }
-
 
 
 int main (int argc, char const * argv [])
@@ -346,10 +331,4 @@ int main (int argc, char const * argv [])
 
 	return EXIT_SUCCESS;
 }
-
-
-
-
-
-
 

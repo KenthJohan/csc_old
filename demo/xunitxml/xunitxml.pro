@@ -16,7 +16,6 @@ SOURCES += main.c
 SOURCES += $$PWD/../../argparse/argparse.c
 
 HEADERS += qasync.h
-HEADERS += threads.h
 HEADERS += tsuite.h
 HEADERS += $$PWD/../../src/csc_readmisc.h
 HEADERS += $$PWD/../../argparse/argparse.h

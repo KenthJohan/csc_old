@@ -7,13 +7,13 @@
 #include <liblfds711.h>
 
 //Indicates that the queue will be complete after its empty:
-#define QASYNC_FLAG_QUIT   (uint32_t)0x0001
+#define QASYNC_FLAG_QUIT (uint32_t)0x00000001
 
 //Indicates that its ok to add messages from threads:
-#define QASYNC_FLAG_MULTITHREAD_SUPPORTED   (uint32_t)0x0004
+#define QASYNC_FLAG_THREADMODE (uint32_t)0x00000004
 
 //Indicates
-#define QASYNC_FLAG_EMPTY       (uint32_t)0x0010
+#define QASYNC_FLAG_EMPTY (uint32_t)0x00000010
 
 struct qasync_msg
 {
@@ -63,7 +63,7 @@ static void qasync_add (struct qasync * self, size_t channel, char const * text)
 {
 	assert (self);
 	assert (text);
-	if (self->flags & QASYNC_FLAG_MULTITHREAD_SUPPORTED)
+	if (self->flags & QASYNC_FLAG_THREADMODE)
 	{
 		struct lfds711_freelist_element * fe;
 		int r = lfds711_freelist_pop (&self->fls_pool, &fe, NULL);
@@ -85,7 +85,7 @@ static void qasync_addfv (struct qasync * self, size_t channel, char const * for
 {
 	assert (self);
 	assert (format);
-	if (self->flags & QASYNC_FLAG_MULTITHREAD_SUPPORTED)
+	if (self->flags & QASYNC_FLAG_THREADMODE)
 	{
 		struct lfds711_freelist_element * fe;
 		int r = lfds711_freelist_pop (&self->fls_pool, &fe, NULL);
@@ -114,10 +114,10 @@ static void qasync_addf (struct qasync * self, size_t channel, char const * form
 }
 
 
-void qasync_runner0 (struct qasync * self)
+static void qasync_runner0 (struct qasync * self)
 {
 	assert (self);
-	assert (self->flags & QASYNC_FLAG_MULTITHREAD_SUPPORTED);
+	assert (self->flags & QASYNC_FLAG_THREADMODE);
 	struct lfds711_freelist_element * fe;
 	int r = lfds711_freelist_pop (&self->fls_comm, &fe, NULL);
 	//printf ("lfds711_freelist_pop %i\n", r);
@@ -137,7 +137,7 @@ void qasync_runner0 (struct qasync * self)
 }
 
 
-void qasync_cleanup (struct qasync * self)
+static void qasync_cleanup (struct qasync * self)
 {
 	assert (self);
 	lfds711_freelist_cleanup (&self->fls_pool, NULL);
@@ -174,7 +174,7 @@ static void qasync_init (struct qasync * self, size_t msg_mem_size)
 		lfds711_freelist_push (&self->fls_pool, &self->msg [i].fe, NULL);
 	}
 	//Now it should be ok to start using threads:
-	self->flags = QASYNC_FLAG_MULTITHREAD_SUPPORTED;
+	self->flags = QASYNC_FLAG_THREADMODE;
 }
 
 

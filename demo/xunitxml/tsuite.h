@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <time.h>
+#include <pthread.h>
 
 #include <liblfds711.h>
 #include <csc_readmisc.h>
@@ -12,7 +13,6 @@
 #include <mxml.h>
 
 #include "qasync.h"
-#include "threads.h"
 
 
 #define TSUITE_START_MEMORY_SIZE 128
@@ -48,7 +48,7 @@ struct tsuite
 };
 
 
-void tsuite_info (struct tsuite * suite, char const * text)
+static void tsuite_info (struct tsuite * suite, char const * text)
 {
 	assert (suite);
 	assert (text);
@@ -56,7 +56,7 @@ void tsuite_info (struct tsuite * suite, char const * text)
 }
 
 
-void tsuite_infof (struct tsuite * suite, char const * format, ...)
+static void tsuite_infof (struct tsuite * suite, char const * format, ...)
 {
 	assert (suite);
 	assert (format);
@@ -67,7 +67,7 @@ void tsuite_infof (struct tsuite * suite, char const * format, ...)
 }
 
 
-char const * rstrstr11 (char const * e, size_t n, char const * substr)
+static char const * rstrstr11 (char const * e, size_t n, char const * substr)
 {
 	char const * needle = NULL;
 	while (n--)
@@ -93,7 +93,7 @@ char const * rstrstr11 (char const * e, size_t n, char const * substr)
 	</testcase>
 </testsuite>
 */
-void tsuite_runner1 (struct tsuite * suite, struct tsuite_caseinfo * tc)
+static void tsuite_runner1 (struct tsuite * suite, struct tsuite_caseinfo * tc)
 {
 	assert (suite->workcmd);
 	assert (suite->assertgrep);
@@ -158,23 +158,24 @@ void tsuite_runner1 (struct tsuite * suite, struct tsuite_caseinfo * tc)
 
 
 
-void tsuite_runner0 (struct tsuite * suite)
+static void tsuite_runner0 (struct tsuite * suite)
 {
 	assert (suite);
 	struct lfds711_stack_element * se;
-	struct tsuite_caseinfo * tc;
 	int pop_result = lfds711_stack_pop (&suite->ss, &se);
 	if (pop_result == 0)
 	{
 		suite->flags |= TSUITE_FLAG_EMPTY;
-		return;
 	}
-	tc = LFDS711_STACK_GET_VALUE_FROM_ELEMENT (*se);
-	tsuite_runner1 (suite, tc);
+	else
+	{
+		struct tsuite_caseinfo * tc = LFDS711_STACK_GET_VALUE_FROM_ELEMENT (*se);
+		tsuite_runner1 (suite, tc);
+	}
 }
 
 
-void tsuite_init (struct tsuite * suite)
+static void tsuite_init (struct tsuite * suite)
 {
 	assert (suite);
 	assert (suite->resultq);
@@ -214,7 +215,7 @@ void tsuite_init (struct tsuite * suite)
 }
 
 
-void tsuite_cleanup (struct tsuite * item)
+static void tsuite_cleanup (struct tsuite * item)
 {
 	assert (item);
 	lfds711_stack_cleanup (&item->ss, NULL);

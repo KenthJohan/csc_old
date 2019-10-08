@@ -88,7 +88,7 @@ struct argparse_option {
  */
 struct argparse {
     // user supplied
-    const struct argparse_option *options;
+	struct argparse_option *options;
     const char *const *usages;
     int flags;
     const char *description;    // a description after usage

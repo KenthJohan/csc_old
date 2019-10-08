@@ -1,3 +1,4 @@
+#define __USE_MINGW_ANSI_STDIO 1
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
@@ -8,6 +9,7 @@
 #include <time.h>
 #include <pthread.h>
 #include <errno.h>
+#include <inttypes.h>
 
 //https://www.msweet.org/mxml/mxml.html
 #include <mxml.h>
@@ -43,7 +45,8 @@
 enum app_channel
 {
 	APP_CHANNEL_INFO,
-	APP_CHANNEL_INFO2
+	APP_CHANNEL_INFO2,
+	APP_CHANNEL_COUNT
 };
 
 
@@ -156,7 +159,7 @@ https://nose.readthedocs.io/en/latest/plugins/xunit.html
 */
 void main_generate_xmlsuite (struct tsuite * suite, char const * filename)
 {
-	mxmlSetWrapMargin (0);
+	assert (suite);
 	FILE * f = stdout;
 	if (filename)
 	{
@@ -180,10 +183,10 @@ void main_generate_xmlsuite (struct tsuite * suite, char const * filename)
 	mxml_node_t * xml = mxmlNewXML ("1.0");
 	mxml_node_t * xml_suite = mxmlNewElement (xml, "testsuite");
 	mxmlElementSetAttrf (xml_suite, "name", "%s", "Emulator tests");
-	mxmlElementSetAttrf (xml_suite, "tests", "%llu", suite->tc_count);
-	mxmlElementSetAttrf (xml_suite, "errors", "%llu", errors);
-	mxmlElementSetAttrf (xml_suite, "failures", "%llu", failures);
-	mxmlElementSetAttrf (xml_suite, "skip", "%llu", skip);
+	mxmlElementSetAttrf (xml_suite, "tests", "%zu", suite->tc_count);
+	mxmlElementSetAttrf (xml_suite, "errors", "%zu", errors);
+	mxmlElementSetAttrf (xml_suite, "failures", "%zu", failures);
+	mxmlElementSetAttrf (xml_suite, "skip", "%zu", skip);
 	for (size_t i = 0; i < suite->tc_count; ++i)
 	{
 		mxmlAdd (xml_suite, MXML_ADD_BEFORE, MXML_ADD_TO_PARENT, suite->tc [i].node);
@@ -197,17 +200,18 @@ void main_generate_xmlsuite (struct tsuite * suite, char const * filename)
 int main (int argc, char const * argv [])
 {
 	struct tsuite suite = {0};
-	struct qasync resultq = {0};
+	struct qasync resq = {0};
 
 	setbuf (stdout, NULL);
+	mxmlSetWrapMargin (0);
 	pthread_cond_init (&condition, NULL);
 
 	//Use (resultq) to store any result from multiple threads or single thread:
 	//It is designed to be thread safe:
-	resultq.msg_count = APP_MSG_COUNT;
-	resultq.fdes = calloc (2, sizeof (FILE*));
-	resultq.fdes [APP_CHANNEL_INFO] = stdout; //At this stage the stdout will be used for logging information.
-	resultq.fdes [APP_CHANNEL_INFO2] = NULL;
+	resq.msg_count = APP_MSG_COUNT;
+	resq.fdes = calloc (APP_CHANNEL_COUNT, sizeof (FILE*));
+	resq.fdes [APP_CHANNEL_INFO] = stdout; //At this stage the stdout will be used for logging information.
+	resq.fdes [APP_CHANNEL_INFO2] = NULL;
 
 	//Init default program options:
 	int thread_count = APP_THREAD_COUNT;
@@ -243,15 +247,15 @@ int main (int argc, char const * argv [])
 	if (suite.assertgrep == NULL) {suite.assertgrep = APP_ASSERTGREP;}
 
 	//Print selected program options:
-	main_info (&resultq, "\n\nargparse result:\n");
-	main_infof (&resultq, "%30.30s : %x\n", "options [0].flags", options [0].flags);
-	main_infof (&resultq, "%30.30s : %d\n", "thread_count", thread_count);
-	main_infof (&resultq, "%30.30s : %d\n", "caseinfo_count", caseinfo_count);
-	main_infof (&resultq, "%30.30s : %s\n", "findcmd", suite.findcmd);
-	main_infof (&resultq, "%30.30s : %s\n", "workcmd", suite.workcmd);
-	main_infof (&resultq, "%30.30s : %s\n", "loginfo_filename", loginfo_filename);
-	main_infof (&resultq, "%30.30s : %s\n", "xunitxml_filename", xunitxml_filename);
-	main_infof (&resultq, "%30.30s : %s\n", "assertgrep", suite.assertgrep);
+	main_info (&resq, "\n\nargparse result:\n");
+	main_infof (&resq, "%30.30s : %x\n", "options [0].flags", options [0].flags);
+	main_infof (&resq, "%30.30s : %d\n", "thread_count", thread_count);
+	main_infof (&resq, "%30.30s : %d\n", "caseinfo_count", caseinfo_count);
+	main_infof (&resq, "%30.30s : %s\n", "findcmd", suite.findcmd);
+	main_infof (&resq, "%30.30s : %s\n", "workcmd", suite.workcmd);
+	main_infof (&resq, "%30.30s : %s\n", "loginfo_filename", loginfo_filename);
+	main_infof (&resq, "%30.30s : %s\n", "xunitxml_filename", xunitxml_filename);
+	main_infof (&resq, "%30.30s : %s\n", "assertgrep", suite.assertgrep);
 
 	//Quit when help options is enabled:
 	if (options [0].flags & OPT_ENABLED)
@@ -262,8 +266,8 @@ int main (int argc, char const * argv [])
 	//Use logfile if (logfilename) option is enabled:
 	if (loginfo_filename)
 	{
-		resultq.fdes [APP_CHANNEL_INFO] = fopen (loginfo_filename, "w+");
-		assert (resultq.fdes [APP_CHANNEL_INFO]);
+		resq.fdes [APP_CHANNEL_INFO] = fopen (loginfo_filename, "w+");
+		assert (resq.fdes [APP_CHANNEL_INFO]);
 	}
 
 	//Guard:
@@ -271,7 +275,7 @@ int main (int argc, char const * argv [])
 	assert (caseinfo_count >= 0);
 
 	//Configure the (tsuite) which will merge test results:
-	suite.resultq = &resultq;
+	suite.resultq = &resq;
 	suite.tc_count = (size_t)caseinfo_count;
 	suite.channel_xunit = APP_CHANNEL_INFO2;
 	suite.channel_info = APP_CHANNEL_INFO;
@@ -283,29 +287,29 @@ int main (int argc, char const * argv [])
 	{
 		//Start (qasync) thread:
 		pthread_t thread_textlog;
-		qasync_init (&resultq, APP_MSG_MEM_SIZE);
-		pthread_create (&thread_textlog, NULL, runner_qasync, &resultq);
+		qasync_init (&resq, APP_MSG_MEM_SIZE);
+		pthread_create (&thread_textlog, NULL, runner_qasync, &resq);
 
 		pthread_t * threads = calloc ((size_t)thread_count, sizeof (pthread_t));
 		assert (threads);
 		for (int i = 0; i < thread_count; ++i)
 		{
 			pthread_create (threads + i, NULL, runner_suite, &suite);
-			main_infof (&resultq, "thread=%04i created\n", (unsigned)threads [i]);
+			main_infof (&resq, "thread=%04i created\n", (unsigned)threads [i]);
 		}
-		//sleep (4);
-		//Wait for all worker threads to complete:
+
+		//Wait until each worker thread is complete:
 		for (int i = 0; i < thread_count; ++i)
 		{
 			pthread_join (threads [i], NULL);
-			main_infof (&resultq, "thread=%04i complete\n", (unsigned)threads [i]);
+			main_infof (&resq, "thread=%04i complete\n", (unsigned)threads [i]);
 		}
 
-		//When all worker threads are complete quit the textlogger:
-		resultq.flags |= QASYNC_FLAG_QUIT;
-		main_infof (&resultq, "Waiting for loginfo thread to complete\n");
+		//Convert the (resq) to non threaded mode:
+		resq.flags |= QASYNC_FLAG_QUIT;
+		main_infof (&resq, "Waiting for loginfo thread to complete\n");
 		pthread_join (thread_textlog, NULL);
-		resultq.flags &= ~QASYNC_FLAG_MULTITHREAD_SUPPORTED;
+		resq.flags &= ~QASYNC_FLAG_THREADMODE;
 	}
 	else
 	{
@@ -313,21 +317,21 @@ int main (int argc, char const * argv [])
 		{
 			tsuite_runner1 (&suite, suite.tc + i);
 		}
-		main_infof (&resultq, "runner_suite %s end\n", "");
+		main_infof (&resq, "runner_suite %s end\n", "");
 	}
 
 	//If we have (logfilename) then we know (fdes) is a file so we can call (fclose):
-	if (loginfo_filename && resultq.fdes [APP_CHANNEL_INFO])
+	if (loginfo_filename && resq.fdes [APP_CHANNEL_INFO])
 	{
-		fclose (resultq.fdes [APP_CHANNEL_INFO]);
+		fclose (resq.fdes [APP_CHANNEL_INFO]);
 	}
 
 
-	main_infof (&resultq, "main_generate_xmlsuite %s\n", xunitxml_filename);
+	main_infof (&resq, "main_generate_xmlsuite %s\n", xunitxml_filename);
 	main_generate_xmlsuite (&suite, xunitxml_filename);
 
 	tsuite_cleanup (&suite);
-	qasync_cleanup (&resultq);
+	qasync_cleanup (&resq);
 
 	return EXIT_SUCCESS;
 }

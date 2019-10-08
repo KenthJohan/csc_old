@@ -33,6 +33,7 @@ prefix_cmp(const char *str, const char *prefix)
         }
 }
 
+__attribute__((noreturn))
 static void
 argparse_error(struct argparse *self, const struct argparse_option *opt,
                const char *reason, int flags)
@@ -50,7 +51,7 @@ static int
 argparse_getvalue(struct argparse *self, const struct argparse_option *opt,
                   int flags)
 {
-    const char *s = NULL;
+	char *s = NULL;
     if (!opt->value)
         goto skipped;
     switch (opt->type) {
@@ -281,7 +282,7 @@ unknown:
 
 end:
     memmove(self->out + self->cpidx, self->argv,
-            self->argc * sizeof(*self->out));
+	(size_t)self->argc * sizeof(*self->out));
     self->out[self->cpidx + self->argc] = NULL;
 
     return self->cpidx + self->argc;
@@ -307,8 +308,8 @@ argparse_usage(struct argparse *self)
     const struct argparse_option *options;
 
     // figure out best width
-    size_t usage_opts_width = 0;
-    size_t len;
+	int usage_opts_width = 0;
+	int len;
     options = self->options;
     for (; options->type != ARGPARSE_OPT_END; options++) {
         len = 0;
@@ -338,7 +339,7 @@ argparse_usage(struct argparse *self)
 
     options = self->options;
     for (; options->type != ARGPARSE_OPT_END; options++) {
-        size_t pos = 0;
+		int pos = 0;
         int pad    = 0;
         if (options->type == ARGPARSE_OPT_GROUP) {
             fputc('\n', stdout);
@@ -383,4 +384,5 @@ argparse_help_cb(struct argparse *self, const struct argparse_option *option)
     (void)option;
     argparse_usage(self);
 	//exit(0);
+	return 0;
 }

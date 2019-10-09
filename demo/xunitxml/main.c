@@ -94,10 +94,11 @@ void * runner_qasync (void * arg)
 		{
 			//Soft quit, need to wait for queue to be empty:
 			if (tlog->flags & QASYNC_FLAG_QUIT) {break;}
-			//Prevent busy wait by using (pthread_cond_timedwait):
-			//Other threads can signal this thread that there might be data waiting in the queue:
+			//Prevent busy-wait by using (pthread_cond_timedwait).
+			//Other threads can wakeup this thread by calling (pthread_cond_signal).
+			//Using timeout might be temporary for now.
 			struct timespec ts;
-			clock_gettime(CLOCK_REALTIME, &ts);
+			clock_gettime (CLOCK_REALTIME, &ts);
 			//ts.tv_sec += 1;
 			ts.tv_nsec += 100000;
 			pthread_mutex_lock (&mutex);

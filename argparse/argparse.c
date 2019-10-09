@@ -51,7 +51,7 @@ static void argparse_error (struct argparse *self, struct argparse_option *opt, 
 }
 
 
-static int argparse_getvalue (struct argparse *self, struct argparse_option *opt)
+static void argparse_getvalue (struct argparse *self, struct argparse_option *opt)
 {
 	char *s = NULL;
 	if (!opt->value) {goto skipped;}
@@ -154,10 +154,8 @@ static int argparse_getvalue (struct argparse *self, struct argparse_option *opt
 skipped:
 	if (opt->callback)
 	{
-		return opt->callback (self, opt);
+		opt->callback (self, opt);
 	}
-
-	return 0;
 }
 
 
@@ -184,25 +182,30 @@ static void argparse_options_check (struct argparse *self, const struct argparse
 }
 
 
-static int argparse_short_opt (struct argparse *self, struct argparse_option *options)
+static void argparse_short_opt (struct argparse *self, struct argparse_option *options)
 {
 	assert (self);
+	assert ((self->flags & ARGPARSE_UNKNOWN_OPTION) == 0);
 	for (; options->type != ARGPARSE_OPT_END; options++)
 	{
+		assert (self->optvalue);
+		//printf ("optvalue %s\n", self->optvalue);
 		if (options->short_name == *self->optvalue)
 		{
 			options->flags |= OPT_PRESENT;
 			self->optvalue = self->optvalue[1] ? self->optvalue + 1 : NULL;
-			return argparse_getvalue (self, options);
+			argparse_getvalue (self, options);
+			return;
 		}
 	}
-	return ARGPARSE_UNKOWN_OPTION;
+	self->flags |= ARGPARSE_UNKNOWN_OPTION;
 }
 
 
-static int argparse_long_opt (struct argparse *self, struct argparse_option *options)
+static void argparse_long_opt (struct argparse *self, struct argparse_option *options)
 {
 	assert (self);
+	assert ((self->flags & ARGPARSE_UNKNOWN_OPTION) == 0);
 	for (; options->type != ARGPARSE_OPT_END; options++)
 	{
 		const char *rest;
@@ -235,9 +238,10 @@ static int argparse_long_opt (struct argparse *self, struct argparse_option *opt
 			self->optvalue = rest + 1;
 		}
 		options->flags |= OPT_LONG;
-		return argparse_getvalue (self, options);
+		argparse_getvalue (self, options);
+		return;
 	}
-	return ARGPARSE_UNKOWN_OPTION;
+	self->flags |= ARGPARSE_UNKNOWN_OPTION;
 }
 
 
@@ -288,18 +292,12 @@ int argparse_parse (struct argparse *self, int argc, const char *argv [])
 		if (arg[1] != '-')
 		{
 			self->optvalue = arg + 1;
-			switch (argparse_short_opt (self, self->options))
-			{
-			case -1: break;
-			case ARGPARSE_UNKOWN_OPTION: goto unknown;
-			}
+			argparse_short_opt (self, self->options);
+			if (self->flags & ARGPARSE_UNKNOWN_OPTION) {goto unknown;}
 			while (self->optvalue)
 			{
-				switch (argparse_short_opt (self, self->options))
-				{
-				case -1: break;
-				case ARGPARSE_UNKOWN_OPTION: goto unknown;
-				}
+				argparse_short_opt (self, self->options);
+				if (self->flags & ARGPARSE_UNKNOWN_OPTION) {goto unknown;}
 			}
 			continue;
 		}
@@ -311,11 +309,8 @@ int argparse_parse (struct argparse *self, int argc, const char *argv [])
 			break;
 		}
 		// long option
-		switch (argparse_long_opt (self, self->options))
-		{
-		case -1: break;
-		case ARGPARSE_UNKOWN_OPTION: goto unknown;
-		}
+		argparse_long_opt (self, self->options);
+		if (self->flags & ARGPARSE_UNKNOWN_OPTION) {goto unknown;}
 		continue;
 unknown:
 		fprintf (stdout, "error: unknown option `%s`\n", self->argv[0]);

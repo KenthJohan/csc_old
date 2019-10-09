@@ -15,9 +15,6 @@ extern "C" {
 #include <stdint.h>
 
 
-#define ARGPARSE_UNKOWN_OPTION -2
-
-
 struct argparse;
 struct argparse_option;
 
@@ -26,7 +23,8 @@ typedef int argparse_callback (struct argparse *self, const struct argparse_opti
 
 enum argparse_flag
 {
-	ARGPARSE_STOP_AT_NON_OPTION = 1,
+	ARGPARSE_STOP_AT_NON_OPTION = 0x01,
+	ARGPARSE_UNKNOWN_OPTION = 0x02
 };
 
 

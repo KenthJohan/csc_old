@@ -223,16 +223,16 @@ int main (int argc, char const * argv [])
 	//Define different program options:
 	struct argparse_option options[] =
 	{
-		OPT_HELP(),
-		OPT_GROUP("Basic options"),
-		OPT_INTEGER('j', "thread_count", &thread_count, "Number of threads. 0 means everything executes sequently.", NULL, 0, 0),
-		OPT_INTEGER('k', "caseinfo_count", &caseinfo_count, "Maximum number of testcases.", NULL, 0, 0),
-		OPT_STRING('f', "findcmd", &suite.findcmd, "This command selects testfiles. e.g. (find . -name \"*.emuTest\")", NULL, 0, 0),
-		OPT_STRING('w', "workcmd", &suite.workcmd, "This command is invoked per testfile. Use (%s) to insert each filename in respective command.", NULL, 0, 0),
-		OPT_STRING('l', "loginfo_filename", &loginfo_filename, "If defined then program will create this file and put all loginfo there.", NULL, 0, 0),
-		OPT_STRING('x', "xunitxml_filename", &xunitxml_filename, "Save the xunit xml report in this file.", NULL, 0, 0),
-		OPT_STRING('a', "assertgrep", &suite.assertgrep, "This search-string is used to find the assert message line from (workcmd).", NULL, 0, 0),
-		OPT_END()
+		OPT_HELP (),
+		OPT_GROUP ("Basic options"),
+		OPT_INTEGER ('j', "thread_count", &thread_count, "Number of threads. 0 means everything executes sequently.", NULL, 0, 0),
+		OPT_INTEGER ('k', "caseinfo_count", &caseinfo_count, "Maximum number of testcases.", NULL, 0, 0),
+		OPT_STRING ('f', "findcmd", &suite.findcmd, "This command selects testfiles. e.g. (find . -name \"*.emuTest\")", NULL, 0, 0),
+		OPT_STRING ('w', "workcmd", &suite.workcmd, "This command is invoked per testfile. Use (%s) to insert each filename in respective command.", NULL, 0, 0),
+		OPT_STRING ('l', "loginfo_filename", &loginfo_filename, "If defined then program will create this file and put all loginfo there.", NULL, 0, 0),
+		OPT_STRING ('x', "xunitxml_filename", &xunitxml_filename, "Save the xunit xml report in this file.", NULL, 0, 0),
+		OPT_STRING ('a', "assertgrep", &suite.assertgrep, "This search-string is used to find the assert message line from (workcmd).", NULL, 0, 0),
+		OPT_END ()
 	};
 
 	//Parse program options:
@@ -247,20 +247,20 @@ int main (int argc, char const * argv [])
 	if (xunitxml_filename == NULL) {xunitxml_filename = APP_XUNIT_FILENAME;}
 	if (suite.assertgrep == NULL) {suite.assertgrep = APP_ASSERTGREP;}
 
-	//Print selected program options:
-	main_info (&resq, "\n\nargparse result:\n");
-	main_infof (&resq, "%30.30s : %x\n", "options [0].flags", options [0].flags);
-	main_infof (&resq, "%30.30s : %d\n", "thread_count", thread_count);
-	main_infof (&resq, "%30.30s : %d\n", "caseinfo_count", caseinfo_count);
-	main_infof (&resq, "%30.30s : %s\n", "findcmd", suite.findcmd);
-	main_infof (&resq, "%30.30s : %s\n", "workcmd", suite.workcmd);
-	main_infof (&resq, "%30.30s : %s\n", "loginfo_filename", loginfo_filename);
-	main_infof (&resq, "%30.30s : %s\n", "xunitxml_filename", xunitxml_filename);
-	main_infof (&resq, "%30.30s : %s\n", "assertgrep", suite.assertgrep);
-
 	//Quit when help options is enabled:
 	if (options [0].flags & OPT_PRESENT)
 	{
+		argparse_usage (&argparse);
+		//Print selected program options:
+		main_info (&resq, "\n\nargparse result:\n");
+		main_infof (&resq, "%30.30s : %x\n", "options [0].flags", options [0].flags);
+		main_infof (&resq, "%30.30s : %d\n", "thread_count", thread_count);
+		main_infof (&resq, "%30.30s : %d\n", "caseinfo_count", caseinfo_count);
+		main_infof (&resq, "%30.30s : %s\n", "findcmd", suite.findcmd);
+		main_infof (&resq, "%30.30s : %s\n", "workcmd", suite.workcmd);
+		main_infof (&resq, "%30.30s : %s\n", "loginfo_filename", loginfo_filename);
+		main_infof (&resq, "%30.30s : %s\n", "xunitxml_filename", xunitxml_filename);
+		main_infof (&resq, "%30.30s : %s\n", "assertgrep", suite.assertgrep);
 		exit (0);
 	}
 

@@ -13,14 +13,12 @@
 #include "argparse.h"
 
 
-
-
-
 static const char * prefix_skip (const char *str, const char *prefix)
 {
 	size_t len = strlen (prefix);
 	return strncmp (str, prefix, len) ? NULL : str + len;
 }
+
 
 static int prefix_cmp (const char *str, const char *prefix)
 {
@@ -162,8 +160,10 @@ skipped:
 	return 0;
 }
 
-static void argparse_options_check (const struct argparse_option options [])
+
+static void argparse_options_check (struct argparse *self, const struct argparse_option options [])
 {
+	assert (self);
 	for (; options->type != ARGPARSE_OPT_END; options++)
 	{
 		switch (options->type)
@@ -183,8 +183,10 @@ static void argparse_options_check (const struct argparse_option options [])
 	}
 }
 
+
 static int argparse_short_opt (struct argparse *self, struct argparse_option *options)
 {
+	assert (self);
 	for (; options->type != ARGPARSE_OPT_END; options++)
 	{
 		if (options->short_name == *self->optvalue)
@@ -197,8 +199,10 @@ static int argparse_short_opt (struct argparse *self, struct argparse_option *op
 	return ARGPARSE_UNKOWN_OPTION;
 }
 
+
 static int argparse_long_opt (struct argparse *self, struct argparse_option *options)
 {
+	assert (self);
 	for (; options->type != ARGPARSE_OPT_END; options++)
 	{
 		const char *rest;
@@ -236,8 +240,10 @@ static int argparse_long_opt (struct argparse *self, struct argparse_option *opt
 	return ARGPARSE_UNKOWN_OPTION;
 }
 
-int argparse_init (struct argparse *self, struct argparse_option *options, const char *const *usages, int flags)
+
+int argparse_init (struct argparse *self, struct argparse_option *options, const char *const usages [], int flags)
 {
+	assert (self);
 	memset (self, 0, sizeof(*self));
 	self->options = options;
 	self->usages = usages;
@@ -247,19 +253,23 @@ int argparse_init (struct argparse *self, struct argparse_option *options, const
 	return 0;
 }
 
+
 void argparse_describe (struct argparse *self, const char *description, const char *epilog)
 {
+	assert (self);
 	self->description = description;
 	self->epilog = epilog;
 }
 
-int argparse_parse (struct argparse *self, int argc, const char **argv)
+
+int argparse_parse (struct argparse *self, int argc, const char *argv [])
 {
+	assert (self);
 	self->argc = argc - 1;
 	self->argv = argv + 1;
 	self->out = argv;
 
-	argparse_options_check (self->options);
+	argparse_options_check (self, self->options);
 
 	for (; self->argc; self->argc--, self->argv++)
 	{
@@ -319,6 +329,7 @@ end:
 	return self->cpidx + self->argc;
 }
 
+
 void argparse_usage1 (const char *const *usages)
 {
 	if (usages)
@@ -335,8 +346,10 @@ void argparse_usage1 (const char *const *usages)
 	}
 }
 
+
 void argparse_usage (struct argparse *self)
 {
+	assert (self);
 	argparse_usage1 (self->usages);
 	if (self->description)
 	{
@@ -438,12 +451,4 @@ void argparse_usage (struct argparse *self)
 	{
 		fprintf (stdout, "%s\n", self->epilog);
 	}
-}
-
-int argparse_help_cb(struct argparse *self, const struct argparse_option *option)
-{
-	(void)option;
-	argparse_usage (self);
-	//exit(0);
-	return 0;
 }

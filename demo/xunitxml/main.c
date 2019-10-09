@@ -259,7 +259,7 @@ int main (int argc, char const * argv [])
 	main_infof (&resq, "%30.30s : %s\n", "assertgrep", suite.assertgrep);
 
 	//Quit when help options is enabled:
-	if (options [0].flags & OPT_ENABLED)
+	if (options [0].flags & OPT_PRESENT)
 	{
 		exit (0);
 	}

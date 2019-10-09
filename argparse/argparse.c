@@ -182,14 +182,13 @@ static void argparse_options_check (struct argparse *self, const struct argparse
 }
 
 
-static void argparse_short_opt (struct argparse *self, struct argparse_option *options)
+static void argparse_short_opt (struct argparse *self, struct argparse_option options [])
 {
 	assert (self);
 	assert ((self->flags & ARGPARSE_UNKNOWN_OPTION) == 0);
 	for (; options->type != ARGPARSE_OPT_END; options++)
 	{
 		assert (self->optvalue);
-		//printf ("optvalue %s\n", self->optvalue);
 		if (options->short_name == *self->optvalue)
 		{
 			options->flags |= OPT_PRESENT;
@@ -202,7 +201,7 @@ static void argparse_short_opt (struct argparse *self, struct argparse_option *o
 }
 
 
-static void argparse_long_opt (struct argparse *self, struct argparse_option *options)
+static void argparse_long_opt (struct argparse *self, struct argparse_option options [])
 {
 	assert (self);
 	assert ((self->flags & ARGPARSE_UNKNOWN_OPTION) == 0);
@@ -238,6 +237,7 @@ static void argparse_long_opt (struct argparse *self, struct argparse_option *op
 			self->optvalue = rest + 1;
 		}
 		options->flags |= OPT_LONG;
+		options->flags |= OPT_PRESENT;
 		argparse_getvalue (self, options);
 		return;
 	}

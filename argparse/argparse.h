@@ -18,7 +18,7 @@ extern "C" {
 struct argparse;
 struct argparse_option;
 
-typedef int argparse_callback (struct argparse *self, const struct argparse_option *option);
+typedef void argparse_callback (struct argparse *self, const struct argparse_option *option);
 
 
 enum argparse_flag

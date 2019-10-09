@@ -22,16 +22,15 @@ static const char * prefix_skip (const char *str, const char *prefix)
 
 static int prefix_cmp (const char *str, const char *prefix)
 {
-	for (;; str++, prefix++)
+	while (1)
 	{
-		if (!*prefix)
-		{
-			return 0;
-		}
+		if (!*prefix) {return 0;}
 		else if (*str != *prefix)
 		{
 			return (unsigned char)*prefix - (unsigned char)*str;
 		}
+		str++;
+		prefix++;
 	}
 }
 
@@ -127,7 +126,7 @@ static void argparse_getvalue (struct argparse *self, struct argparse_option *op
 		if (self->optvalue)
 		{
 			*(float *)opt->value = strtof(self->optvalue, (char **)&s);
-			self->optvalue       = NULL;
+			self->optvalue = NULL;
 		}
 		else if (self->argc > 1)
 		{
@@ -162,8 +161,10 @@ skipped:
 static void argparse_options_check (struct argparse *self, const struct argparse_option options [])
 {
 	assert (self);
-	for (; options->type != ARGPARSE_OPT_END; options++)
+	while (1)
 	{
+		if (options == NULL) {break;}
+		if (options->type == ARGPARSE_OPT_END) {break;}
 		switch (options->type)
 		{
 		case ARGPARSE_OPT_END:
@@ -173,11 +174,12 @@ static void argparse_options_check (struct argparse *self, const struct argparse
 		case ARGPARSE_OPT_FLOAT:
 		case ARGPARSE_OPT_STRING:
 		case ARGPARSE_OPT_GROUP:
-			continue;
+			break;
 		default:
 			fprintf (stderr, "wrong option type: %d", options->type);
 			break;
 		}
+		options++;
 	}
 }
 
@@ -186,8 +188,10 @@ static void argparse_short_opt (struct argparse *self, struct argparse_option op
 {
 	assert (self);
 	assert ((self->flags & ARGPARSE_UNKNOWN_OPTION) == 0);
-	for (; options->type != ARGPARSE_OPT_END; options++)
+	while (1)
 	{
+		if (options == NULL) {break;}
+		if (options->type == ARGPARSE_OPT_END) {break;}
 		assert (self->optvalue);
 		if (options->short_name == *self->optvalue)
 		{
@@ -196,6 +200,7 @@ static void argparse_short_opt (struct argparse *self, struct argparse_option op
 			argparse_getvalue (self, options);
 			return;
 		}
+		options++;
 	}
 	self->flags |= ARGPARSE_UNKNOWN_OPTION;
 }
@@ -205,12 +210,13 @@ static void argparse_long_opt (struct argparse *self, struct argparse_option opt
 {
 	assert (self);
 	assert ((self->flags & ARGPARSE_UNKNOWN_OPTION) == 0);
-	for (; options->type != ARGPARSE_OPT_END; options++)
+	for (;;options++)
 	{
-		const char *rest;
+		if (options == NULL) {break;}
+		if (options->type == ARGPARSE_OPT_END) {break;}
 		if (!options->long_name) {continue;}
-		rest = prefix_skip (self->argv[0] + 2, options->long_name);
-		if (!rest)
+		const char *rest = prefix_skip (self->argv[0] + 2, options->long_name);
+		if (rest == NULL)
 		{
 			// negation disabled?
 			if (options->flags & OPT_NONEG)

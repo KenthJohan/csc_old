@@ -16,7 +16,9 @@
 static const char * prefix_skip (const char *str, const char *prefix)
 {
 	size_t len = strlen (prefix);
-	return strncmp (str, prefix, len) ? NULL : str + len;
+	int diff = strncmp (str, prefix, len);
+	char const * r = diff ? NULL : str + len;
+	return r;
 }
 
 
@@ -215,7 +217,13 @@ static void argparse_long_opt (struct argparse *self, struct argparse_option opt
 		if (options == NULL) {break;}
 		if (options->type == ARGPARSE_OPT_END) {break;}
 		if (!options->long_name) {continue;}
-		const char *rest = prefix_skip (self->argv[0] + 2, options->long_name);
+		//--attribute=value
+		//--(name)(=value)
+		//--(name)(rest)
+		//The (name) is after two dashes ("--") thus add by 2 characters:
+		char const * name = self->argv[0] + 2;
+		//The (prefix_skip) will return pointer directly after (name) i.e. (rest):
+		char const * rest = prefix_skip (name, options->long_name);
 		if (rest == NULL)
 		{
 			// negation disabled?
@@ -229,11 +237,13 @@ static void argparse_long_opt (struct argparse *self, struct argparse_option opt
 				continue;
 			}
 
-			if (prefix_cmp (self->argv[0] + 2, "no-"))
+			//If option value does not starts with "no-"
+			if (prefix_cmp (name, "no-"))
 			{
 				continue;
 			}
-			rest = prefix_skip (self->argv[0] + 2 + 3, options->long_name);
+			//The name is after "no-" thus add by 3 characters:
+			rest = prefix_skip (name + 3, options->long_name);
 			if (!rest) {continue;}
 			options->flags |= OPT_UNSET;
 		}

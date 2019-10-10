@@ -119,18 +119,12 @@ static void tsuite_runner1 (struct tsuite * suite, struct tsuite_caseinfo * tc)
 	mxmlElementSetAttr (tc->node, "name", tc->filename);
 	mxmlElementSetAttrf (tc->node, "time", "%f", spent);
 	char const * assertline = rstrstr11 (tc->memory + tc->memory_size, MIN (tc->memory_size, 1000), suite->assertgrep);
-
 	if (assertline == NULL)
 	{
 		if (tc->exit_status)
 		{
 			mxml_node_t * terror = mxmlNewElement (tc->node, "error");
 			mxmlElementSetAttr (terror, "message", "no assert message found");
-			mxmlNewCDATA (terror, tc->memory);
-		}
-		else
-		{
-			mxmlNewCDATA (tc->node, tc->memory);
 		}
 	}
 	else
@@ -148,8 +142,11 @@ static void tsuite_runner1 (struct tsuite * suite, struct tsuite_caseinfo * tc)
 		char * e = memccpy (amsg, assertline, '\n', 128);
 		if (e) {e [-1] = '\0';}
 		mxmlElementSetAttr (terror, "message", amsg);
-		mxmlNewCDATA (terror, tc->memory);
 	}
+
+	mxml_node_t * cdataout = mxmlNewElement (tc->node, "system-out");
+	mxmlNewCDATA (cdataout, tc->memory);
+
 
 	free (tc->memory);
 	tc->memory = NULL;

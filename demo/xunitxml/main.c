@@ -1,3 +1,12 @@
+/*
+https://gist.github.com/n1k0/4332371
+https://wiki.yoctoproject.org/wiki/QA/xUnit_XML_Template
+https://www.ibm.com/support/knowledgecenter/en/SSQ2R2_14.2.0/com.ibm.rsar.analysis.codereview.cobol.doc/topics/cac_useresults_junit.html
+https://help.catchsoftware.com/display/ET/JUnit+Format
+https://pypi.org/project/junit-xml/
+https://github.com/cofyc/argparse/blob/master/argparse.c
+*/
+
 #define __USE_MINGW_ANSI_STDIO 1
 #include <stdio.h>
 #include <stdarg.h>
@@ -130,9 +139,11 @@ const char * whitespace_cb (mxml_node_t *node, int where)
 	const char *element = mxmlGetElement (node);
 	if
 	(
-		!strcmp(element, "testsuite") ||
-		!strcmp(element, "testcase") ||
-		!strcmp(element, "error")
+	!strcmp(element, "testsuite") ||
+	!strcmp(element, "testcase") ||
+	!strcmp(element, "system-out") ||
+	!strcmp(element, "failure") ||
+	!strcmp(element, "error")
 	)
 	{
 		if (where == MXML_WS_BEFORE_OPEN || where == MXML_WS_AFTER_CLOSE)
@@ -187,7 +198,7 @@ void main_generate_xmlsuite (struct tsuite * suite, char const * filename)
 	mxmlElementSetAttrf (xml_suite, "tests", "%zu", suite->tc_count);
 	mxmlElementSetAttrf (xml_suite, "errors", "%zu", errors);
 	mxmlElementSetAttrf (xml_suite, "failures", "%zu", failures);
-	mxmlElementSetAttrf (xml_suite, "skip", "%zu", skip);
+	mxmlElementSetAttrf (xml_suite, "skipped", "%zu", skip);
 	for (size_t i = 0; i < suite->tc_count; ++i)
 	{
 		mxmlAdd (xml_suite, MXML_ADD_BEFORE, MXML_ADD_TO_PARENT, suite->tc [i].node);

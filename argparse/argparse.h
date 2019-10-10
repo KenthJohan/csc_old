@@ -51,6 +51,7 @@ enum argparse_option_flags
 	OPT_PRESENT = 0x02,
 	OPT_ERROR = 0x04,
 	OPT_LONG = 0x08,
+	/* If option value starts with "no-" */
 	OPT_UNSET = 0x10,
 };
 

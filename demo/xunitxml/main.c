@@ -80,7 +80,7 @@ void * runner_suite (void * arg)
 	while (1)
 	{
 		if (suite->flags & TSUITE_FLAG_EMPTY) {break;}
-		tsuite_runner0 (suite);
+		tsuite_assemble_testcase_from_queue (suite);
 		pthread_cond_signal (&condition);
 		//qasync_add(suite->logger, APP_CHANNEL_STDOUT, "Hello\n");
 	}
@@ -327,7 +327,7 @@ int main (int argc, char const * argv [])
 	{
 		for (size_t i = 0; i < suite.tc_count; ++i)
 		{
-			tsuite_runner1 (&suite, suite.tc + i);
+			tsuite_assemble_testcase (&suite, suite.tc + i);
 		}
 		main_infof (&resq, "runner_suite %s end\n", "");
 	}

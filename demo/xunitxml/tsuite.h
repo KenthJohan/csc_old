@@ -21,7 +21,7 @@
 
 
 
-struct tsuite_caseinfo
+struct tsuite_testcase
 {
 	struct lfds711_stack_element se;
 	int id;
@@ -37,7 +37,7 @@ struct tsuite
 {
 	struct lfds711_stack_state ss;
 	size_t tc_count;
-	struct tsuite_caseinfo * tc;
+	struct tsuite_testcase * tc;
 	struct qasync * resultq;
 	size_t channel_xunit;
 	size_t channel_info;
@@ -93,7 +93,7 @@ static char const * rstrstr11 (char const * e, size_t n, char const * substr)
 	</testcase>
 </testsuite>
 */
-static void tsuite_runner1 (struct tsuite * suite, struct tsuite_caseinfo * tc)
+static void tsuite_assemble_testcase (struct tsuite * suite, struct tsuite_testcase * tc)
 {
 	assert (suite->workcmd);
 	assert (suite->assertgrep);
@@ -115,38 +115,37 @@ static void tsuite_runner1 (struct tsuite * suite, struct tsuite_caseinfo * tc)
 	double spent = (t [1].tv_sec - t [0].tv_sec) + (t [1].tv_nsec + t [1].tv_nsec) / 1000000000.0;
 
 	tsuite_infof (suite, "thread=%04i, workid=%04i: exit_status=%i, size=%iB\n", (int unsigned)pthread_self (), tc->id, tc->exit_status, tc->memory_size);
+
 	tc->node = mxmlNewElement (NULL, "testcase");
 	mxmlElementSetAttr (tc->node, "name", tc->filename);
 	mxmlElementSetAttrf (tc->node, "time", "%f", spent);
 	char const * assertline = rstrstr11 (tc->memory + tc->memory_size, MIN (tc->memory_size, 1000), suite->assertgrep);
-	if (assertline == NULL)
+	mxml_node_t * node_error = NULL;
+	if (tc->exit_status)
 	{
-		if (tc->exit_status)
-		{
-			mxml_node_t * terror = mxmlNewElement (tc->node, "error");
-			mxmlElementSetAttr (terror, "message", "no assert message found");
-		}
+		node_error = mxmlNewElement (tc->node, "error");
 	}
-	else
+	else if (assertline)
 	{
-		mxml_node_t * terror = NULL;
-		if (tc->exit_status)
+		node_error = mxmlNewElement (tc->node, "failure");
+	}
+	if (node_error)
+	{
+		if (assertline)
 		{
-			terror = mxmlNewElement (tc->node, "error");
+			char amsg [128] = {0};
+			char * e = memccpy (amsg, assertline, '\n', sizeof (amsg));
+			if (e) {e [-1] = '\0';}
+			mxmlElementSetAttrf (node_error, "message", "exit_status = %i. %s", tc->exit_status, amsg);
 		}
 		else
 		{
-			terror = mxmlNewElement (tc->node, "failure");
+			mxmlElementSetAttrf (node_error, "message", "exit_status = %i. Assert search-string \"%s\" not found!", tc->exit_status, suite->assertgrep);
 		}
-		char amsg [128] = {0};
-		char * e = memccpy (amsg, assertline, '\n', 128);
-		if (e) {e [-1] = '\0';}
-		mxmlElementSetAttr (terror, "message", amsg);
 	}
 
 	mxml_node_t * cdataout = mxmlNewElement (tc->node, "system-out");
 	mxmlNewCDATA (cdataout, tc->memory);
-
 
 	free (tc->memory);
 	tc->memory = NULL;
@@ -155,7 +154,7 @@ static void tsuite_runner1 (struct tsuite * suite, struct tsuite_caseinfo * tc)
 
 
 
-static void tsuite_runner0 (struct tsuite * suite)
+static void tsuite_assemble_testcase_from_queue (struct tsuite * suite)
 {
 	assert (suite);
 	struct lfds711_stack_element * se;
@@ -166,8 +165,8 @@ static void tsuite_runner0 (struct tsuite * suite)
 	}
 	else
 	{
-		struct tsuite_caseinfo * tc = LFDS711_STACK_GET_VALUE_FROM_ELEMENT (*se);
-		tsuite_runner1 (suite, tc);
+		struct tsuite_testcase * tc = LFDS711_STACK_GET_VALUE_FROM_ELEMENT (*se);
+		tsuite_assemble_testcase (suite, tc);
 	}
 }
 
@@ -176,7 +175,7 @@ static void tsuite_init (struct tsuite * suite)
 {
 	assert (suite);
 	assert (suite->resultq);
-	suite->tc = calloc (suite->tc_count, sizeof(struct tsuite_caseinfo));
+	suite->tc = calloc (suite->tc_count, sizeof(struct tsuite_testcase));
 	assert (suite->tc);
 	lfds711_stack_init_valid_on_current_logical_core (&suite->ss, NULL);
 	tsuite_infof (suite, "popen findcmd (%s)\n", suite->findcmd);
@@ -195,7 +194,7 @@ static void tsuite_init (struct tsuite * suite)
 		tsuite_infof (suite, "filename %s\n", suite->tc [i].filename);
 	}
 	suite->tc_count = i;
-	void * mem = realloc (suite->tc, suite->tc_count * sizeof(struct tsuite_caseinfo));
+	void * mem = realloc (suite->tc, suite->tc_count * sizeof(struct tsuite_testcase));
 	if (mem)
 	{
 		suite->tc = mem;
@@ -224,6 +223,11 @@ static void tsuite_cleanup (struct tsuite * item)
 			free (item->tc [i].memory);
 			item->tc [i].memory = NULL;
 			item->tc [i].memory_size = 0;
+		}
+		if (item->tc [i].filename)
+		{
+			free (item->tc [i].filename);
+			item->tc [i].filename = NULL;
 		}
 	}
 	if (item->tc)

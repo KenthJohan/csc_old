@@ -13,7 +13,8 @@ SOURCES += \
 
 
 INCLUDEPATH += $$PWD/../../src
-HEADERS += $$PWD/../../src/csc_tcol.h
+HEADERS += $$PWD/../../src/csc_tcol.h \
+    misc.h
 HEADERS += $$PWD/../../src/csc_debug.h
 HEADERS += $$PWD/../../src/csc_malloc_file.h
 HEADERS += $$PWD/../../src/csc_basic.h

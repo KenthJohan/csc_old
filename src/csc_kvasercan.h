@@ -1,3 +1,27 @@
+/*
+MIT License
+
+Copyright (c) 2019 CSC Project
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
 #pragma once
 #include <stdio.h>
 #include <stdint.h>
@@ -7,8 +31,8 @@
 
 #include "csc_debug.h"
 
-#define XCAN_MSGFARGS(x) (x) [0], (x) [1], (x) [2], (x) [3], (x) [4], (x) [5], (x) [6], (x) [7]
-#define XCAN_MSGFORMAT "%02x %02x %02x %02x %02x %02x %02x %02x"
+#define CSC_KVASERCAN_MSGFARGS(x) (x) [0], (x) [1], (x) [2], (x) [3], (x) [4], (x) [5], (x) [6], (x) [7]
+#define CSC_KVASERCAN_MSGFORMAT "%02x %02x %02x %02x %02x %02x %02x %02x"
 
 #define CSC_KVASERCAN_ASSERT(exp) csc_kvasercan_assert(exp, __COUNTER__, __RELATIVE_FILE__, __LINE__, __func__, #exp)
 
@@ -39,44 +63,44 @@ void csc_kvasercan_assert
 	}
 }
 
-enum xcanbps
+enum csc_kvasercan_bps
 {
-	XCANBPS_1M,
-	XCANBPS_500K,
-	XCANBPS_250K,
-	XCANBPS_125K,
-	XCANBPS_100K,
-	XCANBPS_62K,
-	XCANBPS_50K,
-	XCANBPS_83K,
-	XCANBPS_10K
+	CSC_KVASERCAN_BPS_1M,
+	CSC_KVASERCAN_BPS_500K,
+	CSC_KVASERCAN_BPS_250K,
+	CSC_KVASERCAN_BPS_125K,
+	CSC_KVASERCAN_BPS_100K,
+	CSC_KVASERCAN_BPS_62K,
+	CSC_KVASERCAN_BPS_50K,
+	CSC_KVASERCAN_BPS_83K,
+	CSC_KVASERCAN_BPS_10K
 };
 
 
-static char const * xcanbps_name [] = {"1M", "500k", "250k", "125k", "100k", "62k", "50k", "83k", "10k"};
+static char const * csc_kvaser_bps_name [] = {"1M", "500k", "250k", "125k", "100k", "62k", "50k", "83k", "10k"};
 
 
-int xcanbps_convert (enum xcanbps bps)
+int csc_kvasercan_bps_convert (enum csc_kvasercan_bps bps)
 {
 	switch (bps)
 	{
-	case XCANBPS_1M:
+	case CSC_KVASERCAN_BPS_1M:
 	return canBITRATE_1M;
-	case XCANBPS_500K:
+	case CSC_KVASERCAN_BPS_500K:
 	return canBITRATE_500K;
-	case XCANBPS_250K:
+	case CSC_KVASERCAN_BPS_250K:
 	return canBITRATE_250K;
-	case XCANBPS_125K:
+	case CSC_KVASERCAN_BPS_125K:
 	return canBITRATE_125K;
-	case XCANBPS_100K:
+	case CSC_KVASERCAN_BPS_100K:
 	return canBITRATE_100K;
-	case XCANBPS_62K:
+	case CSC_KVASERCAN_BPS_62K:
 	return canBITRATE_62K;
-	case XCANBPS_50K:
+	case CSC_KVASERCAN_BPS_50K:
 	return canBITRATE_50K;
-	case XCANBPS_83K:
+	case CSC_KVASERCAN_BPS_83K:
 	return canBITRATE_83K;
-	case XCANBPS_10K:
+	case CSC_KVASERCAN_BPS_10K:
 	return canBITRATE_10K;
 	}
 	assert (0);
@@ -95,15 +119,15 @@ static void csc_kvasercan_build_name (char * name, int n, size_t step)
 		uint32_t ui;
 		uint32_t flags;
 		r = canGetChannelData (n, canCHANNELDATA_UI_NUMBER, &ui, sizeof (ui));
-		assert (r == canOK);
+		ASSERT (r == canOK);
 		r = canGetChannelData (n, canCHANNELDATA_DEVDESCR_ASCII, buffer, sizeof (buffer));
-		assert (r == canOK);
+		ASSERT (r == canOK);
 		r = canGetChannelData (n, canCHANNELDATA_CARD_SERIAL_NO, serial, sizeof(serial));
-		assert (r == canOK);
+		ASSERT (r == canOK);
 		r = canGetChannelData (n, canCHANNELDATA_CARD_FIRMWARE_REV, fw, sizeof(fw));
-		assert (r == canOK);
+		ASSERT (r == canOK);
 		r = canGetChannelData (n, canCHANNELDATA_CHANNEL_FLAGS, &flags, sizeof(flags));
-		assert (r == canOK);
+		ASSERT (r == canOK);
 		TRACE_F ("flags %x", flags);
 		snprintf (name, step, "%02i: %s SN%i v%i.%i.%i %s", n, buffer, serial [0], fw[1] >> 16, fw[1] & 0xffff, fw[0] & 0xffff, (flags & canCHANNEL_IS_OPEN) ? "(Opened)" : "(Available)");
 		name += step;

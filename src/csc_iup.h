@@ -30,7 +30,6 @@ SOFTWARE.
 #include "csc_debug.h"
 
 
-
 static void IupGetGlobal_MONITORSINFO (int * x, int * y, int * w, int * h)
 {
 	char * si = IupGetGlobal ("MONITORSINFO");
@@ -128,6 +127,15 @@ static void csc_Iup_print (Ihandle * base, char const * attribute, FILE * f)
 	}
 }
 
+void csc_Iup_print_all_attributes (Ihandle *handle)
+{
+	char * attr [100] = {NULL};
+	int n = IupGetAllAttributes (handle, attr, 100);
+	for (int i = 0; i < n; ++i)
+	{
+		printf ("%04i %s\n", i, attr [i]);
+	}
+}
 
 
 

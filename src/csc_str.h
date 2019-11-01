@@ -134,7 +134,7 @@ void csc_str_print_hex_array (char * s, size_t sn, uint8_t * v, size_t vn, char 
 	while (vn--)
 	{
 		if (sn < step) {break;}
-		s += snprintf (s, step, "%02X ", *v);
+		s += snprintf (s, step, format, *v);
 		v ++;
 		sn -= step;
 	}

@@ -24,13 +24,14 @@ SOFTWARE.
 
 #pragma once
 #include <iup.h>
-#include <csc_debug.h>
 #include <stdio.h>
 #include <string.h>
 
+#include "csc_debug.h"
 
 
-void IupGetGlobal_MONITORSINFO (int * x, int * y, int * w, int * h)
+
+static void IupGetGlobal_MONITORSINFO (int * x, int * y, int * w, int * h)
 {
 	char * si = IupGetGlobal ("MONITORSINFO");
 	ASSERT (si);
@@ -38,7 +39,8 @@ void IupGetGlobal_MONITORSINFO (int * x, int * y, int * w, int * h)
 	printf ("%s\n", si);
 }
 
-void IupGetGlobal_SCREENSIZE (int * w, int * h)
+
+static void IupGetGlobal_SCREENSIZE (int * w, int * h)
 {
 	char * si = IupGetGlobal ("SCREENSIZE");
 	ASSERT (si);
@@ -47,7 +49,7 @@ void IupGetGlobal_SCREENSIZE (int * w, int * h)
 }
 
 
-int IupTree_nleaf (Ihandle * h, int ref)
+static int IupTree_nleaf (Ihandle * h, int ref)
 {
 	int n = 0;
 	int i = ref;
@@ -69,10 +71,59 @@ int IupTree_nleaf (Ihandle * h, int ref)
 }
 
 
-size_t IupCopyAttribute (Ihandle* ih, const char* name, char * des, size_t size)
+static size_t IupCopyAttribute (Ihandle* ih, const char* name, char * des, size_t size)
 {
 	char const * data = IupGetAttribute (ih, name);
 	if (data == 0) {return 0;}
 	memcpy (des, data, size);
 	return size;
+}
+
+
+static void IupItem_str1 (Ihandle * item [], char const * name, int n, int step, char const * idname, char const * callback_name)
+{
+	ASSERT (name);
+	while (n--)
+	{
+		item [n] = IupItem (name, callback_name);
+		IupSetInt (item [n], idname, n);
+		name += step;
+	}
+}
+
+
+static void IupItem_str1_append (Ihandle * menu, char const * name, int n, int step, char const * idname, char const * callback_name)
+{
+	ASSERT (name);
+	while (n--)
+	{
+		Ihandle * item = IupItem (name, callback_name);
+		IupSetInt (item, idname, n);
+		IupAppend (menu, item);
+		IupMap (item);
+		name += step;
+	}
+}
+
+
+static void IupDestroy_children (Ihandle * base)
+{
+	Ihandle * child = IupGetNextChild(base, NULL);
+	while (child)
+	{
+		//printf ("Type=%s, title=(%s)\n", IupGetClassName(base), IupGetAttribute(base, "TITLE"));
+		IupDestroy (child);
+		child = IupGetNextChild (base, NULL);
+	}
+}
+
+
+static void csc_Iup_print (Ihandle * base, char const * attribute, FILE * f)
+{
+	base = IupGetNextChild (base, NULL);
+	while (base)
+	{
+		fprintf (f, "type %s title %s\n", IupGetClassName (base), IupGetAttribute (base, attribute));
+		base = IupGetNextChild (NULL, base);
+	}
 }

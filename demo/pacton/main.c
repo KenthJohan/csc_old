@@ -21,7 +21,7 @@
 
 #define CAN_NAME_STEP 64
 #define CAN_NAME_COUNT 10
-
+#define MAIN_SELECT_CAN_TITLE "Select CAN device"
 
 
 enum main_column
@@ -353,16 +353,16 @@ static int callback_export_value (Ihandle *self)
 static int callback_select_can_device ()
 {
 	Ihandle * menu = IupGetHandle ("menu_selectcan");
-	assert (menu);
+	ASSERT (menu);
 	Ihandle * items = IupGetChild (menu, 0);
-	assert (items);
+	ASSERT (items);
 	IupDestroy_children (items);
 	canStatus r;
 	int n = 0;
 	r = canGetNumberOfChannels (&n);
-	assert (r == canOK);
+	CSC_KVASERCAN_ASSERT (r);
 	TRACE_F ("canGetNumberOfChannels %i", n);
-	assert (n < CAN_NAME_COUNT);
+	ASSERT (n < CAN_NAME_COUNT);
 	char buffer [CAN_NAME_COUNT*CAN_NAME_STEP] = {'\0'};
 	csc_kvasercan_build_name (buffer, n, CAN_NAME_STEP);
 	IupItem_str1_append (items, buffer, n, CAN_NAME_STEP, "KVASER_CAN_CHANNEL", "select_can");
@@ -376,18 +376,39 @@ static int callback_select_can (Ihandle *self)
 	ASSERT (menu_selectcan);
 	int channel = IupGetInt (self, "KVASER_CAN_CHANNEL");
 	TRACE_F ("Select CAN channel %i", channel);
-	IupSetStrf (menu_selectcan, "TITLE", "Device %02i", channel);
-	canHandle handle = canOpenChannel (channel, canOPEN_ACCEPT_VIRTUAL | canOPEN_EXCLUSIVE);
-	TRACE_F ("canOpenChannel %i", handle);
-	CSC_KVASERCAN_ASSERT (handle);
+	canHandle handle = IupGetInt (NULL, "KVASER_CAN_HANDLE");
 	canStatus r;
-	unsigned int tseg1 = 5;
-	unsigned int tseg2 = 2;
-	unsigned int sjw = 1;
-	r = canSetBusParams (handle, csc_kvasercan_bps_convert (CSC_KVASERCAN_BPS_250K), tseg1, tseg2, sjw, 1, 0);
+	uint32_t flags;
+	r = canGetChannelData (channel, canCHANNELDATA_CHANNEL_FLAGS, &flags, sizeof(flags));
 	CSC_KVASERCAN_ASSERT (r);
-	r = canBusOn (handle);
-	CSC_KVASERCAN_ASSERT (r);
+	if (flags & canCHANNEL_IS_OPEN)
+	{
+		r = canClose (handle);
+		CSC_KVASERCAN_ASSERT (r);
+		handle = canINVALID_HANDLE;
+		IupSetStrf (menu_selectcan, "TITLE", MAIN_SELECT_CAN_TITLE, channel);
+	}
+	else
+	{
+		if (handle >= 0)
+		{
+			r = canClose (handle);
+			CSC_KVASERCAN_ASSERT (r);
+			handle = canINVALID_HANDLE;
+		}
+		IupSetStrf (menu_selectcan, "TITLE", "Device %02i", channel);
+		handle = canOpenChannel (channel, canOPEN_ACCEPT_VIRTUAL | canOPEN_EXCLUSIVE);
+		TRACE_F ("canOpenChannel %i", handle);
+		CSC_KVASERCAN_ASSERT (handle);
+		unsigned int tseg1 = 5;
+		unsigned int tseg2 = 2;
+		unsigned int sjw = 1;
+		r = canSetBusParams (handle, csc_kvasercan_bps_convert (CSC_KVASERCAN_BPS_250K), tseg1, tseg2, sjw, 1, 0);
+		CSC_KVASERCAN_ASSERT (r);
+		r = canBusOn (handle);
+		CSC_KVASERCAN_ASSERT (r);
+	}
+	IupSetInt (NULL, "KVASER_CAN_HANDLE", handle);
 	return IUP_DEFAULT;
 }
 
@@ -417,12 +438,14 @@ int main (int argc, char **argv)
 	IupOpen (&argc, &argv);
 	IupControlsOpen ();
 
+	IupSetInt (NULL, "KVASER_CAN_HANDLE", canINVALID_HANDLE);
+
 	Ihandle * matrix = IupMatrix (NULL);
 	Ihandle * dlg = IupDialog (matrix);
 	Ihandle * menu_export_items = IupMenu (IupItem ("Export block","export_block"), IupItem ("Export value","export_value"), NULL);
 	Ihandle * menu_export = IupSubmenu ("Export", menu_export_items);
 	Ihandle * menu_selectcan_items = IupMenu (NULL);
-	Ihandle * menu_selectcan = IupSubmenu ("Select CAN device", menu_selectcan_items);
+	Ihandle * menu_selectcan = IupSubmenu (MAIN_SELECT_CAN_TITLE, menu_selectcan_items);
 	Ihandle * menu = IupMenu (menu_export, menu_selectcan, NULL);
 
 	//Set handle names for global access:

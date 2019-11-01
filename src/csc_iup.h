@@ -127,3 +127,15 @@ static void csc_Iup_print (Ihandle * base, char const * attribute, FILE * f)
 		base = IupGetNextChild (NULL, base);
 	}
 }
+
+
+
+
+void csc_Iup_set_string_list (Ihandle *self, char const * data, size_t step, size_t n)
+{
+	for (size_t i = 0; i < n; ++i)
+	{
+		//puts (data + step * i);
+		IupSetAttributeId (self, "", (int)i+1, data + step * i);
+	}
+}

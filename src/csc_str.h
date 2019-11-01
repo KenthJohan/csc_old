@@ -25,6 +25,8 @@ SOFTWARE.
 #pragma once
 #include <string.h>
 #include <ctype.h>
+#include <stdio.h>
+#include <stdint.h>
 
 #define CSC_STRNCMP_LITERAL(str1,str2) strncmp ((str1), (str2), sizeof ((str2))-1)
 
@@ -124,4 +126,16 @@ int csc_next_literal (char const ** p, int * col)
 	ptrdiff_t n = (*p) - q;
 	(*col) += n;
 	return (int)n;
+}
+
+
+void csc_str_print_hex_array (char * s, size_t sn, uint8_t * v, size_t vn, char const * format, size_t step)
+{
+	while (vn--)
+	{
+		if (sn < step) {break;}
+		s += snprintf (s, step, "%02X ", *v);
+		v ++;
+		sn -= step;
+	}
 }

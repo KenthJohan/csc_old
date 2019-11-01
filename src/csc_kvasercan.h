@@ -84,7 +84,7 @@ int xcanbps_convert (enum xcanbps bps)
 }
 
 
-static void csc_kvasercan_build_name (char * name, int n, int step)
+static void csc_kvasercan_build_name (char * name, int n, size_t step)
 {
 	canStatus r;
 	while (n--)

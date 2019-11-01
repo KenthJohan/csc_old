@@ -336,16 +336,16 @@ static int callback_dropcheck (Ihandle *self, int lin, int col)
 
 static int callback_export_block (Ihandle *self)
 {
-	TRACE_F ("Export block %s", IupGetAttribute (self, "TITLE"));
-	pacton_block_tofile (&allblock, "../packaton/block.txt");
+	TRACE_F ("%s", IupGetAttribute (self, "TITLE"));
+	pacton_block_tofile (&allblock, "../pacton/block.txt");
 	return IUP_DEFAULT;
 }
 
 
 static int callback_export_value (Ihandle *self)
 {
-	TRACE_F ("Export block %s", IupGetAttribute (self, "TITLE"));
-	pacton_value_tofilename (&alldata, "../packaton/value.txt");
+	TRACE_F ("%s", IupGetAttribute (self, "TITLE"));
+	pacton_value_tofilename (&alldata, "../pacton/value.txt");
 	return IUP_DEFAULT;
 }
 

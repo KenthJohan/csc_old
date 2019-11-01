@@ -86,7 +86,7 @@ char const * pacton_primtype_tostr (enum pacton_primtype type)
 
 enum pacton_primtype pacton_primtype_fromstr (char const * primtype)
 {
-	assert (primtype);
+	ASSERT (primtype);
 	if (0){}
 	else if (strcmp (primtype, pacton_primtype_tostr(PACTON_PRIMTYPE_I8)) == 0){return PACTON_PRIMTYPE_I8;}
 	else if (strcmp (primtype, pacton_primtype_tostr(PACTON_PRIMTYPE_I16)) == 0){return PACTON_PRIMTYPE_I16;}
@@ -115,7 +115,7 @@ char const * pacton_byteorder_tostr (enum pacton_byteorder order)
 
 enum pacton_byteorder pacton_byteorder_fromstr (char const * primtype)
 {
-	assert (primtype);
+	ASSERT (primtype);
 	if (0){}
 	else if (strcmp (primtype, pacton_byteorder_tostr(PACTON_BYTEORDER_BE)) == 0){return PACTON_BYTEORDER_BE;}
 	else if (strcmp (primtype, pacton_byteorder_tostr(PACTON_BYTEORDER_LE)) == 0){return PACTON_BYTEORDER_LE;}
@@ -170,6 +170,7 @@ struct pacton_block
 void pacton_block_tofile (struct pacton_block * block, char const * filename)
 {
 	FILE * f = fopen (filename, "w+");
+	ASSERT (f);
 
 	fprintf (f, "%*.*s ", PACTON_BLOCK_NAMES0_STEP, PACTON_BLOCK_NAMES0_STEP, "Name0");
 	fprintf (f, "%*.*s ", PACTON_BLOCK_NAMES1_STEP, PACTON_BLOCK_NAMES1_STEP, "Name1");
@@ -265,7 +266,7 @@ void pacton_value_tofile (struct pacton_value * value, FILE * f)
 void pacton_value_tofilename (struct pacton_value * value, char const * filename)
 {
 	FILE * f = fopen (filename, "w+");
-	assert (f);
+	ASSERT (f);
 	pacton_value_tofile (value, f);
 	fclose (f);
 }
@@ -302,8 +303,8 @@ uint32_t * type
 	//printf ("%70.70s READ%i\n", buf, r);
 	enum pacton_byteorder byteorder = pacton_byteorder_fromstr (type_byteorder);
 	enum pacton_primtype primtype = pacton_primtype_fromstr (type_primtype);
-	assert (byteorder != PACTON_BYTEORDER_UNKNOWN);
-	assert (primtype != PACTON_PRIMTYPE_UNKNOWN);
+	ASSERT (byteorder != PACTON_BYTEORDER_UNKNOWN);
+	ASSERT (primtype != PACTON_PRIMTYPE_UNKNOWN);
 	*type = PACTON_TYPE (byteorder, type_size, primtype);
 	return r;
 }

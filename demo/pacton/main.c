@@ -32,6 +32,7 @@ enum main_column
 	MAIN_COLUMN_INDEX,
 	MAIN_COLUMN_SUBINDEX,
 	MAIN_COLUMN_DATA,
+	MAIN_COLUMN_RATE,
 	MAIN_COLUMN_NAME,
 	MAIN_COLUMN_BYTEOFFSET,
 	MAIN_COLUMN_BITOFFSET,
@@ -40,6 +41,7 @@ enum main_column
 	MAIN_COLUMN_TYPE_PRIMTYPE,
 	MAIN_COLUMN_DIM,
 	MAIN_COLUMN_VALUE,
+	MAIN_COLUMN_FX,
 	MAIN_COLUMN__N
 };
 
@@ -61,7 +63,9 @@ char const * main_column_tostr (enum main_column col)
 	case MAIN_COLUMN_TYPE_PRIMTYPE: return "Type";
 	case MAIN_COLUMN_DIM: return "Dim";
 	case MAIN_COLUMN_DATA: return "Data";
+	case MAIN_COLUMN_RATE: return "Rate";
 	case MAIN_COLUMN_VALUE: return "Value";
+	case MAIN_COLUMN_FX: return "Fx";
 	default:return "";
 	}
 }
@@ -69,7 +73,7 @@ char const * main_column_tostr (enum main_column col)
 
 static struct pacton_block allblock = {0};
 static struct pacton_value alldata = {0};
-
+static struct pacton_scheduler pt_scheduler = {0};
 
 /*
 Action generated to retrieve the value of a cell.
@@ -106,6 +110,7 @@ static char * callback_matrix_value (Ihandle *self, int lin, int col)
 		uint32_t block_size = allblock.data_size [block];
 		uint32_t block_index = allblock.index [block];
 		uint32_t block_subindex = allblock.subindex [block];
+		uint32_t block_rate = allblock.rate [block];
 		uint32_t value_bytepos = alldata.bytepos[i];
 		uint32_t value_bitpos = alldata.bitpos[i];
 		uint32_t value_type = alldata.type[i];
@@ -152,6 +157,9 @@ static char * callback_matrix_value (Ihandle *self, int lin, int col)
 			char fmt [] = "%02X ";
 			csc_str_print_hex_array (text, sizeof (text), v, vn, fmt, sizeof (fmt));
 			break;}
+		case MAIN_COLUMN_RATE:
+			snprintf(text, sizeof (text), "%u", block_rate);
+			break;
 		case MAIN_COLUMN_VALUE:{
 			uint8_t * v = allblock.data + block * PACTON_BLOCK_DATA_STEP;
 			v += value_bytepos;
@@ -206,6 +214,11 @@ static int callback_matrix_value_edit (Ihandle *self, int lin, int col, char* ne
 			case MAIN_COLUMN_SUBINDEX:
 				v = strtoimax (newvalue, &e, 10);
 				allblock.subindex [block] = (uint32_t)v;
+				assert (errno == 0);
+				break;
+			case MAIN_COLUMN_RATE:
+				v = strtoimax (newvalue, &e, 10);
+				allblock.rate [block] = (uint32_t)v;
 				assert (errno == 0);
 				break;
 			case MAIN_COLUMN_BYTEOFFSET:
@@ -416,12 +429,18 @@ static int callback_select_can (Ihandle *self)
 int main (int argc, char **argv)
 {
 	setbuf (stdout, NULL);
+	canInitializeLibrary ();
+	IupOpen (&argc, &argv);
+	IupControlsOpen ();
+	IupSetInt (NULL, "KVASER_CAN_HANDLE", canINVALID_HANDLE);
+
 	allblock.n = 19;
 	allblock.names0 = calloc (allblock.n, PACTON_BLOCK_NAMES0_STEP);
 	allblock.names1 = calloc (allblock.n, PACTON_BLOCK_NAMES1_STEP);
 	allblock.index = calloc (allblock.n, sizeof (uint32_t));
 	allblock.subindex = calloc (allblock.n, sizeof (uint32_t));
 	allblock.data_size = calloc (allblock.n, sizeof (uint32_t));
+	allblock.rate = calloc (allblock.n, sizeof (uint32_t));
 	allblock.data = calloc (allblock.n, PACTON_BLOCK_DATA_STEP);
 	pacton_block_fromfile (&allblock, "../pacton/block.txt");
 
@@ -434,11 +453,17 @@ int main (int argc, char **argv)
 	alldata.type = calloc (alldata.n, sizeof (uint32_t));
 	pacton_value_fromfile (&alldata, "../pacton/value.txt");
 
-	canInitializeLibrary ();
-	IupOpen (&argc, &argv);
-	IupControlsOpen ();
+	pt_scheduler.n = 8;
+	pt_scheduler.block = calloc (pt_scheduler.n, sizeof (uint32_t));
+	pt_scheduler.block [0] = UINT32_MAX;
+	pt_scheduler.block [1] = 2;
+	pt_scheduler.block [2] = 1;
+	pt_scheduler.block [3] = 2;
+	pt_scheduler.block [4] = 1;
+	pt_scheduler.block [5] = 3;
+	pt_scheduler.block [6] = 1;
+	pt_scheduler.block [7] = 2;
 
-	IupSetInt (NULL, "KVASER_CAN_HANDLE", canINVALID_HANDLE);
 
 	Ihandle * matrix = IupMatrix (NULL);
 	Ihandle * dlg = IupDialog (matrix);
@@ -466,10 +491,10 @@ int main (int argc, char **argv)
 
 	//Matrix configure:
 	IupSetAttribute(matrix, "NAME", "MATRIX");
-	IupSetInt (matrix, "NUMCOL", MAIN_COLUMN__N);
-	IupSetInt (matrix, "NUMLIN", 8);
-	IupSetInt (matrix, "NUMCOL_VISIBLE", MAIN_COLUMN__N);
-	IupSetInt (matrix, "NUMLIN_VISIBLE", 8);
+	IupSetInt (matrix, "NUMCOL", MAIN_COLUMN__N-1);
+	IupSetInt (matrix, "NUMLIN", alldata.n);
+	IupSetInt (matrix, "NUMCOL_VISIBLE", MAIN_COLUMN__N-1);
+	IupSetInt (matrix, "NUMLIN_VISIBLE", alldata.n);
 	IupSetIntId (matrix, "WIDTH", MAIN_COLUMN_NUMBER, 15);
 	IupSetIntId (matrix, "WIDTH", MAIN_COLUMN_NAME, 100);
 	IupSetIntId (matrix, "WIDTH", MAIN_COLUMN_BLOCK, 100);
@@ -482,6 +507,8 @@ int main (int argc, char **argv)
 	IupSetAttributeId2 (matrix, "BGCOLOR", IUP_INVALID_ID, MAIN_COLUMN_BLOCKSIZE, "230 230 255");
 	IupSetAttributeId2 (matrix, "BGCOLOR", IUP_INVALID_ID, MAIN_COLUMN_SUBINDEX, "230 230 255");
 	IupSetAttributeId2 (matrix, "BGCOLOR", IUP_INVALID_ID, MAIN_COLUMN_DATA, "230 230 255");
+	IupSetAttributeId2 (matrix, "BGCOLOR", IUP_INVALID_ID, MAIN_COLUMN_RATE, "255 255 230");
+	IupSetAttributeId2 (matrix, "BGCOLOR", IUP_INVALID_ID, MAIN_COLUMN_FX, "255 255 230");
 
 	//Dialog configure:
 	IupSetAttribute (dlg, "TITLE", "Pacton");

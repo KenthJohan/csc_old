@@ -29,7 +29,8 @@ SOFTWARE.
 #include <stdlib.h>
 #include <stdio.h>
 #include <io.h>
-
+#include <pthread.h>
+#include <time.h>
 
 int csc_readmisc_blks (int fd, char * block [], unsigned block_count, unsigned block_size)
 {
@@ -157,9 +158,23 @@ error:
 }
 
 
-
-
-
+static void csc_readmisc_popen_extra (char const * cmd, char ** memory, unsigned * size, double * spent, int * exit_status)
+{
+	assert (cmd);
+	assert (memory);
+	assert (size);
+	assert (spent);
+	assert (exit_status);
+	struct timespec t [2];
+	clock_gettime (CLOCK_REALTIME, t + 0);
+	FILE * fp = popen (cmd, "r");
+	(*memory) = csc_readmisc_realloc (fileno (fp), size);
+	(*memory) [*size] = '\0';
+	(*exit_status) = pclose (fp);
+	assert (*memory);
+	clock_gettime (CLOCK_REALTIME, t + 1);
+	(*spent) = (t [1].tv_sec - t [0].tv_sec) + (t [1].tv_nsec + t [1].tv_nsec) / 1000000000.0;
+}
 
 
 

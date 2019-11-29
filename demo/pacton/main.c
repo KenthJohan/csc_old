@@ -109,7 +109,6 @@ static uint32_t mat2_colmap [] =
 
 static struct pacton_block allblock = {0};
 static struct pacton_value alldata = {0};
-static struct pacton_scheduler pt_scheduler = {0};
 
 
 void generic_matrix_value (char * text, uint32_t text_len, struct pacton_block * block, struct pacton_value * value, uint32_t lin, uint32_t col)
@@ -144,8 +143,8 @@ void generic_matrix_value (char * text, uint32_t text_len, struct pacton_block *
 	uint32_t value_type = value->type[lin];
 	uint32_t value_dim = value->dim[lin];
 	uint8_t * block_data = block->data + blocki * PACTON_BLOCK_DATA_STEP;
-	size_t block_data_size = block->data_size [blocki];
-	uint32_t slot = pt_scheduler.block[blocki];
+	uint32_t block_data_size = block->data_size [blocki];
+	uint32_t slot = block->slot [blocki];
 
 	switch (col)
 	{
@@ -246,7 +245,7 @@ void generic_matrix2_value (char * text, uint32_t text_len, struct pacton_block 
 	uint32_t block_rate = block->rate [blocki];
 	uint8_t * block_data = block->data + blocki * PACTON_BLOCK_DATA_STEP;
 	size_t block_data_size = block->data_size [blocki];
-	uint32_t slot = pt_scheduler.block[blocki];
+	uint32_t slot = 0;
 
 	switch (col)
 	{
@@ -388,6 +387,11 @@ static int callback_matrix_value_edit (Ihandle *self, int lin, int col, char* ne
 				v = strtoimax (newvalue, &e, 10);
 				alldata.type[i] &= ~((uint32_t)0xFF << 8);
 				alldata.type[i] |= PACTON_TYPE (0, v, 0);
+				assert (errno == 0);
+				break;
+			case MAIN_COLUMN_SLOT:
+				v = strtoimax (newvalue, &e, 10);
+				allblock.slot [block] = (uint32_t)v;
 				assert (errno == 0);
 				break;
 			case MAIN_COLUMN_NAME:
@@ -601,6 +605,7 @@ int main (int argc, char **argv)
 	allblock.subindex = calloc (allblock.n, sizeof (uint32_t));
 	allblock.data_size = calloc (allblock.n, sizeof (uint32_t));
 	allblock.rate = calloc (allblock.n, sizeof (uint32_t));
+	allblock.slot = calloc (allblock.n, sizeof (uint32_t));
 	allblock.data = calloc (allblock.n, PACTON_BLOCK_DATA_STEP);
 	pacton_block_fromfile (&allblock, "../pacton/block.txt");
 
@@ -612,17 +617,6 @@ int main (int argc, char **argv)
 	alldata.dim = calloc (alldata.n, sizeof (uint32_t));
 	alldata.type = calloc (alldata.n, sizeof (uint32_t));
 	pacton_value_fromfile (&alldata, "../pacton/value.txt");
-
-	pt_scheduler.n = 8;
-	pt_scheduler.block = calloc (pt_scheduler.n, sizeof (uint32_t));
-	pt_scheduler.block [0] = UINT32_MAX;
-	pt_scheduler.block [1] = 2;
-	pt_scheduler.block [2] = 1;
-	pt_scheduler.block [3] = 2;
-	pt_scheduler.block [4] = 1;
-	pt_scheduler.block [5] = 3;
-	pt_scheduler.block [6] = 1;
-	pt_scheduler.block [7] = 2;
 
 
 	Ihandle * matrix = IupMatrix (NULL);

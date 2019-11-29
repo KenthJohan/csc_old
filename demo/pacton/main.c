@@ -78,28 +78,45 @@ static struct pacton_value alldata = {0};
 static struct pacton_scheduler pt_scheduler = {0};
 
 
-void generic_matrix_value1 (char * text, uint32_t text_len, struct pacton_block * block, struct pacton_value * value, uint32_t i, uint32_t col)
+void generic_matrix_value (char * text, uint32_t text_len, struct pacton_block * block, struct pacton_value * value, uint32_t lin, uint32_t col)
 {
-	assert (i < alldata.n);
-	uint32_t blocki = alldata.block[i];
-	assert (blocki < allblock.n);
-	char * value_name0 = alldata.names0 + PACTON_VALUE_NAMES0_STEP * i;
-	char * block_name0 = allblock.names0 + PACTON_BLOCK_NAMES0_STEP * blocki;
+	//For all cells in first row:
+	if (lin == 0)
+	{
+		snprintf (text, text_len, "%s", main_column_tostr ((enum main_column) col));
+		return;
+	}
+	else
+	{
+		//Put 0 indexed data starting from line = 1:
+		lin --;
+	}
+
+	//For all cells except first row and first column:
+	if (lin >= value->n) {return;}
+
+	assert (lin < value->n);
+	uint32_t blocki = value->block[lin];
+	assert (blocki < block->n);
+	char * value_name0 = value->names0 + PACTON_VALUE_NAMES0_STEP * lin;
+	char * block_name0 = block->names0 + PACTON_BLOCK_NAMES0_STEP * blocki;
 	//char * block_name1 = allblock.names1 + allblock.names1_step * block;
-	uint32_t block_size = allblock.data_size [blocki];
-	uint32_t block_index = allblock.index [blocki];
-	uint32_t block_subindex = allblock.subindex [blocki];
-	uint32_t block_rate = allblock.rate [blocki];
-	uint32_t value_bytepos = alldata.bytepos[i];
-	uint32_t value_bitpos = alldata.bitpos[i];
-	uint32_t value_type = alldata.type[i];
-	uint32_t value_dim = alldata.dim[i];
+	uint32_t block_size = block->data_size [blocki];
+	uint32_t block_index = block->index [blocki];
+	uint32_t block_subindex = block->subindex [blocki];
+	uint32_t block_rate = block->rate [blocki];
+	uint32_t value_bytepos = value->bytepos[lin];
+	uint32_t value_bitpos = value->bitpos[lin];
+	uint32_t value_type = value->type[lin];
+	uint32_t value_dim = value->dim[lin];
+	uint8_t * block_data = block->data + blocki * PACTON_BLOCK_DATA_STEP;
+	size_t block_data_size = block->data_size [blocki];
 	uint32_t slot = pt_scheduler.block[blocki];
 
 	switch (col)
 	{
 	case MAIN_COLUMN_NUMBER:
-		snprintf (text, text_len, "%u", i);
+		snprintf (text, text_len, "%u", lin);
 		break;
 	case MAIN_COLUMN_NAME:
 		snprintf(text, text_len, "%s", value_name0);
@@ -135,10 +152,8 @@ void generic_matrix_value1 (char * text, uint32_t text_len, struct pacton_block 
 		snprintf(text, text_len, "%i", value_dim);
 		break;
 	case MAIN_COLUMN_DATA:{
-		uint8_t * v = allblock.data + blocki * PACTON_BLOCK_DATA_STEP;
-		size_t vn = allblock.data_size [blocki];
 		char fmt [] = "%02X ";
-		csc_str_print_hex_array (text, text_len, v, vn, fmt, sizeof (fmt));
+		csc_str_print_hex_array (text, text_len, block_data, block_data_size, fmt, sizeof (fmt));
 		break;}
 	case MAIN_COLUMN_RATE:
 		snprintf(text, text_len, "%u", block_rate);
@@ -165,28 +180,7 @@ void generic_matrix_value1 (char * text, uint32_t text_len, struct pacton_block 
 		//snprintf(text, sizeof (text), "%i", v);
 		break;}
 	}
-}
 
-
-void generic_matrix_value (char * text, uint32_t text_len, struct pacton_block * block, struct pacton_value * value, uint32_t lin, uint32_t col)
-{
-	//For all cells in first row:
-	if (lin == 0)
-	{
-		snprintf (text, text_len, "%s", main_column_tostr ((enum main_column) col));
-		return;
-	}
-	else
-	{
-		//Put 0 indexed data starting from line = 1:
-		lin --;
-	}
-
-	//For all cells except first row and first column:
-	if (lin < alldata.n)
-	{
-		generic_matrix_value1 (text, text_len, block, value, lin, col);
-	}
 }
 
 

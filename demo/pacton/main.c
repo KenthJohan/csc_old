@@ -298,6 +298,7 @@ static char * callback_matrix_value (Ihandle *self, int lin, int col)
 	static char text[1024];
 	memset (text, 0, sizeof(text));
 	uint32_t * colmap = (void *)IupGetAttribute (self, "main_colmap");
+	//TRACEF ("%i %s", colmap [col], main_column_tostr (colmap [col]));
 	ASSERT (colmap);
 	ASSERT (col >= 0);
 	ASSERT (lin >= 0);
@@ -316,6 +317,7 @@ static char * callback_matrix2_value (Ihandle *self, int lin, int col)
 	static char text[1024];
 	memset (text, 0, sizeof(text));
 	uint32_t * colmap = (void *)IupGetAttribute (self, "main_colmap");
+	//TRACEF ("%i %s", colmap [col], main_column_tostr (colmap [col]));
 	ASSERT (colmap);
 	ASSERT (col >= 0);
 	ASSERT (lin >= 0);
@@ -649,7 +651,7 @@ int main (int argc, char **argv)
 	IupSetFunction ("othertab", (Icallback)callback_othertab);
 
 	//Matrix configure:
-	IupSetAttribute(matrix, "NAME", "MATRIX");
+	IupSetAttribute(matrix, "NAME", "mat1");
 	IupSetInt (matrix, "NUMCOL", countof (mat1_colmap)-1);
 	IupSetInt (matrix, "NUMCOL_VISIBLE", countof (mat1_colmap)-1);
 	IupSetAttribute (matrix, "main_colmap", (char*)mat1_colmap);
@@ -675,12 +677,19 @@ int main (int argc, char **argv)
 	IupSetCallback (matrix, "DROPCHECK_CB",(Icallback)callback_dropcheck);
 	IupSetCallback (matrix, "DROPSELECT_CB",(Icallback)callback_dropselect);
 
-	IupSetAttribute (matrix2, "NAME", "MATRIX2");
-	IupSetInt (matrix2, "NUMCOL", 3);
-	IupSetInt (matrix2, "NUMLIN", 10);
+	IupSetAttribute (matrix2, "NAME", "mat2");
 	IupSetInt (matrix2, "NUMCOL", countof (mat2_colmap)-1);
 	IupSetInt (matrix2, "NUMCOL_VISIBLE", countof (mat2_colmap)-1);
 	IupSetAttribute (matrix2, "main_colmap", (char*)mat2_colmap);
+	IupSetInt (matrix2, "NUMLIN", allblock.n);
+	IupSetInt (matrix2, "NUMLIN_VISIBLE", allblock.n);
+	IupSetInt (matrix2, "WIDTHDEF", 30);
+	IupSetIntId (matrix2, "WIDTH", MAIN_COLUMN_NUMBER, 15);
+	IupSetIntId (matrix2, "WIDTH", MAIN_COLUMN_NAME, 100);
+	IupSetIntId (matrix2, "WIDTH", MAIN_COLUMN_BLOCK, 100);
+	IupSetIntId (matrix2, "WIDTH", MAIN_COLUMN_DATA, 100);
+	IupSetIntId (matrix2, "HEIGHT", 0, 8);
+	IupSetAttribute (matrix2, "RESIZEMATRIX", "Yes");
 	IupSetCallback (matrix2, "VALUE_CB", (Icallback)callback_matrix2_value);
 
 	//Dialog configure:

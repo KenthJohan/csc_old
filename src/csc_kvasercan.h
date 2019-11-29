@@ -128,7 +128,7 @@ static void csc_kvasercan_build_name (char * name, int n, size_t step)
 		ASSERT (r == canOK);
 		r = canGetChannelData (n, canCHANNELDATA_CHANNEL_FLAGS, &flags, sizeof(flags));
 		ASSERT (r == canOK);
-		TRACE_F ("flags %x", flags);
+		TRACEF ("flags %x", flags);
 		snprintf (name, step, "%02i: %s SN%i v%i.%i.%i %s", n, buffer, serial [0], fw[1] >> 16, fw[1] & 0xffff, fw[0] & 0xffff, (flags & canCHANNEL_IS_OPEN) ? "(Opened)" : "(Available)");
 		name += step;
 	}

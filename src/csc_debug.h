@@ -38,14 +38,16 @@ SOFTWARE.
 #endif
 
 //https://gcc.gnu.org/onlinedocs/gcc/Variadic-Macros.html
-#define ASSERT(A)               do{if(!(A)){assert_format(__COUNTER__, __RELATIVE_FILE__, __LINE__, __func__, #A, (0), NULL, NULL                );}}while(0)
-#define ASSERT_F(A, F, ...)     do{if(!(A)){assert_format(__COUNTER__, __RELATIVE_FILE__, __LINE__, __func__, #A, (0), NULL,  (F), ## __VA_ARGS__);}}while(0)
-#define ASSERT_C(A, C)          do{if(!(A)){assert_format(__COUNTER__, __RELATIVE_FILE__, __LINE__, __func__, #A, (C),   #C, NULL                );}}while(0)
-#define ASSERT_CF(A, C, F, ...) do{if(!(A)){assert_format(__COUNTER__, __RELATIVE_FILE__, __LINE__, __func__, #A, (C),   #C,  (F), ## __VA_ARGS__);}}while(0)
+#define ASSERT(A)              do{if(!(A)){assert_format(__COUNTER__, __RELATIVE_FILE__, __LINE__, __func__, #A, (0), NULL, NULL                );}}while(0)
+#define ASSERTF(A, F, ...)     do{if(!(A)){assert_format(__COUNTER__, __RELATIVE_FILE__, __LINE__, __func__, #A, (0), NULL,  (F), ## __VA_ARGS__);}}while(0)
+#define ASSERTC(A, C)          do{if(!(A)){assert_format(__COUNTER__, __RELATIVE_FILE__, __LINE__, __func__, #A, (C),   #C, NULL                );}}while(0)
+#define ASSERTCF(A, C, F, ...) do{if(!(A)){assert_format(__COUNTER__, __RELATIVE_FILE__, __LINE__, __func__, #A, (C),   #C,  (F), ## __VA_ARGS__);}}while(0)
+
+
 
 #define TRACE(F)            trace_format (__COUNTER__, __RELATIVE_FILE__, __LINE__, __func__, (0), NULL,  (F)                )
-#define TRACE_F(F, ...)     trace_format (__COUNTER__, __RELATIVE_FILE__, __LINE__, __func__, (0), NULL,  (F), ## __VA_ARGS__)
-#define TRACE_CF(C, F, ...) trace_format (__COUNTER__, __RELATIVE_FILE__, __LINE__, __func__, (C),   #C,  (F), ## __VA_ARGS__)
+#define TRACEF(F, ...)     trace_format (__COUNTER__, __RELATIVE_FILE__, __LINE__, __func__, (0), NULL,  (F), ## __VA_ARGS__)
+#define TRACECF(C, F, ...) trace_format (__COUNTER__, __RELATIVE_FILE__, __LINE__, __func__, (C),   #C,  (F), ## __VA_ARGS__)
 
 #define TRACE_TCOL_INFO0 TCOL (TCOL_NORMAL, TCOL_YELLOW, TCOL_DEFAULT)
 #define TRACE_TCOL_INFO1 TCOL (TCOL_NORMAL, TCOL_WHITE, TCOL_DEFAULT)

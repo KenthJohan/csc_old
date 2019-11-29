@@ -33,6 +33,7 @@ enum main_column
 	MAIN_COLUMN_SUBINDEX,
 	MAIN_COLUMN_DATA,
 	MAIN_COLUMN_RATE,
+	MAIN_COLUMN_SLOT,
 	MAIN_COLUMN_NAME,
 	MAIN_COLUMN_BYTEOFFSET,
 	MAIN_COLUMN_BITOFFSET,
@@ -50,7 +51,7 @@ char const * main_column_tostr (enum main_column col)
 {
 	switch (col)
 	{
-	case MAIN_COLUMN_NUMBER: return "Number";
+	case MAIN_COLUMN_NUMBER: return "#";
 	case MAIN_COLUMN_NAME: return "Name";
 	case MAIN_COLUMN_BLOCK: return "Block";
 	case MAIN_COLUMN_BLOCKSIZE: return "Size";
@@ -64,6 +65,7 @@ char const * main_column_tostr (enum main_column col)
 	case MAIN_COLUMN_DIM: return "Dim";
 	case MAIN_COLUMN_DATA: return "Data";
 	case MAIN_COLUMN_RATE: return "Rate";
+	case MAIN_COLUMN_SLOT: return "Slot";
 	case MAIN_COLUMN_VALUE: return "Value";
 	case MAIN_COLUMN_FX: return "Fx";
 	default:return "";
@@ -75,6 +77,119 @@ static struct pacton_block allblock = {0};
 static struct pacton_value alldata = {0};
 static struct pacton_scheduler pt_scheduler = {0};
 
+
+void generic_matrix_value1 (char * text, uint32_t text_len, struct pacton_block * block, struct pacton_value * value, uint32_t i, uint32_t col)
+{
+	assert (i < alldata.n);
+	uint32_t blocki = alldata.block[i];
+	assert (blocki < allblock.n);
+	char * value_name0 = alldata.names0 + PACTON_VALUE_NAMES0_STEP * i;
+	char * block_name0 = allblock.names0 + PACTON_BLOCK_NAMES0_STEP * blocki;
+	//char * block_name1 = allblock.names1 + allblock.names1_step * block;
+	uint32_t block_size = allblock.data_size [blocki];
+	uint32_t block_index = allblock.index [blocki];
+	uint32_t block_subindex = allblock.subindex [blocki];
+	uint32_t block_rate = allblock.rate [blocki];
+	uint32_t value_bytepos = alldata.bytepos[i];
+	uint32_t value_bitpos = alldata.bitpos[i];
+	uint32_t value_type = alldata.type[i];
+	uint32_t value_dim = alldata.dim[i];
+	uint32_t slot = pt_scheduler.block[blocki];
+
+	switch (col)
+	{
+	case MAIN_COLUMN_NUMBER:
+		snprintf (text, text_len, "%u", i);
+		break;
+	case MAIN_COLUMN_NAME:
+		snprintf(text, text_len, "%s", value_name0);
+		break;
+	case MAIN_COLUMN_BLOCK:
+		snprintf(text, text_len, "%s", block_name0);
+		break;
+	case MAIN_COLUMN_BLOCKSIZE:
+		snprintf(text, text_len, "%i", (int)block_size);
+		break;
+	case MAIN_COLUMN_INDEX:
+		snprintf(text, text_len, "0x%x", block_index);
+		break;
+	case MAIN_COLUMN_SUBINDEX:
+		snprintf(text, text_len, "%i", block_subindex);
+		break;
+	case MAIN_COLUMN_BYTEOFFSET:
+		snprintf(text, text_len, "%i", value_bytepos);
+		break;
+	case MAIN_COLUMN_BITOFFSET:
+		snprintf(text, text_len, "%i", value_bitpos);
+		break;
+	case MAIN_COLUMN_TYPE_BYTEORDER:
+		snprintf(text, text_len, "%s", PACTON_TYPE_BYTEORDER(value_type)?"BE":"LE");
+		break;
+	case MAIN_COLUMN_TYPE_SIZE:
+		snprintf(text, text_len, "%i", PACTON_TYPE_SIZE(value_type));
+		break;
+	case MAIN_COLUMN_TYPE_PRIMTYPE:
+		snprintf(text, text_len, "%s", pacton_primtype_tostr (PACTON_TYPE_PRIMTYPE(value_type)));
+		break;
+	case MAIN_COLUMN_DIM:
+		snprintf(text, text_len, "%i", value_dim);
+		break;
+	case MAIN_COLUMN_DATA:{
+		uint8_t * v = allblock.data + blocki * PACTON_BLOCK_DATA_STEP;
+		size_t vn = allblock.data_size [blocki];
+		char fmt [] = "%02X ";
+		csc_str_print_hex_array (text, text_len, v, vn, fmt, sizeof (fmt));
+		break;}
+	case MAIN_COLUMN_RATE:
+		snprintf(text, text_len, "%u", block_rate);
+		break;
+	case MAIN_COLUMN_SLOT:
+		if (slot == UINT32_MAX)
+		{
+			snprintf (text, text_len, "%s", "N/A");
+		}
+		else
+		{
+			snprintf (text, text_len, "%u", slot);
+		}
+		break;
+	case MAIN_COLUMN_VALUE:{
+		uint8_t * v = allblock.data + blocki * PACTON_BLOCK_DATA_STEP;
+		v += value_bytepos;
+		unsigned int mask = (1 << PACTON_TYPE_SIZE(value_type)) - 1;
+		if (value_bitpos || value_dim == 1)
+		{
+			snprintf (text, text_len, "%02X ", ((*v) >> value_bitpos) & mask);
+		}
+		//uint8_t v = allblock.data [alldata[i].block][alldata[i].bytepos];
+		//snprintf(text, sizeof (text), "%i", v);
+		break;}
+	}
+}
+
+
+void generic_matrix_value (char * text, uint32_t text_len, struct pacton_block * block, struct pacton_value * value, uint32_t lin, uint32_t col)
+{
+	//For all cells in first row:
+	if (lin == 0)
+	{
+		snprintf (text, text_len, "%s", main_column_tostr ((enum main_column) col));
+		return;
+	}
+	else
+	{
+		//Put 0 indexed data starting from line = 1:
+		lin --;
+	}
+
+	//For all cells except first row and first column:
+	if (lin < alldata.n)
+	{
+		generic_matrix_value1 (text, text_len, block, value, lin, col);
+	}
+}
+
+
 /*
 Action generated to retrieve the value of a cell.
 Called both for common cells and for line and column titles.
@@ -84,96 +199,30 @@ static char * callback_matrix_value (Ihandle *self, int lin, int col)
 	(void)self;
 	static char text[1024];
 	memset (text, 0, sizeof(text));
-	if (lin == 0 && col == 0)
+	uint32_t colmap [] =
 	{
-		return "";
-	}
-	else if (lin == 0)
-	{
-		snprintf (text, sizeof (text), "%s", main_column_tostr ((enum main_column) col));
-		return text;
-	}
-	else if (col == 0)
-	{
-		snprintf (text, sizeof (text), "%d", lin - 1);
-		return text;
-	}
-	else if (lin >= 1 && (lin-1) < (int)alldata.n)
-	{
-		uint32_t i = (uint32_t)lin - 1;
-		assert (i < alldata.n);
-		uint32_t block = alldata.block[i];
-		assert (block < allblock.n);
-		char * value_name0 = alldata.names0 + PACTON_VALUE_NAMES0_STEP * i;
-		char * block_name0 = allblock.names0 + PACTON_BLOCK_NAMES0_STEP * block;
-		//char * block_name1 = allblock.names1 + allblock.names1_step * block;
-		uint32_t block_size = allblock.data_size [block];
-		uint32_t block_index = allblock.index [block];
-		uint32_t block_subindex = allblock.subindex [block];
-		uint32_t block_rate = allblock.rate [block];
-		uint32_t value_bytepos = alldata.bytepos[i];
-		uint32_t value_bitpos = alldata.bitpos[i];
-		uint32_t value_type = alldata.type[i];
-		uint32_t value_dim = alldata.dim[i];
-
-		switch (col)
-		{
-		case MAIN_COLUMN_NAME:
-			snprintf(text, sizeof (text), "%s", value_name0);
-			break;
-		case MAIN_COLUMN_BLOCK:
-			snprintf(text, sizeof (text), "%s", block_name0);
-			break;
-		case MAIN_COLUMN_BLOCKSIZE:
-			snprintf(text, sizeof (text), "%i", (int)block_size);
-			break;
-		case MAIN_COLUMN_INDEX:
-			snprintf(text, sizeof (text), "0x%x", block_index);
-			break;
-		case MAIN_COLUMN_SUBINDEX:
-			snprintf(text, sizeof (text), "%i", block_subindex);
-			break;
-		case MAIN_COLUMN_BYTEOFFSET:
-			snprintf(text, sizeof (text), "%i", value_bytepos);
-			break;
-		case MAIN_COLUMN_BITOFFSET:
-			snprintf(text, sizeof (text), "%i", value_bitpos);
-			break;
-		case MAIN_COLUMN_TYPE_BYTEORDER:
-			snprintf(text, sizeof (text), "%s", PACTON_TYPE_BYTEORDER(value_type)?"BE":"LE");
-			break;
-		case MAIN_COLUMN_TYPE_SIZE:
-			snprintf(text, sizeof (text), "%i", PACTON_TYPE_SIZE(value_type));
-			break;
-		case MAIN_COLUMN_TYPE_PRIMTYPE:
-			snprintf(text, sizeof (text), "%s", pacton_primtype_tostr (PACTON_TYPE_PRIMTYPE(value_type)));
-			break;
-		case MAIN_COLUMN_DIM:
-			snprintf(text, sizeof (text), "%i", value_dim);
-			break;
-		case MAIN_COLUMN_DATA:{
-			uint8_t * v = allblock.data + block * PACTON_BLOCK_DATA_STEP;
-			size_t vn = allblock.data_size [block];
-			char fmt [] = "%02X ";
-			csc_str_print_hex_array (text, sizeof (text), v, vn, fmt, sizeof (fmt));
-			break;}
-		case MAIN_COLUMN_RATE:
-			snprintf(text, sizeof (text), "%u", block_rate);
-			break;
-		case MAIN_COLUMN_VALUE:{
-			uint8_t * v = allblock.data + block * PACTON_BLOCK_DATA_STEP;
-			v += value_bytepos;
-			unsigned int mask = (1 << PACTON_TYPE_SIZE(value_type)) - 1;
-			if (value_bitpos || value_dim == 1)
-			{
-				snprintf (text, sizeof (text), "%02X ", ((*v) >> value_bitpos) & mask);
-			}
-			//uint8_t v = allblock.data [alldata[i].block][alldata[i].bytepos];
-			//snprintf(text, sizeof (text), "%i", v);
-			break;}
-		}
-	}
-
+		MAIN_COLUMN_NUMBER,
+		MAIN_COLUMN_BLOCK,
+		MAIN_COLUMN_BLOCKSIZE,
+		MAIN_COLUMN_INDEX,
+		MAIN_COLUMN_SUBINDEX,
+		MAIN_COLUMN_DATA,
+		MAIN_COLUMN_RATE,
+		MAIN_COLUMN_SLOT,
+		MAIN_COLUMN_NAME,
+		MAIN_COLUMN_BYTEOFFSET,
+		MAIN_COLUMN_BITOFFSET,
+		MAIN_COLUMN_TYPE_BYTEORDER,
+		MAIN_COLUMN_TYPE_SIZE,
+		MAIN_COLUMN_TYPE_PRIMTYPE,
+		MAIN_COLUMN_DIM,
+		MAIN_COLUMN_VALUE,
+		MAIN_COLUMN_FX,
+	};
+	ASSERT (col < (int)countof (colmap));
+	ASSERT (col >= 0);
+	ASSERT (lin >= 0);
+	generic_matrix_value (text, sizeof (text), &allblock, &alldata, (uint32_t)lin, colmap [col]);
 	return text;
 }
 
@@ -187,7 +236,7 @@ When it was interactively changed the temporary attribute CELL_EDITED will be se
 static int callback_matrix_value_edit (Ihandle *self, int lin, int col, char* newvalue)
 {
 	(void)self;
-	TRACE_F ("%i:%i = %s", lin, col, newvalue);
+	TRACEF ("%i:%i = %s", lin, col, newvalue);
 	if (col >= 1 && lin >= 1)
 	{
 		int i = lin - 1;
@@ -271,7 +320,7 @@ The previously cell value can be verified from the given drop Ihandle via the "P
 */
 static int callback_drop (Ihandle *self, Ihandle *drop, int lin, int col)
 {
-	TRACE_F ("%i:%i", lin, col);
+	TRACEF ("%i:%i", lin, col);
 	(void)self;
 	if (lin == 0) {return IUP_IGNORE;}
 	switch (col)
@@ -288,7 +337,7 @@ static int callback_drop (Ihandle *self, Ihandle *drop, int lin, int col)
 		for (int i = 0; i < PACTON_PRIMTYPE__N; ++i)
 		{
 			char const * name = pacton_primtype_tostr ((enum pacton_primtype) i);
-			TRACE_F ("name: %s", name);
+			TRACEF ("name: %s", name);
 			IupSetAttributeId (drop, "", (int)i+1, name);
 		}
 		return IUP_DEFAULT;}
@@ -306,7 +355,7 @@ static int callback_dropselect (Ihandle *self, int lin, int col, Ihandle *drop, 
 {
 	(void)self;
 	(void)drop;
-	TRACE_F ("%i:%i, %s, i=%d, v=%d", lin, col, t, i, v);
+	TRACEF ("%i:%i, %s, i=%d, v=%d", lin, col, t, i, v);
 	if (lin == 0 || v == 0) {return IUP_IGNORE;}
 	switch (col)
 	{
@@ -349,7 +398,7 @@ static int callback_dropcheck (Ihandle *self, int lin, int col)
 
 static int callback_export_block (Ihandle *self)
 {
-	TRACE_F ("%s", IupGetAttribute (self, "TITLE"));
+	TRACEF ("%s", IupGetAttribute (self, "TITLE"));
 	pacton_block_tofile (&allblock, "../pacton/block.txt");
 	return IUP_DEFAULT;
 }
@@ -357,7 +406,7 @@ static int callback_export_block (Ihandle *self)
 
 static int callback_export_value (Ihandle *self)
 {
-	TRACE_F ("%s", IupGetAttribute (self, "TITLE"));
+	TRACEF ("%s", IupGetAttribute (self, "TITLE"));
 	pacton_value_tofilename (&alldata, "../pacton/value.txt");
 	return IUP_DEFAULT;
 }
@@ -374,7 +423,7 @@ static int callback_select_can_device ()
 	int n = 0;
 	r = canGetNumberOfChannels (&n);
 	CSC_KVASERCAN_ASSERT (r);
-	TRACE_F ("canGetNumberOfChannels %i", n);
+	TRACEF ("canGetNumberOfChannels %i", n);
 	ASSERT (n < CAN_NAME_COUNT);
 	char buffer [CAN_NAME_COUNT*CAN_NAME_STEP] = {'\0'};
 	csc_kvasercan_build_name (buffer, n, CAN_NAME_STEP);
@@ -388,7 +437,7 @@ static int callback_select_can (Ihandle *self)
 	Ihandle * menu_selectcan = IupGetHandle ("menu_selectcan");
 	ASSERT (menu_selectcan);
 	int channel = IupGetInt (self, "KVASER_CAN_CHANNEL");
-	TRACE_F ("Select CAN channel %i", channel);
+	TRACEF ("Select CAN channel %i", channel);
 	canHandle handle = IupGetInt (NULL, "KVASER_CAN_HANDLE");
 	canStatus r;
 	uint32_t flags;
@@ -411,7 +460,7 @@ static int callback_select_can (Ihandle *self)
 		}
 		IupSetStrf (menu_selectcan, "TITLE", "Device %02i", channel);
 		handle = canOpenChannel (channel, canOPEN_ACCEPT_VIRTUAL | canOPEN_EXCLUSIVE);
-		TRACE_F ("canOpenChannel %i", handle);
+		TRACEF ("canOpenChannel %i", handle);
 		CSC_KVASERCAN_ASSERT (handle);
 		unsigned int tseg1 = 5;
 		unsigned int tseg2 = 2;
@@ -422,6 +471,18 @@ static int callback_select_can (Ihandle *self)
 		CSC_KVASERCAN_ASSERT (r);
 	}
 	IupSetInt (NULL, "KVASER_CAN_HANDLE", handle);
+	return IUP_DEFAULT;
+}
+
+static int mytabindex = 0;
+static int callback_othertab (Ihandle *self)
+{
+	Ihandle* zbox = IupGetHandle ("myzbox");
+	ASSERT (zbox);
+	mytabindex++;
+	mytabindex = mytabindex % 2;
+	TRACEF ("%u", mytabindex);
+	IupSetInt (zbox, "VALUEPOS", mytabindex);
 	return IUP_DEFAULT;
 }
 
@@ -466,17 +527,23 @@ int main (int argc, char **argv)
 
 
 	Ihandle * matrix = IupMatrix (NULL);
-	Ihandle * dlg = IupDialog (matrix);
+	Ihandle * matrix2 = IupMatrix (NULL);
+	Ihandle * zbox = IupZbox (matrix, matrix2, NULL);
+	Ihandle * dlg = IupDialog (zbox);
 	Ihandle * menu_export_items = IupMenu (IupItem ("Export block","export_block"), IupItem ("Export value","export_value"), NULL);
 	Ihandle * menu_export = IupSubmenu ("Export", menu_export_items);
 	Ihandle * menu_selectcan_items = IupMenu (NULL);
 	Ihandle * menu_selectcan = IupSubmenu (MAIN_SELECT_CAN_TITLE, menu_selectcan_items);
-	Ihandle * menu = IupMenu (menu_export, menu_selectcan, NULL);
+	Ihandle * menu = IupMenu (menu_export, menu_selectcan, IupItem ("View", "othertab"), NULL);
+
+
+	IupSetInt (zbox, "VALUEPOS", mytabindex);
 
 	//Set handle names for global access:
 	IupSetHandle ("menu_selectcan", menu_selectcan);
 	IupSetHandle ("mymenu", menu);
 	IupSetHandle ("mymatrix", dlg);
+	IupSetHandle ("myzbox", zbox);
 
 	//Setup callbacks:
 	IupSetCallback (matrix, "VALUE_CB", (Icallback)callback_matrix_value);
@@ -488,6 +555,7 @@ int main (int argc, char **argv)
 	IupSetFunction ("export_block", (Icallback)callback_export_block);
 	IupSetFunction ("export_value", (Icallback)callback_export_value);
 	IupSetFunction ("select_can", (Icallback)callback_select_can);
+	IupSetFunction ("othertab", (Icallback)callback_othertab);
 
 	//Matrix configure:
 	IupSetAttribute(matrix, "NAME", "MATRIX");
@@ -509,6 +577,11 @@ int main (int argc, char **argv)
 	IupSetAttributeId2 (matrix, "BGCOLOR", IUP_INVALID_ID, MAIN_COLUMN_DATA, "230 230 255");
 	IupSetAttributeId2 (matrix, "BGCOLOR", IUP_INVALID_ID, MAIN_COLUMN_RATE, "255 255 230");
 	IupSetAttributeId2 (matrix, "BGCOLOR", IUP_INVALID_ID, MAIN_COLUMN_FX, "255 255 230");
+
+
+	IupSetAttribute (matrix2, "NAME", "MATRIX2");
+	IupSetInt (matrix2, "NUMCOL", 3);
+	IupSetInt (matrix2, "NUMLIN", 10);
 
 	//Dialog configure:
 	IupSetAttribute (dlg, "TITLE", "Pacton");

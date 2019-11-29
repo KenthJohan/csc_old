@@ -361,3 +361,34 @@ void pacton_value_fill (struct pacton_value * record)
 	record->bitpos[1] = 4;
 	record->type[1] = PACTON_TYPE(PACTON_BYTEORDER_LE, 4, PACTON_PRIMTYPE_U8);
 }
+
+
+void pacton_divide (uint32_t values [], uint32_t index [], uint32_t n)
+{
+	for (uint32_t i = 0; i < n; ++i)
+	{
+		//printf ("index %u\n", index [i]);
+		uint32_t m = values [i];
+		for (uint32_t j = 0; j < m; ++j)
+		{
+			uint32_t k = (j * n) / m;
+			while (k < n && index [k] != UINT32_MAX)
+			{
+				k++;
+			}
+			index [k] = i;
+			printf ("%u : %u\n", k, i);
+		}
+	}
+}
+
+
+void pacton_divide_test ()
+{
+	uint32_t v [10] = {2, 3, 4, 0, 1, 0, 0, 0, 0, 0};
+	uint32_t ii [10] = {UINT32_MAX};
+	for (uint32_t i = 0; i < 10; ++i) {ii [i] = UINT32_MAX;}
+	pacton_divide (v, ii, 10);
+}
+
+

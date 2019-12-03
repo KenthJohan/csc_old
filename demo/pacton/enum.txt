@@ -1,0 +1,8 @@
+Name0                    Name1                   Value
+MODE_REMOTE_SELECT       "Remote Selected"       1
+MODE_CRANE               "Crane"                 2
+MODE_EXTRA               "Extra"                 3
+MODE_ONOFF               "Onoff"                 4
+MODE_SETTINGS            "Settings"              5
+MODE_REMOTE_PROGRAMMING  "Remote programming"    6
+MORE_NOT_INITIALIZED     "Not initialized"       15

@@ -1,21 +1,4 @@
-                           Name0  Block   Byte    Bit    Dim   Prim  Order   Size 
-                   "Menu Number"      0      7      0      1    U16     LE      4 
-           "Remote Control Mode"      0      7      4      1     U8     LE      4 
-                         "Hello"      0      0      0      1     I8     LE      7 
-                              ""      0      0      0      8     I8     LE      7 
-                       "Banana1"      0      3      3      0     I8     LE      7 
-                              ""      0      0      0      0     I8     LE      7 
-                              ""      0      0      0      0     I8     LE      7 
-                              ""      0      0      0      1     I8     LE      7 
-                              ""      0      0      0      0     I8     LE      7 
-                              ""      0      0      0      0     I8     LE      7 
-                              ""      0      0      0      0     I8     LE      7 
-                              ""      0      0      0      0     I8     LE      7 
-                              ""      0      0      0      0     I8     LE      7 
-                              ""      0      0      0      0     I8     LE      7 
-                              ""      0      0      0      0     I8     LE      7 
-                              ""      0      0      0      0     I8     LE      7 
-                              ""      0      0      0      0     I8     LE      7 
-                              ""      0      0      0      0     I8     LE      7 
-                              ""      0      0      0      0     I8     LE      7 
-                              ""      0      0      0      0     I8     LE      7 
+           Name0                            Name1  Block   Byte    Bit    Dim   Prim  Order   Size 
+          MENUNR                    "Menu Number"      0      6      0      1    U16     LE      4 
+            MODE            "Remote Control Mode"      0      6      4      1     U8     LE      4 
+         STOPPED                    "Stop active"      0      7      0      1     U8     LE      1 

@@ -139,11 +139,15 @@ enum pacton_type
 };
 
 
-#define PACTON_VALUE_NAMES0_STEP 32
+#define PACTON_VALUE_NAMES0_STEP 16
+#define PACTON_VALUE_NAMES1_STEP 32
+
 struct pacton_value
 {
+	uint32_t nmax;
 	uint32_t n;
 	char * names0;
+	char * names1;
 	uint32_t * block;
 	uint32_t * bytepos;
 	uint32_t * bitpos;
@@ -152,11 +156,13 @@ struct pacton_value
 };
 
 
-#define PACTON_BLOCK_NAMES0_STEP 32
-#define PACTON_BLOCK_NAMES1_STEP 16
+#define PACTON_BLOCK_NAMES0_STEP 16
+#define PACTON_BLOCK_NAMES1_STEP 32
 #define PACTON_BLOCK_DATA_STEP 128
+
 struct pacton_block
 {
+	uint32_t nmax;
 	uint32_t n;
 	char * names0;
 	char * names1;
@@ -164,8 +170,6 @@ struct pacton_block
 	uint32_t * data_size; //Size(i) of data(i) element.
 	uint32_t * index;
 	uint32_t * subindex;
-	uint32_t * rate;
-	uint32_t * slot;
 };
 
 
@@ -207,7 +211,8 @@ void pacton_block_fromfile (struct pacton_block * block, char const * filename)
 	if (f == NULL) {perror ("Can not open filename"); goto error;}
 	char * r = fgets (buf, (int)sizeof (buf), f);
 	if (r == NULL) {perror ("Empty file"); goto error;}
-	for (size_t i = 0; i < block->n; ++i)
+	uint32_t i;
+	for (i = 0; i < block->nmax; ++i)
 	{
 		r = fgets (buf, (int)sizeof (buf), f);
 		if (r == NULL) {break;}
@@ -219,6 +224,7 @@ void pacton_block_fromfile (struct pacton_block * block, char const * filename)
 		sscanf (buf, "%s %s %u %x %u", block_name0, block_name1, block_size, block_index, block_subindex);
 		printf ("%s %s %u %x %u\n", block_name0, block_name1, *block_size, *block_index, *block_subindex);
 	}
+	block->n = i;
 error:
 	if (f) {fclose (f);}
 }
@@ -228,13 +234,15 @@ void pacton_value1_tofile (struct pacton_value * value, uint32_t i, FILE * f)
 {
 	char buf [1024];
 	char * name0 = value->names0 + PACTON_VALUE_NAMES0_STEP * i;
+	char * name1 = value->names1 + PACTON_VALUE_NAMES1_STEP * i;
 	uint32_t block = value->block [i];
 	uint32_t bytepos = value->bytepos [i];
 	uint32_t bitpos = value->bitpos [i];
 	uint32_t dim = value->dim [i];
 	uint32_t type = value->type [i];
-	snprintf (buf, sizeof (buf), "\"%s\"",  name0);
-	fprintf (f, "%*.*s ", PACTON_VALUE_NAMES0_STEP, PACTON_VALUE_NAMES0_STEP, buf);
+	fprintf (f, "%*.*s ", PACTON_VALUE_NAMES0_STEP, PACTON_VALUE_NAMES0_STEP, name0);
+	snprintf (buf, sizeof (buf), "\"%s\"",  name1);
+	fprintf (f, "%*.*s ", PACTON_VALUE_NAMES1_STEP, PACTON_VALUE_NAMES1_STEP, buf);
 	fprintf (f, "%6i ", (int)block);
 	fprintf (f, "%6i ", (int)bytepos);
 	fprintf (f, "%6i ", (int)bitpos);
@@ -248,6 +256,7 @@ void pacton_value1_tofile (struct pacton_value * value, uint32_t i, FILE * f)
 void pacton_value_tofile (struct pacton_value * value, FILE * f)
 {
 	fprintf (f, "%*.*s ", PACTON_VALUE_NAMES0_STEP, PACTON_VALUE_NAMES0_STEP, "Name0");
+	fprintf (f, "%*.*s ", PACTON_VALUE_NAMES1_STEP, PACTON_VALUE_NAMES1_STEP, "Name1");
 	fprintf (f, "%6.6s ", "Block");
 	fprintf (f, "%6.6s ", "Byte");
 	fprintf (f, "%6.6s ", "Bit");
@@ -278,6 +287,7 @@ int pacton_value_scanf
 (
 char * buf,
 char * value_name0,
+char * value_name1,
 uint32_t * block,
 uint32_t * bytepos,
 uint32_t * bitpos,
@@ -285,14 +295,22 @@ uint32_t * dim,
 uint32_t * type
 )
 {
+	ASSERT (buf);
+	ASSERT (value_name0);
+	ASSERT (value_name1);
+	ASSERT (block);
+	ASSERT (bytepos);
+	ASSERT (bitpos);
+	ASSERT (dim);
+	ASSERT (type);
 	char type_primtype[6];
 	char type_byteorder[6];
 	uint32_t type_size;
 	int r;
 	r = sscanf
 	(
-	buf, " \"%"PACTON_XSTR (PACTON_VALUE_NAMES0_STEP)"[^\"]\" %u %u %u %u %6s %6s %u",
-	value_name0, block, bytepos, bitpos, dim, type_primtype, type_byteorder, &type_size
+	buf, "%s \"%"PACTON_XSTR (PACTON_VALUE_NAMES1_STEP)"[^\"]\" %u %u %u %u %6s %6s %u",
+	value_name0, value_name1, block, bytepos, bitpos, dim, type_primtype, type_byteorder, &type_size
 	);
 	if (r == 0)
 	{
@@ -305,8 +323,8 @@ uint32_t * type
 	//printf ("%70.70s READ%i\n", buf, r);
 	enum pacton_byteorder byteorder = pacton_byteorder_fromstr (type_byteorder);
 	enum pacton_primtype primtype = pacton_primtype_fromstr (type_primtype);
-	ASSERT (byteorder != PACTON_BYTEORDER_UNKNOWN);
-	ASSERT (primtype != PACTON_PRIMTYPE_UNKNOWN);
+	ASSERTF (byteorder != PACTON_BYTEORDER_UNKNOWN, "%s", buf);
+	ASSERTF (primtype != PACTON_PRIMTYPE_UNKNOWN, "%s", buf);
 	*type = PACTON_TYPE (byteorder, type_size, primtype);
 	return r;
 }
@@ -320,21 +338,24 @@ void pacton_value_fromfile (struct pacton_value * value, char const * filename)
 	if (f == NULL) {perror ("Can not open filename"); goto error;}
 	char * r = fgets (buf, (int)sizeof (buf), f);
 	if (r == NULL) {perror ("Empty file"); goto error;}
-	for (uint32_t i = 0; i < value->n; ++i)
+	uint32_t i;
+	for (i = 0; i < value->nmax; ++i)
 	{
 		r = fgets (buf, (int)sizeof (buf), f);
 		if (r == NULL) {break;}
 		char * value_name0 = value->names0 + PACTON_VALUE_NAMES0_STEP * i;
+		char * value_name1 = value->names1 + PACTON_VALUE_NAMES1_STEP * i;
 		uint32_t * block = value->block + i;
 		uint32_t * bytepos = value->bytepos + i;
 		uint32_t * bitpos = value->bitpos + i;
 		uint32_t * dim = value->dim + i;
 		uint32_t * type = value->type + i;
-		//printf ("%s", buf);
-		pacton_value_scanf (buf, value_name0, block, bytepos, bitpos, dim, type);
+		printf ("%s", buf);
+		pacton_value_scanf (buf, value_name0, value_name1, block, bytepos, bitpos, dim, type);
 		//pacton_value1_tofile (value, i, stdout);
 		putc('\n', stdout);
 	}
+	value->n = i;
 error:
 	if (f) {fclose (f);}
 }

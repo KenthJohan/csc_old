@@ -27,14 +27,14 @@
 enum main_column
 {
 	MAIN_COLUMN_NUMBER,
-	MAIN_COLUMN_BLOCK,
+	MAIN_COLUMN_BLOCKNAME0,
+	MAIN_COLUMN_BLOCKNAME1,
 	MAIN_COLUMN_BLOCKSIZE,
 	MAIN_COLUMN_INDEX,
 	MAIN_COLUMN_SUBINDEX,
 	MAIN_COLUMN_DATA,
-	MAIN_COLUMN_RATE,
-	MAIN_COLUMN_SLOT,
-	MAIN_COLUMN_NAME,
+	MAIN_COLUMN_VALUENAME0,
+	MAIN_COLUMN_VALUENAME1,
 	MAIN_COLUMN_BYTEOFFSET,
 	MAIN_COLUMN_BITOFFSET,
 	MAIN_COLUMN_TYPE_BYTEORDER,
@@ -42,7 +42,6 @@ enum main_column
 	MAIN_COLUMN_TYPE_PRIMTYPE,
 	MAIN_COLUMN_DIM,
 	MAIN_COLUMN_VALUE,
-	MAIN_COLUMN_FX,
 	MAIN_COLUMN__N
 };
 
@@ -52,8 +51,10 @@ char const * main_column_tostr (enum main_column col)
 	switch (col)
 	{
 	case MAIN_COLUMN_NUMBER: return "#";
-	case MAIN_COLUMN_NAME: return "Name";
-	case MAIN_COLUMN_BLOCK: return "Block";
+	case MAIN_COLUMN_VALUENAME0: return "Name0";
+	case MAIN_COLUMN_VALUENAME1: return "Name1";
+	case MAIN_COLUMN_BLOCKNAME0: return "Block0";
+	case MAIN_COLUMN_BLOCKNAME1: return "Block1";
 	case MAIN_COLUMN_BLOCKSIZE: return "Size";
 	case MAIN_COLUMN_INDEX: return "Index";
 	case MAIN_COLUMN_SUBINDEX: return "Subi";
@@ -64,10 +65,7 @@ char const * main_column_tostr (enum main_column col)
 	case MAIN_COLUMN_TYPE_PRIMTYPE: return "Type";
 	case MAIN_COLUMN_DIM: return "Dim";
 	case MAIN_COLUMN_DATA: return "Data";
-	case MAIN_COLUMN_RATE: return "Rate";
-	case MAIN_COLUMN_SLOT: return "Slot";
 	case MAIN_COLUMN_VALUE: return "Value";
-	case MAIN_COLUMN_FX: return "Fx";
 	default:return "";
 	}
 }
@@ -75,34 +73,77 @@ char const * main_column_tostr (enum main_column col)
 
 static uint32_t mat1_colmap [] =
 {
-	MAIN_COLUMN_NUMBER,
-	MAIN_COLUMN_BLOCK,
-	MAIN_COLUMN_BLOCKSIZE,
-	MAIN_COLUMN_INDEX,
-	MAIN_COLUMN_SUBINDEX,
-	MAIN_COLUMN_DATA,
-	MAIN_COLUMN_RATE,
-	MAIN_COLUMN_SLOT,
-	MAIN_COLUMN_NAME,
-	MAIN_COLUMN_BYTEOFFSET,
-	MAIN_COLUMN_BITOFFSET,
-	MAIN_COLUMN_TYPE_BYTEORDER,
-	MAIN_COLUMN_TYPE_SIZE,
-	MAIN_COLUMN_TYPE_PRIMTYPE,
-	MAIN_COLUMN_DIM,
-	MAIN_COLUMN_VALUE,
-	MAIN_COLUMN_FX,
+MAIN_COLUMN_NUMBER,
+MAIN_COLUMN_BLOCKNAME0,
+MAIN_COLUMN_BLOCKNAME1,
+MAIN_COLUMN_BLOCKSIZE,
+MAIN_COLUMN_INDEX,
+MAIN_COLUMN_SUBINDEX,
+MAIN_COLUMN_DATA,
+MAIN_COLUMN_VALUENAME0,
+MAIN_COLUMN_VALUENAME1,
+MAIN_COLUMN_BYTEOFFSET,
+MAIN_COLUMN_BITOFFSET,
+MAIN_COLUMN_TYPE_BYTEORDER,
+MAIN_COLUMN_TYPE_SIZE,
+MAIN_COLUMN_TYPE_PRIMTYPE,
+MAIN_COLUMN_DIM,
+MAIN_COLUMN_VALUE
 };
+
+static char const * mat1_colormap [] =
+{
+"255 255 255",
+"230 230 255",
+"230 230 255",
+"230 230 255",
+"230 230 255",
+"230 230 255",
+"230 230 255",
+"255 255 255",
+"255 255 255",
+"255 255 255",
+"255 255 255",
+"255 255 255",
+"255 255 255",
+"255 255 255",
+"255 255 255",
+"255 255 255",
+};
+
+static uint32_t mat1_widthmap [] =
+{
+10,
+60,
+100,
+20,
+25,
+25,
+100,
+40,
+80,
+40,
+40,
+40,
+40,
+40,
+40,
+40,
+};
+
+
+static_assert (countof (mat1_colmap) == countof (mat1_colormap), "not equal");
 
 
 static uint32_t mat2_colmap [] =
 {
-	MAIN_COLUMN_NUMBER,
-	MAIN_COLUMN_BLOCK,
-	MAIN_COLUMN_BLOCKSIZE,
-	MAIN_COLUMN_INDEX,
-	MAIN_COLUMN_SUBINDEX,
-	MAIN_COLUMN_DATA
+MAIN_COLUMN_NUMBER,
+MAIN_COLUMN_BLOCKNAME0,
+MAIN_COLUMN_BLOCKNAME1,
+MAIN_COLUMN_BLOCKSIZE,
+MAIN_COLUMN_INDEX,
+MAIN_COLUMN_SUBINDEX,
+MAIN_COLUMN_DATA
 };
 
 
@@ -132,30 +173,36 @@ void generic_matrix_value (char * text, uint32_t text_len, struct pacton_block *
 	uint32_t blocki = value->block[lin];
 	assert (blocki < block->n);
 	char * value_name0 = value->names0 + PACTON_VALUE_NAMES0_STEP * lin;
+	char * value_name1 = value->names1 + PACTON_VALUE_NAMES1_STEP * lin;
 	char * block_name0 = block->names0 + PACTON_BLOCK_NAMES0_STEP * blocki;
+	char * block_name1 = block->names1 + PACTON_BLOCK_NAMES1_STEP * blocki;
 	//char * block_name1 = allblock.names1 + allblock.names1_step * block;
 	uint32_t block_size = block->data_size [blocki];
 	uint32_t block_index = block->index [blocki];
 	uint32_t block_subindex = block->subindex [blocki];
-	uint32_t block_rate = block->rate [blocki];
 	uint32_t value_bytepos = value->bytepos[lin];
 	uint32_t value_bitpos = value->bitpos[lin];
 	uint32_t value_type = value->type[lin];
 	uint32_t value_dim = value->dim[lin];
 	uint8_t * block_data = block->data + blocki * PACTON_BLOCK_DATA_STEP;
 	uint32_t block_data_size = block->data_size [blocki];
-	uint32_t slot = block->slot [blocki];
 
 	switch (col)
 	{
 	case MAIN_COLUMN_NUMBER:
 		snprintf (text, text_len, "%u", lin);
 		break;
-	case MAIN_COLUMN_NAME:
+	case MAIN_COLUMN_VALUENAME0:
 		snprintf(text, text_len, "%s", value_name0);
 		break;
-	case MAIN_COLUMN_BLOCK:
+	case MAIN_COLUMN_VALUENAME1:
+		snprintf(text, text_len, "%s", value_name1);
+		break;
+	case MAIN_COLUMN_BLOCKNAME0:
 		snprintf(text, text_len, "%s", block_name0);
+		break;
+	case MAIN_COLUMN_BLOCKNAME1:
+		snprintf(text, text_len, "%s", block_name1);
 		break;
 	case MAIN_COLUMN_BLOCKSIZE:
 		snprintf(text, text_len, "%i", (int)block_size);
@@ -188,19 +235,6 @@ void generic_matrix_value (char * text, uint32_t text_len, struct pacton_block *
 		char fmt [] = "%02X ";
 		csc_str_print_hex_array (text, text_len, block_data, block_data_size, fmt, sizeof (fmt));
 		break;}
-	case MAIN_COLUMN_RATE:
-		snprintf(text, text_len, "%u", block_rate);
-		break;
-	case MAIN_COLUMN_SLOT:
-		if (slot == UINT32_MAX)
-		{
-			snprintf (text, text_len, "%s", "N/A");
-		}
-		else
-		{
-			snprintf (text, text_len, "%u", slot);
-		}
-		break;
 	case MAIN_COLUMN_VALUE:{
 		uint8_t * v = block_data;
 		v += value_bytepos;
@@ -238,22 +272,24 @@ void generic_matrix2_value (char * text, uint32_t text_len, struct pacton_block 
 	uint32_t blocki = lin;
 	assert (blocki < block->n);
 	char * block_name0 = block->names0 + PACTON_BLOCK_NAMES0_STEP * blocki;
+	char * block_name1 = block->names1 + PACTON_BLOCK_NAMES1_STEP * blocki;
 	//char * block_name1 = allblock.names1 + allblock.names1_step * block;
 	uint32_t block_size = block->data_size [blocki];
 	uint32_t block_index = block->index [blocki];
 	uint32_t block_subindex = block->subindex [blocki];
-	uint32_t block_rate = block->rate [blocki];
 	uint8_t * block_data = block->data + blocki * PACTON_BLOCK_DATA_STEP;
 	size_t block_data_size = block->data_size [blocki];
-	uint32_t slot = 0;
 
 	switch (col)
 	{
 	case MAIN_COLUMN_NUMBER:
 		snprintf (text, text_len, "%u", lin);
 		break;
-	case MAIN_COLUMN_BLOCK:
+	case MAIN_COLUMN_BLOCKNAME0:
 		snprintf(text, text_len, "%s", block_name0);
+		break;
+	case MAIN_COLUMN_BLOCKNAME1:
+		snprintf(text, text_len, "%s", block_name1);
 		break;
 	case MAIN_COLUMN_BLOCKSIZE:
 		snprintf(text, text_len, "%i", (int)block_size);
@@ -268,19 +304,6 @@ void generic_matrix2_value (char * text, uint32_t text_len, struct pacton_block 
 		char fmt [] = "%02X ";
 		csc_str_print_hex_array (text, text_len, block_data, block_data_size, fmt, sizeof (fmt));
 		break;}
-	case MAIN_COLUMN_RATE:
-		snprintf(text, text_len, "%u", block_rate);
-		break;
-	case MAIN_COLUMN_SLOT:
-		if (slot == UINT32_MAX)
-		{
-			snprintf (text, text_len, "%s", "N/A");
-		}
-		else
-		{
-			snprintf (text, text_len, "%u", slot);
-		}
-		break;
 	}
 }
 
@@ -363,11 +386,6 @@ static int callback_matrix_value_edit (Ihandle *self, int lin, int col, char* ne
 				allblock.subindex [block] = (uint32_t)v;
 				assert (errno == 0);
 				break;
-			case MAIN_COLUMN_RATE:
-				v = strtoimax (newvalue, &e, 10);
-				allblock.rate [block] = (uint32_t)v;
-				assert (errno == 0);
-				break;
 			case MAIN_COLUMN_BYTEOFFSET:
 				v = strtoimax (newvalue, &e, 10);
 				alldata.bytepos[i] = (uint32_t)v;
@@ -389,12 +407,7 @@ static int callback_matrix_value_edit (Ihandle *self, int lin, int col, char* ne
 				alldata.type[i] |= PACTON_TYPE (0, v, 0);
 				assert (errno == 0);
 				break;
-			case MAIN_COLUMN_SLOT:
-				v = strtoimax (newvalue, &e, 10);
-				allblock.slot [block] = (uint32_t)v;
-				assert (errno == 0);
-				break;
-			case MAIN_COLUMN_NAME:
+			case MAIN_COLUMN_VALUENAME1:
 				strncpy (alldata.names0 + i * PACTON_VALUE_NAMES0_STEP, newvalue, PACTON_VALUE_NAMES0_STEP);
 				break;
 			case MAIN_COLUMN_VALUE:{
@@ -428,7 +441,7 @@ static int callback_drop (Ihandle *self, Ihandle *drop, int lin, int col)
 	if (lin == 0) {return IUP_IGNORE;}
 	switch (col)
 	{
-	case MAIN_COLUMN_BLOCK:
+	case MAIN_COLUMN_BLOCKNAME1:
 		//printf ("lin: %i %i\n", lin-1, alldata [lin-1].block);
 		//TODO: Figureout why we need to do +2 and not +1 here:
 		IupSetInt (drop, "VALUE", (int)alldata.block[lin-1]+2);
@@ -462,7 +475,7 @@ static int callback_dropselect (Ihandle *self, int lin, int col, Ihandle *drop, 
 	if (lin == 0 || v == 0) {return IUP_IGNORE;}
 	switch (col)
 	{
-	case MAIN_COLUMN_BLOCK:
+	case MAIN_COLUMN_BLOCKNAME1:
 		assert (i >= 0);
 		alldata.block[lin-1] = (uint32_t)i - 1;
 		return IUP_DEFAULT;
@@ -490,7 +503,7 @@ static int callback_dropcheck (Ihandle *self, int lin, int col)
 	if (lin == 0) {return IUP_IGNORE;}
 	switch (col)
 	{
-	case MAIN_COLUMN_BLOCK:
+	case MAIN_COLUMN_BLOCKNAME1:
 	case MAIN_COLUMN_TYPE_PRIMTYPE:
 		return IUP_DEFAULT;
 	}
@@ -598,24 +611,23 @@ int main (int argc, char **argv)
 	IupControlsOpen ();
 	IupSetInt (NULL, "KVASER_CAN_HANDLE", canINVALID_HANDLE);
 
-	allblock.n = 19;
-	allblock.names0 = calloc (allblock.n, PACTON_BLOCK_NAMES0_STEP);
-	allblock.names1 = calloc (allblock.n, PACTON_BLOCK_NAMES1_STEP);
-	allblock.index = calloc (allblock.n, sizeof (uint32_t));
-	allblock.subindex = calloc (allblock.n, sizeof (uint32_t));
-	allblock.data_size = calloc (allblock.n, sizeof (uint32_t));
-	allblock.rate = calloc (allblock.n, sizeof (uint32_t));
-	allblock.slot = calloc (allblock.n, sizeof (uint32_t));
-	allblock.data = calloc (allblock.n, PACTON_BLOCK_DATA_STEP);
+	allblock.nmax = 19;
+	allblock.names0 = calloc (allblock.nmax, PACTON_BLOCK_NAMES0_STEP);
+	allblock.names1 = calloc (allblock.nmax, PACTON_BLOCK_NAMES1_STEP);
+	allblock.index = calloc (allblock.nmax, sizeof (uint32_t));
+	allblock.subindex = calloc (allblock.nmax, sizeof (uint32_t));
+	allblock.data_size = calloc (allblock.nmax, sizeof (uint32_t));
+	allblock.data = calloc (allblock.nmax, PACTON_BLOCK_DATA_STEP);
 	pacton_block_fromfile (&allblock, "../pacton/block.txt");
 
-	alldata.n = 20;
-	alldata.names0 = calloc (alldata.n, PACTON_VALUE_NAMES0_STEP);
-	alldata.block = calloc (alldata.n, sizeof (uint32_t));
-	alldata.bytepos = calloc (alldata.n, sizeof (uint32_t));
-	alldata.bitpos = calloc (alldata.n, sizeof (uint32_t));
-	alldata.dim = calloc (alldata.n, sizeof (uint32_t));
-	alldata.type = calloc (alldata.n, sizeof (uint32_t));
+	alldata.nmax = 20;
+	alldata.names0 = calloc (alldata.nmax, PACTON_VALUE_NAMES0_STEP);
+	alldata.names1 = calloc (alldata.nmax, PACTON_VALUE_NAMES1_STEP);
+	alldata.block = calloc (alldata.nmax, sizeof (uint32_t));
+	alldata.bytepos = calloc (alldata.nmax, sizeof (uint32_t));
+	alldata.bitpos = calloc (alldata.nmax, sizeof (uint32_t));
+	alldata.dim = calloc (alldata.nmax, sizeof (uint32_t));
+	alldata.type = calloc (alldata.nmax, sizeof (uint32_t));
 	pacton_value_fromfile (&alldata, "../pacton/value.txt");
 
 
@@ -651,20 +663,14 @@ int main (int argc, char **argv)
 	IupSetAttribute (matrix, "main_colmap", (char*)mat1_colmap);
 	IupSetInt (matrix, "NUMLIN", alldata.n);
 	IupSetInt (matrix, "NUMLIN_VISIBLE", alldata.n);
-	IupSetIntId (matrix, "WIDTH", MAIN_COLUMN_NUMBER, 15);
-	IupSetIntId (matrix, "WIDTH", MAIN_COLUMN_NAME, 100);
-	IupSetIntId (matrix, "WIDTH", MAIN_COLUMN_BLOCK, 100);
-	IupSetIntId (matrix, "WIDTH", MAIN_COLUMN_DATA, 100);
 	IupSetInt (matrix, "WIDTHDEF", 30);
 	IupSetIntId (matrix, "HEIGHT", 0, 8);
 	IupSetAttribute (matrix, "RESIZEMATRIX", "Yes");
-	IupSetAttributeId2 (matrix, "BGCOLOR", IUP_INVALID_ID, MAIN_COLUMN_BLOCK, "230 230 255");
-	IupSetAttributeId2 (matrix, "BGCOLOR", IUP_INVALID_ID, MAIN_COLUMN_INDEX, "230 230 255");
-	IupSetAttributeId2 (matrix, "BGCOLOR", IUP_INVALID_ID, MAIN_COLUMN_BLOCKSIZE, "230 230 255");
-	IupSetAttributeId2 (matrix, "BGCOLOR", IUP_INVALID_ID, MAIN_COLUMN_SUBINDEX, "230 230 255");
-	IupSetAttributeId2 (matrix, "BGCOLOR", IUP_INVALID_ID, MAIN_COLUMN_DATA, "230 230 255");
-	IupSetAttributeId2 (matrix, "BGCOLOR", IUP_INVALID_ID, MAIN_COLUMN_RATE, "255 255 230");
-	IupSetAttributeId2 (matrix, "BGCOLOR", IUP_INVALID_ID, MAIN_COLUMN_FX, "255 255 230");
+	for (uint32_t i = 0; i < countof (mat1_colmap); ++i)
+	{
+		IupSetAttributeId2 (matrix, "BGCOLOR", IUP_INVALID_ID, i, mat1_colormap [i]);
+		IupSetIntId (matrix, "WIDTH", i, mat1_widthmap [i]);
+	}
 	IupSetCallback (matrix, "VALUE_CB", (Icallback)callback_matrix_value);
 	IupSetCallback (matrix, "VALUE_EDIT_CB", (Icallback)callback_matrix_value_edit);
 	IupSetCallback (matrix, "DROP_CB",(Icallback)callback_drop);
@@ -679,8 +685,8 @@ int main (int argc, char **argv)
 	IupSetInt (matrix2, "NUMLIN_VISIBLE", allblock.n);
 	IupSetInt (matrix2, "WIDTHDEF", 30);
 	IupSetIntId (matrix2, "WIDTH", MAIN_COLUMN_NUMBER, 15);
-	IupSetIntId (matrix2, "WIDTH", MAIN_COLUMN_NAME, 100);
-	IupSetIntId (matrix2, "WIDTH", MAIN_COLUMN_BLOCK, 100);
+	IupSetIntId (matrix2, "WIDTH", MAIN_COLUMN_VALUENAME1, 100);
+	IupSetIntId (matrix2, "WIDTH", MAIN_COLUMN_BLOCKNAME1, 100);
 	IupSetIntId (matrix2, "WIDTH", MAIN_COLUMN_DATA, 100);
 	IupSetIntId (matrix2, "HEIGHT", 0, 8);
 	IupSetAttribute (matrix2, "RESIZEMATRIX", "Yes");

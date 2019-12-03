@@ -1,3 +1,9 @@
-Command Value
-   MODE     1
-  delay     2
+   Command Value
+  interval     2000
+    MENUNR     1
+    MENUNR     4
+      MODE     1
+      MODE     4
+      MODE     3
+      MODE     2
+   STOPPED     1

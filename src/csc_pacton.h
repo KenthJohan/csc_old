@@ -27,6 +27,7 @@ SOFTWARE.
 #include <stdint.h>
 #include <string.h>
 #include <ctype.h>
+#include <inttypes.h>
 
 #include "csc_debug.h"
 
@@ -399,6 +400,42 @@ void pacton_value_fromfile (struct pacton_value * value, char const * filename)
 	value->n = i;
 error:
 	if (f) {fclose (f);}
+}
+
+
+uint32_t pacton_value_byname0 (struct pacton_value * value, char const * needle)
+{
+	for (uint32_t i = 0; i < value->n; ++i)
+	{
+		char * name0 = value->names0 + PACTON_VALUE_NAMES0_STEP * i;
+		int diff = strcmp (name0, needle);
+		if (diff == 0)
+		{
+			return i;
+		}
+	}
+	return UINT32_MAX;
+}
+
+
+void pacton_value_set_byname0 (struct pacton_block * blk, struct pacton_value * value, char const * needle, char const * val)
+{
+	uint32_t i = pacton_value_byname0 (value, needle);
+	if (i >= value->n) {return;}
+	ASSERT (i < value->n);
+	intmax_t v = strtoimax (val, NULL, 10);
+	if (v == INTMAX_MAX && errno == ERANGE)
+	{
+		ASSERT (0);
+	}
+	uint32_t block = value->block[i];
+	uint32_t bytepos = value->bytepos[i];
+	uint32_t bitpos = value->bitpos[i];
+	uint32_t type = value->type[i];
+	unsigned int mask = (1 << PACTON_TYPE_SIZE(type)) - 1;
+	uint8_t * data = blk->data + block * PACTON_BLOCK_DATA_STEP + bytepos;
+	data [0] &= ~(mask << bitpos);
+	data [0] |= ((v & mask) << bitpos);
 }
 
 

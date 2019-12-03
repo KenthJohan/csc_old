@@ -152,6 +152,9 @@ static struct pacton_block allblock = {0};
 static struct pacton_value alldata = {0};
 static struct pacton_command allcmd = {0};
 
+static Ihandle * timer1 = NULL;
+Ihandle * matrix = NULL;
+Ihandle * matrix2 = NULL;
 
 void generic_matrix_value (char * text, uint32_t text_len, struct pacton_block * block, struct pacton_value * value, uint32_t lin, uint32_t col)
 {
@@ -251,7 +254,6 @@ void generic_matrix_value (char * text, uint32_t text_len, struct pacton_block *
 }
 
 
-
 void generic_matrix2_value (char * text, uint32_t text_len, struct pacton_block * block, uint32_t lin, uint32_t col)
 {
 	//For all cells in first row:
@@ -307,8 +309,6 @@ void generic_matrix2_value (char * text, uint32_t text_len, struct pacton_block 
 		break;}
 	}
 }
-
-
 
 
 /*
@@ -512,11 +512,19 @@ static int callback_dropcheck (Ihandle *self, int lin, int col)
 }
 
 
-
 static int callback_export_block (Ihandle *self)
 {
 	TRACEF ("%s", IupGetAttribute (self, "TITLE"));
 	pacton_block_tofile (&allblock, "../pacton/block.txt");
+	return IUP_DEFAULT;
+}
+
+
+static int callback_start_script (Ihandle *self)
+{
+	TRACEF ("%s", IupGetAttribute (self, "TITLE"));
+	pacton_command_fromfile (&allcmd, "../pacton/script.txt");
+	IupSetAttribute (timer1, "RUN", "YES");
 	return IUP_DEFAULT;
 }
 
@@ -604,6 +612,42 @@ static int callback_othertab (Ihandle *self)
 }
 
 
+static int timer_cb (Ihandle *ih)
+{
+	struct pacton_command * cmd = &allcmd;
+	struct pacton_block * blk = &allblock;
+	struct pacton_value * val = &alldata;
+	static uint32_t pc = 0;
+	{
+		char * command = cmd->command + PACTON_COMMAND_COMMAND_STEP * pc;
+		char * value = cmd->value + PACTON_COMMAND_VALUE_STEP * pc;
+		printf ("do: %s %s\n", command, value);
+		if (strcmp (command, "interval") == 0)
+		{
+			uintmax_t v = strtoumax (value, NULL, 10);
+			if (v == UINTMAX_MAX && errno == ERANGE)
+			{
+				ASSERT (0);
+			}
+			printf ("do: %s %i\n", "TIME", (int)v);
+			//TODO: Changing interval while timer is running does not work:
+			IupSetInt (timer1, "TIME", (int)v);
+		}
+		pacton_value_set_byname0 (blk, val, command, value);
+		//TODO: don't update all cells, should only update neccecery cells:
+		IupSetAttribute (matrix, "REDRAW", "ALL");
+		pc ++;
+	}
+	if (pc >= allcmd.n)
+	{
+		pc = 0;
+		IupSetAttribute (timer1, "RUN", "NO");
+		IupSetInt (timer1, "TIME", 10);
+	}
+	return IUP_DEFAULT;
+}
+
+
 int main (int argc, char **argv)
 {
 	setbuf (stdout, NULL);
@@ -634,17 +678,22 @@ int main (int argc, char **argv)
 	allcmd.nmax = 20;
 	allcmd.command = calloc (allcmd.nmax, PACTON_COMMAND_COMMAND_STEP);
 	allcmd.value = calloc (allcmd.nmax, PACTON_COMMAND_VALUE_STEP);
-	pacton_command_fromfile (&allcmd, "../pacton/script.txt");
+	//pacton_command_fromfile (&allcmd, "../pacton/script.txt");
 
-	Ihandle * matrix = IupMatrix (NULL);
-	Ihandle * matrix2 = IupMatrix (NULL);
+	timer1 = IupTimer();
+	IupSetInt (timer1, "TIME", 2000);
+	IupSetAttribute (timer1, "RUN", "NO");
+	IupSetCallback (timer1, "ACTION_CB", (Icallback)timer_cb);
+
+	matrix = IupMatrix (NULL);
+	matrix2 = IupMatrix (NULL);
 	Ihandle * zbox = IupZbox (matrix, matrix2, NULL);
 	Ihandle * dlg = IupDialog (zbox);
 	Ihandle * menu_export_items = IupMenu (IupItem ("Export block","export_block"), IupItem ("Export value","export_value"), NULL);
 	Ihandle * menu_export = IupSubmenu ("Export", menu_export_items);
 	Ihandle * menu_selectcan_items = IupMenu (NULL);
 	Ihandle * menu_selectcan = IupSubmenu (MAIN_SELECT_CAN_TITLE, menu_selectcan_items);
-	Ihandle * menu = IupMenu (menu_export, menu_selectcan, IupItem ("View", "othertab"), NULL);
+	Ihandle * menu = IupMenu (menu_export, menu_selectcan, IupItem ("View", "othertab"), IupItem ("RunScript", "startcript"), NULL);
 
 
 	IupSetInt (zbox, "VALUEPOS", mytabindex);
@@ -660,6 +709,7 @@ int main (int argc, char **argv)
 	IupSetFunction ("export_value", (Icallback)callback_export_value);
 	IupSetFunction ("select_can", (Icallback)callback_select_can);
 	IupSetFunction ("othertab", (Icallback)callback_othertab);
+	IupSetFunction ("startcript", (Icallback)callback_start_script);
 
 	//Matrix configure:
 	IupSetAttribute(matrix, "NAME", "mat1");

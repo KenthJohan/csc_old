@@ -71,7 +71,7 @@ char const * main_column_tostr (enum main_column col)
 }
 
 
-static uint32_t mat1_colmap [] =
+static uint32_t main_mat1_column_map [] =
 {
 MAIN_COLUMN_NUMBER,
 MAIN_COLUMN_BLOCKNAME0,
@@ -90,6 +90,8 @@ MAIN_COLUMN_TYPE_PRIMTYPE,
 MAIN_COLUMN_DIM,
 MAIN_COLUMN_VALUE
 };
+
+static uint32_t main_mat1_column_map_inv [16];
 
 static char const * mat1_colormap [] =
 {
@@ -132,7 +134,7 @@ static uint32_t mat1_widthmap [] =
 };
 
 
-static_assert (countof (mat1_colmap) == countof (mat1_colormap), "not equal");
+static_assert (countof (main_mat1_column_map) == countof (mat1_colormap), "not equal");
 
 
 static uint32_t mat2_colmap [] =
@@ -147,14 +149,15 @@ MAIN_COLUMN_DATA
 };
 
 
-
 static struct pacton_block allblock = {0};
 static struct pacton_value alldata = {0};
 static struct pacton_command allcmd = {0};
 
+
 static Ihandle * timer1 = NULL;
 Ihandle * matrix = NULL;
 Ihandle * matrix2 = NULL;
+
 
 void generic_matrix_value (char * text, uint32_t text_len, struct pacton_block * block, struct pacton_value * value, uint32_t lin, uint32_t col)
 {
@@ -618,33 +621,49 @@ static int timer_cb (Ihandle *ih)
 	struct pacton_block * blk = &allblock;
 	struct pacton_value * val = &alldata;
 	static uint32_t pc = 0;
+	static uint32_t row = 0;
+	char * command = cmd->command + PACTON_COMMAND_COMMAND_STEP * pc;
+	char * value = cmd->value + PACTON_COMMAND_VALUE_STEP * pc;
+	int const column1 = main_mat1_column_map_inv [MAIN_COLUMN_VALUE];
+	int const column2 = main_mat1_column_map_inv [MAIN_COLUMN_DATA];
+	printf ("do: %s %s\n", command, value);
+	if (strcmp (command, "interval") == 0)
 	{
-		char * command = cmd->command + PACTON_COMMAND_COMMAND_STEP * pc;
-		char * value = cmd->value + PACTON_COMMAND_VALUE_STEP * pc;
-		printf ("do: %s %s\n", command, value);
-		if (strcmp (command, "interval") == 0)
+		uintmax_t v = strtoumax (value, NULL, 10);
+		if (v == UINTMAX_MAX && errno == ERANGE)
 		{
-			uintmax_t v = strtoumax (value, NULL, 10);
-			if (v == UINTMAX_MAX && errno == ERANGE)
-			{
-				ASSERT (0);
-			}
-			printf ("do: %s %i\n", "TIME", (int)v);
-			//The timer need to be stopped before changing the interval TIME:
-			IupSetAttribute (timer1, "RUN", "NO");
-			IupSetInt (timer1, "TIME", (int)v);
-			IupSetAttribute (timer1, "RUN", "YES");
+			ASSERT (0);
 		}
-		pacton_value_set_byname0 (blk, val, command, value);
+		printf ("do: %s %i\n", "TIME", (int)v);
+		//The timer need to be stopped before changing the interval TIME:
+		IupSetAttribute (timer1, "RUN", "NO");
+		IupSetInt (timer1, "TIME", (int)v);
+		IupSetAttribute (timer1, "RUN", "YES");
+	}
+	else if (strcmp (command, "nop") == 0)
+	{
+	}
+	else
+	{
+		IupSetAttributeId2 (matrix, "BGCOLOR", row+1, column1, mat1_colormap [column1]);
+		IupSetAttributeId2 (matrix, "BGCOLOR", row+1, column2, mat1_colormap [column2]);
+		row = pacton_value_byname0 (val, command);
+		pacton_value_set (blk, val, row, value);
+		IupSetAttributeId2 (matrix, "BGCOLOR", row+1, column1, "255 255 000");
+		IupSetAttributeId2 (matrix, "BGCOLOR", row+1, column2, "255 255 000");
 		//TODO: don't update all cells, should only update neccecery cells:
 		IupSetAttribute (matrix, "REDRAW", "ALL");
-		pc ++;
 	}
+
+	pc ++;
 	if (pc >= allcmd.n)
 	{
 		pc = 0;
 		IupSetAttribute (timer1, "RUN", "NO");
 		IupSetInt (timer1, "TIME", 10);
+		IupSetAttributeId2 (matrix, "BGCOLOR", row+1, column1, mat1_colormap [column1]);
+		IupSetAttributeId2 (matrix, "BGCOLOR", row+1, column2, mat1_colormap [column2]);
+		IupSetAttribute (matrix, "REDRAW", "ALL");
 	}
 	return IUP_DEFAULT;
 }
@@ -657,6 +676,8 @@ int main (int argc, char **argv)
 	IupOpen (&argc, &argv);
 	IupControlsOpen ();
 	IupSetInt (NULL, "KVASER_CAN_HANDLE", canINVALID_HANDLE);
+
+	csc_inverse_121 (main_mat1_column_map, main_mat1_column_map_inv, countof (main_mat1_column_map));
 
 	allblock.nmax = 19;
 	allblock.names0 = calloc (allblock.nmax, PACTON_BLOCK_NAMES0_STEP);
@@ -715,15 +736,15 @@ int main (int argc, char **argv)
 
 	//Matrix configure:
 	IupSetAttribute(matrix, "NAME", "mat1");
-	IupSetInt (matrix, "NUMCOL", countof (mat1_colmap)-1);
-	IupSetInt (matrix, "NUMCOL_VISIBLE", countof (mat1_colmap)-1);
-	IupSetAttribute (matrix, "main_colmap", (char*)mat1_colmap);
+	IupSetInt (matrix, "NUMCOL", countof (main_mat1_column_map)-1);
+	IupSetInt (matrix, "NUMCOL_VISIBLE", countof (main_mat1_column_map)-1);
+	IupSetAttribute (matrix, "main_colmap", (char*)main_mat1_column_map);
 	IupSetInt (matrix, "NUMLIN", alldata.n);
 	IupSetInt (matrix, "NUMLIN_VISIBLE", alldata.n);
 	IupSetInt (matrix, "WIDTHDEF", 30);
 	IupSetIntId (matrix, "HEIGHT", 0, 8);
 	IupSetAttribute (matrix, "RESIZEMATRIX", "Yes");
-	for (uint32_t i = 0; i < countof (mat1_colmap); ++i)
+	for (uint32_t i = 0; i < countof (main_mat1_column_map); ++i)
 	{
 		IupSetAttributeId2 (matrix, "BGCOLOR", IUP_INVALID_ID, i, mat1_colormap [i]);
 		IupSetIntId (matrix, "WIDTH", i, mat1_widthmap [i]);

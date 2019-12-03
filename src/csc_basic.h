@@ -24,6 +24,7 @@ SOFTWARE.
 
 #pragma once
 #include <stddef.h> //offsetof
+#include <stdint.h> //offsetof
 
 #define MAX(a,b) ((a)>(b)?(a):(b))
 #define MIN(a,b) ((a)<(b)?(a):(b))
@@ -34,3 +35,15 @@ SOFTWARE.
 
 #define container_of(ptr, type, member) ((type *)(void *)((char *)(ptr) - offsetof(type, member)))
 #define countof(array) (sizeof(array) / sizeof(array[0]))
+
+
+
+
+//If a maps to x, then b maps from x
+void csc_inverse_121 (uint32_t a [], uint32_t b [], uint32_t n)
+{
+	for (uint32_t i = 0; i < n; ++i)
+	{
+		b [a [i]] = i;
+	}
+}

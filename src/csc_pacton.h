@@ -418,10 +418,8 @@ uint32_t pacton_value_byname0 (struct pacton_value * value, char const * needle)
 }
 
 
-void pacton_value_set_byname0 (struct pacton_block * blk, struct pacton_value * value, char const * needle, char const * val)
+uint32_t pacton_value_set (struct pacton_block * blk, struct pacton_value * value, uint32_t i, char const * val)
 {
-	uint32_t i = pacton_value_byname0 (value, needle);
-	if (i >= value->n) {return;}
 	ASSERT (i < value->n);
 	intmax_t v = strtoimax (val, NULL, 10);
 	if (v == INTMAX_MAX && errno == ERANGE)

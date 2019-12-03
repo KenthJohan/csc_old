@@ -3,8 +3,13 @@
     MENUNR     1
     MENUNR     4
       MODE     1
-  interval     2000
+   STOPPED     0
+      MODE     2
+  interval     700
       MODE     4
       MODE     3
+    MENUNR     3
       MODE     2
    STOPPED     1
+    MENUNR     1
+    nop

@@ -150,6 +150,7 @@ MAIN_COLUMN_DATA
 
 static struct pacton_block allblock = {0};
 static struct pacton_value alldata = {0};
+static struct pacton_command allcmd = {0};
 
 
 void generic_matrix_value (char * text, uint32_t text_len, struct pacton_block * block, struct pacton_value * value, uint32_t lin, uint32_t col)
@@ -630,6 +631,10 @@ int main (int argc, char **argv)
 	alldata.type = calloc (alldata.nmax, sizeof (uint32_t));
 	pacton_value_fromfile (&alldata, "../pacton/value.txt");
 
+	allcmd.nmax = 20;
+	allcmd.command = calloc (allcmd.nmax, PACTON_COMMAND_COMMAND_STEP);
+	allcmd.value = calloc (allcmd.nmax, PACTON_COMMAND_VALUE_STEP);
+	pacton_command_fromfile (&allcmd, "../pacton/script.txt");
 
 	Ihandle * matrix = IupMatrix (NULL);
 	Ihandle * matrix2 = IupMatrix (NULL);

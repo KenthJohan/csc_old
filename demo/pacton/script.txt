@@ -1,2 +1,3 @@
-MODE 1
-delay 2
+Command Value
+   MODE     1
+  delay     2

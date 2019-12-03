@@ -173,6 +173,18 @@ struct pacton_block
 };
 
 
+#define PACTON_COMMAND_COMMAND_STEP 16
+#define PACTON_COMMAND_VALUE_STEP 16
+
+struct pacton_command
+{
+	uint32_t nmax;
+	uint32_t n;
+	char * command;
+	char * value;
+};
+
+
 void pacton_block_tofile (struct pacton_block * block, char const * filename)
 {
 	FILE * f = fopen (filename, "w+");
@@ -283,17 +295,46 @@ void pacton_value_tofilename (struct pacton_value * value, char const * filename
 }
 
 
-int pacton_value_scanf
-(
-char * buf,
-char * value_name0,
-char * value_name1,
-uint32_t * block,
-uint32_t * bytepos,
-uint32_t * bitpos,
-uint32_t * dim,
-uint32_t * type
-)
+int pacton_command_scanf (char * buf, char * command, char * value)
+{
+	ASSERT (buf);
+	ASSERT (command);
+	ASSERT (value);
+	int r;
+	r = sscanf
+	(
+	buf, "%s %s",
+	command, value
+	);
+	return r;
+}
+
+
+void pacton_command_fromfile (struct pacton_command * cmd, char const * filename)
+{
+	printf ("\npacton_command_from %s\n", filename);
+	char buf [1024];
+	FILE * f = fopen (filename, "r");
+	if (f == NULL) {perror ("Can not open filename"); goto error;}
+	char * r = fgets (buf, (int)sizeof (buf), f);
+	if (r == NULL) {perror ("Empty file"); goto error;}
+	uint32_t i;
+	for (i = 0; i < cmd->nmax; ++i)
+	{
+		r = fgets (buf, (int)sizeof (buf), f);
+		if (r == NULL) {break;}
+		char * command = cmd->command + PACTON_COMMAND_COMMAND_STEP * i;
+		char * value = cmd->value + PACTON_COMMAND_VALUE_STEP* i;
+		pacton_command_scanf (buf, command, value);
+		printf ("%s %s\n", command, value);
+	}
+	cmd->n = i;
+error:
+	if (f) {fclose (f);}
+}
+
+
+int pacton_value_scanf (char * buf, char * value_name0, char * value_name1, uint32_t * block, uint32_t * bytepos, uint32_t * bitpos, uint32_t * dim, uint32_t * type)
 {
 	ASSERT (buf);
 	ASSERT (value_name0);

@@ -165,13 +165,7 @@ struct pacton_block
 	uint32_t * index;
 	uint32_t * subindex;
 	uint32_t * rate;
-};
-
-
-struct pacton_scheduler
-{
-	uint32_t n;
-	uint32_t * block;
+	uint32_t * slot;
 };
 
 

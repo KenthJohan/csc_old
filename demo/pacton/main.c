@@ -630,8 +630,10 @@ static int timer_cb (Ihandle *ih)
 				ASSERT (0);
 			}
 			printf ("do: %s %i\n", "TIME", (int)v);
-			//TODO: Changing interval while timer is running does not work:
+			//The timer need to be stopped before changing the interval TIME:
+			IupSetAttribute (timer1, "RUN", "NO");
 			IupSetInt (timer1, "TIME", (int)v);
+			IupSetAttribute (timer1, "RUN", "YES");
 		}
 		pacton_value_set_byname0 (blk, val, command, value);
 		//TODO: don't update all cells, should only update neccecery cells:

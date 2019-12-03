@@ -1,8 +1,9 @@
    Command Value
-  interval     2000
+  interval     500
     MENUNR     1
     MENUNR     4
       MODE     1
+  interval     2000
       MODE     4
       MODE     3
       MODE     2

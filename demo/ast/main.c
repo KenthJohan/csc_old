@@ -105,6 +105,7 @@ int ast_precedence (int t)
 	case '*': return 3;
 	case '+': return 2;
 	case '^': return 9;
+	case ',': return 15;
 	//case TOK_IDENTIFIER: return 100;
 	//case '(': return 100;
 	}
@@ -157,6 +158,11 @@ void ast_add (struct ast_node * node, char const * code)
 			{
 				csc_tree4_addchild (&(node->tree), &(newnode->tree));
 			}
+			//Check if node is root, i.e. a node without a parent is considered a root:
+			else if (node->tree.parent == NULL)
+			{
+				csc_tree4_addchild (&(node->tree), &(newnode->tree));
+			}
 			else
 			{
 				csc_tree4_addsibling (&(node->tree), &(newnode->tree));
@@ -171,6 +177,7 @@ void ast_add (struct ast_node * node, char const * code)
 		case '+':
 		case '*':
 		case '^':
+		case ',':
 			//If parent operator has a larger precedence than current operator then
 			//we need to walk up the tree until parent does not.
 			if (node->tree.parent)
@@ -238,21 +245,22 @@ void ast_iuptree (Ihandle * h, struct csc_tree4 * node, int depth, int leaf)
 
 void ast_print (struct csc_tree4 * node, int depth, int leaf, uint32_t indent)
 {
-	int corner = 192;
-	int dash = 196;
-	int cross = 195;
-	int vertical = 179;
+	char vertical[] = TCOL(TCOL_NORMAL,TCOL_GREEN,TCOL_DEFAULT) "\u2502" TCOL_RST;
+	char cross[] = TCOL(TCOL_NORMAL,TCOL_GREEN,TCOL_DEFAULT) "\u251C" TCOL_RST;
+	char corner[] = TCOL(TCOL_NORMAL,TCOL_GREEN,TCOL_DEFAULT) "\u2514" TCOL_RST;
+	char dash[] = TCOL(TCOL_NORMAL,TCOL_GREEN,TCOL_DEFAULT) "\u2500" TCOL_RST;
+
 	//Traverse preorder (root, child, next).
 	if (!node) {return;}
 	char buf [40] = {0};
 	struct ast_node * n = container_of (node, struct ast_node, tree);
 	//snprintf (buf, sizeof (buf), "%02i %02i, %2.*s", depth, leaf, (int)(n->p - n->a), n->a);
-	snprintf (buf, sizeof (buf), " %.*s", (int)(n->p - n->a), n->a);
+	snprintf (buf, sizeof (buf), TCOL(TCOL_NORMAL,TCOL_DEFAULT,TCOL_DEFAULT) " %.*s" TCOL_RST, (int)(n->p - n->a), n->a);
 	for (int i = 0; i < depth; i ++)
 	{
 		if (indent & (1 << i))
 		{
-			putc (vertical, stdout);
+			printf ("%s", vertical);
 		}
 		else
 		{
@@ -261,26 +269,20 @@ void ast_print (struct csc_tree4 * node, int depth, int leaf, uint32_t indent)
 		putc (' ', stdout);
 		putc (' ', stdout);
 	}
-	if (node->next && node->child)
+	if (node->next)
 	{
-		putc (cross, stdout);
+		printf ("%s", cross);
 		indent |= (1 << depth);
 	}
-	if (node->next && node->child == NULL)
+	if (node->next == NULL)
 	{
-		putc (cross, stdout);
-	}
-	if (node->next == NULL && node->child == NULL)
-	{
-		putc (corner, stdout);
-	}
-	if (node->next == NULL && node->child)
-	{
-		putc (corner, stdout);
+		printf ("%s", corner);
+		indent &= ~(1 << depth);
 	}
 	//printf ("%c\n", *n->a);
 
-	putc (dash, stdout);
+	//putc (dash, stdout);
+	printf ("%s", dash);
 	puts (buf);
 	ast_print (node->child, depth + 1, 0, indent);
 	ast_print (node->next, depth, leaf + 1, indent);
@@ -323,9 +325,10 @@ int main (int argc, char * argv [])
 	ASSERT (argc);
 	ASSERT (argv);
 	setbuf (stdout, NULL);
+	setlocale (LC_CTYPE, "");
 	IupOpen (&argc, &argv);
 	char const code [] =
-	"a * 1 ^ 2 ^ 3 * n + b";
+	"ab ^ c * 2 * 3 ^ W - 3 * 2,a";
 
 	struct ast_node * ast = ast_create (code);
 	//node1 = ast_add_child (node1, ast_create ("E"));

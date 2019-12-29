@@ -12,8 +12,8 @@ VPATH +=
 SOURCES += main.c
 
 #IUP
-INCLUDEPATH += $$PWD/../../iup-3.27_Win64_mingw6_lib/include
-HEADERS += $$PWD/../../iup-3.27_Win64_mingw6_lib/include/iup.h
-LIBS += -L$$PWD/../../iup-3.27_Win64_mingw6_lib
+INCLUDEPATH += $$PWD/../../iup-3.28_Win64_mingw6_lib/include
+HEADERS += $$PWD/../../iup-3.28_Win64_mingw6_lib/include/iup.h
+LIBS += -L$$PWD/../../iup-3.28_Win64_mingw6_lib
 LIBS += -liup -lgdi32 -lcomdlg32 -lcomctl32 -luuid -loleaut32 -lole32
 

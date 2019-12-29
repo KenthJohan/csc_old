@@ -231,24 +231,59 @@ void ast_iuptree (Ihandle * h, struct csc_tree4 * node, int depth, int leaf)
 		IupSetAttributeId (h, "ADDLEAF", depth, buf);
 		printf ("ADDLEAF%i %s\n", depth, buf);
 	}
+	//IupSetAttribute (h, "ADDLEAF", depth);
 	ast_iuptree (h, node->child, depth + 1, 0);
 }
 
 
-void ast_print (struct csc_tree4 * node, int depth, int leaf)
+void ast_print (struct csc_tree4 * node, int depth, int leaf, uint32_t indent)
 {
+	int corner = 192;
+	int dash = 196;
+	int cross = 195;
+	int vertical = 179;
 	//Traverse preorder (root, child, next).
 	if (!node) {return;}
 	char buf [40] = {0};
 	struct ast_node * n = container_of (node, struct ast_node, tree);
-	snprintf (buf, sizeof (buf), "%02i %02i, %2.*s", depth, leaf, (int)(n->p - n->a), n->a);
+	//snprintf (buf, sizeof (buf), "%02i %02i, %2.*s", depth, leaf, (int)(n->p - n->a), n->a);
+	snprintf (buf, sizeof (buf), " %.*s", (int)(n->p - n->a), n->a);
 	for (int i = 0; i < depth; i ++)
 	{
-		printf("| ");
+		if (indent & (1 << i))
+		{
+			putc (vertical, stdout);
+		}
+		else
+		{
+			putc (' ', stdout);
+		}
+		putc (' ', stdout);
+		putc (' ', stdout);
 	}
-	printf ("%c\n", *n->a);
-	ast_print (node->child, depth + 1, 0);
-	ast_print (node->next, depth, leaf + 1);
+	if (node->next && node->child)
+	{
+		putc (cross, stdout);
+		indent |= (1 << depth);
+	}
+	if (node->next && node->child == NULL)
+	{
+		putc (cross, stdout);
+	}
+	if (node->next == NULL && node->child == NULL)
+	{
+		putc (corner, stdout);
+	}
+	if (node->next == NULL && node->child)
+	{
+		putc (corner, stdout);
+	}
+	//printf ("%c\n", *n->a);
+
+	putc (dash, stdout);
+	puts (buf);
+	ast_print (node->child, depth + 1, 0, indent);
+	ast_print (node->next, depth, leaf + 1, indent);
 }
 
 
@@ -260,6 +295,7 @@ struct ast_node * ast_create (char const * name)
 	return newnode;
 }
 
+
 int function (Ihandle *ih, int id, int status)
 {
 	ASSERT (ih);
@@ -270,16 +306,17 @@ int function (Ihandle *ih, int id, int status)
 
 void showast (struct ast_node * node)
 {
-	Ihandle * tree = IupTree();
+	Ihandle * tree = IupTree ();
 	IupSetAttribute (tree, "SHOWRENAME", "YES");
 	IupSetCallback(tree, "SELECTION_CB", (Icallback) function);
-	IupSetAttribute (tree, "TITLE","AST");
-	IupSetAttribute (tree, "FONT","Courier, 14");
-	Ihandle * dlg = IupDialog(IupVbox(tree, NULL));
+	IupSetAttribute (tree, "TITLE", "AST");
+	IupSetAttribute (tree, "FONT", "Courier, 14");
+	Ihandle * dlg = IupDialog (IupVbox (tree, NULL));
 	IupShow (dlg);
-	ast_print (&(node->tree), 0, 0);
+	ast_print (&(node->tree), 0, 0, 0);
 	ast_iuptree (tree, &(node->tree), 0, 0);
 }
+
 
 int main (int argc, char * argv [])
 {
@@ -287,9 +324,8 @@ int main (int argc, char * argv [])
 	ASSERT (argv);
 	setbuf (stdout, NULL);
 	IupOpen (&argc, &argv);
-
 	char const code [] =
-	"0 + 1 ^ 2 * 3 ^ 4 + 5";
+	"a * 1 ^ 2 ^ 3 * n + b";
 
 	struct ast_node * ast = ast_create (code);
 	//node1 = ast_add_child (node1, ast_create ("E"));

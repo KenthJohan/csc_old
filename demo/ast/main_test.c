@@ -293,6 +293,74 @@ void ast_print (struct csc_tree4 * node, int depth, int leaf, uint32_t indent)
 }
 
 
+void ast_print_nonrecursive (struct csc_tree4 const * node)
+{
+	char vertical[] = TCOL(TCOL_NORMAL,TCOL_GREEN,TCOL_DEFAULT) "\u2502" TCOL_RST;
+	char cross[] = TCOL(TCOL_NORMAL,TCOL_GREEN,TCOL_DEFAULT) "\u251C" TCOL_RST;
+	char corner[] = TCOL(TCOL_NORMAL,TCOL_GREEN,TCOL_DEFAULT) "\u2514" TCOL_RST;
+	char dash[] = TCOL(TCOL_NORMAL,TCOL_GREEN,TCOL_DEFAULT) "\u2500" TCOL_RST;
+	char buf [100] = {0};
+	struct ast_node const * n;
+	int depth = 0;
+	//int leaf = 0;
+	uint32_t indent = 0;
+again:
+	n = container_of (node, struct ast_node const, tree);
+	//snprintf (buf, sizeof (buf), "%02i %02i, %2.*s", depth, leaf, (int)(n->p - n->a), n->a);
+	snprintf (buf, sizeof (buf), TCOL(TCOL_BOLD,TCOL_DEFAULT,TCOL_DEFAULT) "%s" TCOL_RST " [%s] (%ic)", ast_nodetype_tostr (n->kind), n->name, n->tree.child_count);
+	for (int i = 0; i < depth; i ++)
+	{
+		if (indent & (1 << i))
+		{
+			printf ("%s", vertical);
+		}
+		else
+		{
+			putc (' ', stdout);
+		}
+		putc (' ', stdout);
+		putc (' ', stdout);
+	}
+	if (node->next)
+	{
+		printf ("%s", cross);
+		indent |= (1 << depth);
+	}
+	if (node->next == NULL)
+	{
+		printf ("%s", corner);
+		indent &= ~(1 << depth);
+	}
+	printf ("%s", dash);
+	puts (buf);
+
+	if (node->child)
+	{
+		depth += 1;
+		node = node->child;
+		goto again;
+	}
+	else if (node->next)
+	{
+		node = node->next;
+		goto again;
+	}
+	else if (node->parent && (node->child == NULL) && (node->next == NULL))
+	{
+		do
+		{
+			depth -= 1;
+			node = node->parent;
+		}
+		while (node && (node->next == NULL));
+		if (node && node->next)
+		{
+			node = node->next;
+			goto again;
+		}
+	}
+}
+
 
 int main (int argc, char * argv [])
 {
@@ -307,23 +375,24 @@ int main (int argc, char * argv [])
 	struct ast_node * t;
 
 	// int hello1 (hello2 hello3 (
-	ast_print (&root->tree, 0, 0, 0);puts("");
-	ast_add (p, &p, "int");ast_print (&root->tree, 0, 0, 0);puts("");
-	ast_add (p, &p, "hello1");ast_print (&root->tree, 0, 0, 0);puts("");
-	ast_add (p, &p, "(");ast_print (&root->tree, 0, 0, 0);puts("");
+	//ast_print (&root->tree, 0, 0, 0);puts("");
+	ast_add (p, &p, "int");//ast_print (&root->tree, 0, 0, 0);puts("");
+	ast_add (p, &p, "hello1");//ast_print (&root->tree, 0, 0, 0);puts("");
+	ast_add (p, &p, "(");//ast_print (&root->tree, 0, 0, 0);puts("");
 	ast_add (p, &p, "float");
 	ast_add (p, &p, "hello3");
-	ast_add (p, &p, ",");ast_print (&root->tree, 0, 0, 0);puts("");
-	ast_add (p, &p, "int");ast_print (&root->tree, 0, 0, 0);puts("");
-	ast_add (p, &p, "count");ast_print (&root->tree, 0, 0, 0);puts("");
-	ast_add (p, &p, ")");ast_print (&root->tree, 0, 0, 0);puts("");
-	ast_add (p, &p, ";");ast_print (&root->tree, 0, 0, 0);puts("");
-	ast_add (p, &p, "int");ast_print (&root->tree, 0, 0, 0);puts("");
-	ast_add (p, &p, "hello1");ast_print (&root->tree, 0, 0, 0);puts("");
-	ast_add (p, &p, "(");ast_print (&root->tree, 0, 0, 0);puts("");
-	ast_add (p, &p, ")");ast_print (&root->tree, 0, 0, 0);puts("");
-	ast_add (p, &p, "{");ast_print (&root->tree, 0, 0, 0);puts("");
+	ast_add (p, &p, ",");//ast_print (&root->tree, 0, 0, 0);puts("");
+	ast_add (p, &p, "int");//ast_print (&root->tree, 0, 0, 0);puts("");
+	ast_add (p, &p, "count");//ast_print (&root->tree, 0, 0, 0);puts("");
+	ast_add (p, &p, ")");//ast_print (&root->tree, 0, 0, 0);puts("");
+	ast_add (p, &p, ";");//ast_print (&root->tree, 0, 0, 0);puts("");
+	ast_add (p, &p, "int");//ast_print (&root->tree, 0, 0, 0);puts("");
+	ast_add (p, &p, "hello1");//ast_print (&root->tree, 0, 0, 0);puts("");
+	ast_add (p, &p, "(");//ast_print (&root->tree, 0, 0, 0);puts("");
+	ast_add (p, &p, ")");//ast_print (&root->tree, 0, 0, 0);puts("");
+	ast_add (p, &p, "{");//ast_print (&root->tree, 0, 0, 0);puts("");
 	ast_add (p, &p, "}");ast_print (&root->tree, 0, 0, 0);puts("");
+	ast_print_nonrecursive (&root->tree);
 
 	//ast_print (&root->tree, 0, 0, 0);
 	//printf ("%s [%s]\n", ast_nodetype_tostr (p->kind), p->a);

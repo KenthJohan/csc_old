@@ -28,12 +28,15 @@ enum ast_nodetype
 	AST_ROOT_CHILD,
 	AST_ROOT_CHILD0,
 	AST_UNKNOWN,
-	AST_FUNCTION,
+	AST_FUNCTION_UNKNOWN,
 	AST_FUNCTION_HEADER,
+	AST_FUNCTION_IMPL,
+	AST_FUNCTION_IMPL_UNKNOWN,
+	AST_FUNCTION_BODY,
+	AST_FUNCTION_BODY_UNKNOWN,
 	AST_FUNCTION_IDENTIFIER,
 	AST_FUNCTION_RETURNTYPE,
 	AST_FUNCTION0,
-	AST_PARAM,
 	AST_PARAM_TYPE,
 	AST_PARAM_IDENTIFIER,
 	AST_DECLARATION0,
@@ -41,7 +44,10 @@ enum ast_nodetype
 	AST_NAME,
 	AST_TYPE,
 	AST_INITIALIZATION,
+	AST_PARAM,
+	AST_PARAM_UNKNOWN,
 	AST_PARAMS, //PARAMS, PARAM | PARAM | EMPTY
+	AST_PARAMS_UNKOWN, //PARAMS, PARAM | PARAM | EMPTY
 	AST_PARAMS0,
 	AST_FUNCTION_ARGUMENT,
 	AST_FUNCTION_RETURN_TYPE,
@@ -68,23 +74,28 @@ char const * ast_nodetype_tostr (enum ast_nodetype t)
 	switch (t)
 	{
 	case AST_START: return "START";
-	case AST_UNKNOWN: return "UNKNOWN";
-	case AST_IDENTIFIER: return "IDENTIFIER";
+	case AST_UNKNOWN: return "?";
+	case AST_IDENTIFIER: return "ID";
 	case AST_ROOT_CHILD: return "ROOT_CHILD";
 	case AST_ROOT_CHILD0: return "ROOT_CHILD0";
-	case AST_PARAM: return "PARAM";
-	case AST_PARAM_TYPE: return "PARAM_TYPE";
-	case AST_PARAM_IDENTIFIER: return "PARAM_IDENTIFIER";
+	case AST_PARAM: return "FUN_PAR";
+	case AST_PARAM_UNKNOWN: return "FUN_PAR?";
+	case AST_PARAM_TYPE: return "FUN_PAR_TYPE";
+	case AST_PARAM_IDENTIFIER: return "FUN_PAR_ID";
+	case AST_PARAMS_UNKOWN: return "FUN_PARS?";
+	case AST_PARAMS: return "FUN_PARS";
 	case AST_DECLARATION0: return "DECLARATION0";
-	case AST_FUNCTION: return "FUNCTION";
-	case AST_FUNCTION_HEADER: return "FUNCTION_HEADER";
-	case AST_FUNCTION_IDENTIFIER: return "FUNCTION_IDENTIFIER";
-	case AST_FUNCTION_RETURNTYPE: return "FUNCTION_RETURNTYPE";
+	case AST_FUNCTION_UNKNOWN: return "FUN?";
+	case AST_FUNCTION_HEADER: return "FUN_HEAD";
+	case AST_FUNCTION_IMPL: return "FUN_IMPL";
+	case AST_FUNCTION_IMPL_UNKNOWN: return "FUN_IMPL?";
+	case AST_FUNCTION_BODY: return "FUN_BODY";
+	case AST_FUNCTION_BODY_UNKNOWN: return "FUN_BODY?";
+	case AST_FUNCTION_IDENTIFIER: return "FUN_ID";
+	case AST_FUNCTION_RETURNTYPE: return "FUN_RET";
 	case AST_FUNCTION0: return "FUNCTION0";
 	case AST_NAME: return "NAME";
 	case AST_TYPE: return "TYPE";
-	case AST_PARAMS: return "PARAMS";
-	case AST_PARAMS0: return "PARAMS0";
 	default:return "";
 	}
 }
@@ -123,13 +134,13 @@ again:
 		if (root->tree.parent && (root->tree.parent->child_count == 2) && (strcmp (code, "(") == 0))
 		{
 			node = container_of (root->tree.parent, struct ast_node, tree);
-			node->kind = AST_FUNCTION;
+			node->kind = AST_FUNCTION_UNKNOWN;
 			node = container_of (root->tree.parent->child, struct ast_node, tree);
 			node->kind = AST_FUNCTION_RETURNTYPE;
 			node = container_of (root->tree.parent->child->next, struct ast_node, tree);
 			node->kind = AST_FUNCTION_IDENTIFIER;
 			node = calloc (1, sizeof (struct ast_node));
-			node->kind = AST_PARAMS;
+			node->kind = AST_PARAMS_UNKOWN;
 			node->name = code;
 			csc_tree4_addsibling (&root->tree, &node->tree);
 			*nextroot = node;
@@ -144,24 +155,29 @@ again:
 		}
 		break;
 
-	case AST_FUNCTION:
-		if (strcmp (code, ";") == 0)
+	case AST_FUNCTION_UNKNOWN:
+		break;
+
+	case AST_FUNCTION_IMPL_UNKNOWN:
+		if (strcmp (code, "}") == 0)
 		{
-			root->kind = AST_FUNCTION_HEADER;
+			root->kind = AST_FUNCTION_IMPL;
+			ASSERT (root->tree.parent);
+			node = container_of (root->tree.parent, struct ast_node, tree);
+			*nextroot = node;
 		}
 		break;
 
 	//PARAMS | PARAM | EMPTY
-	case AST_PARAMS:
+	case AST_PARAMS_UNKOWN:
 		if (strcmp (code, ")") == 0)
 		{
-			ASSERT (root->tree.parent);
-			*nextroot = container_of (root->tree.parent, struct ast_node, tree);
+			root->kind = AST_PARAMS;
 		}
 		else
 		{
 			node = calloc (1, sizeof (struct ast_node));
-			node->kind = AST_PARAM;
+			node->kind = AST_PARAM_UNKNOWN;
 			node->name = "";
 			csc_tree4_addchild (&root->tree, &node->tree);
 			root = node;
@@ -169,7 +185,26 @@ again:
 		}
 		break;
 
-	case AST_PARAM:
+	case AST_PARAMS:
+		if (strcmp (code, "{") == 0)
+		{
+			node = container_of (root->tree.parent, struct ast_node, tree);
+			node->kind = AST_FUNCTION_IMPL_UNKNOWN;
+			node = calloc (1, sizeof (struct ast_node));
+			node->kind = AST_FUNCTION_BODY_UNKNOWN;
+			node->name = code;
+			csc_tree4_addchild (&root->tree, &node->tree);
+			*nextroot = node;
+		}
+		else if (strcmp (code, ";") == 0)
+		{
+			node = container_of (root->tree.parent, struct ast_node, tree);
+			node->kind = AST_FUNCTION_HEADER;
+			*nextroot = node;
+		}
+		break;
+
+	case AST_PARAM_UNKNOWN:
 		node = calloc (1, sizeof (struct ast_node));
 		node->kind = AST_PARAM_TYPE;
 		node->name = code;
@@ -186,15 +221,20 @@ again:
 		break;
 
 	case AST_PARAM_IDENTIFIER:
-		if (root->tree.parent && root->tree.parent->parent && root->tree.parent->parent->parent && strcmp (code, ")") == 0)
+		if (root->tree.parent && root->tree.parent->parent && strcmp (code, ")") == 0)
 		{
-			*nextroot = container_of (root->tree.parent->parent->parent, struct ast_node, tree);
+			node = container_of (root->tree.parent, struct ast_node, tree);
+			node->kind = AST_PARAM;
+			node = container_of (root->tree.parent->parent, struct ast_node, tree);
+			node->kind = AST_PARAMS;
+			*nextroot = node;
 		}
 		if (root->tree.parent && strcmp (code, ",") == 0)
 		{
 			root = container_of (root->tree.parent, struct ast_node, tree);
+			root->kind = AST_PARAM;
 			node = calloc (1, sizeof (struct ast_node));
-			node->kind = AST_PARAM;
+			node->kind = AST_PARAM_UNKNOWN;
 			node->name = "";
 			csc_tree4_addsibling (&root->tree, &node->tree);
 			*nextroot = node;
@@ -268,30 +308,23 @@ int main (int argc, char * argv [])
 
 	// int hello1 (hello2 hello3 (
 	ast_print (&root->tree, 0, 0, 0);puts("");
-	ast_add (p, &p, "int");
-	ast_print (&root->tree, 0, 0, 0);puts("");
-	ast_add (p, &p, "hello1");
-	ast_print (&root->tree, 0, 0, 0);puts("");
-	ast_add (p, &p, "(");
-	ast_print (&root->tree, 0, 0, 0);puts("");
+	ast_add (p, &p, "int");ast_print (&root->tree, 0, 0, 0);puts("");
+	ast_add (p, &p, "hello1");ast_print (&root->tree, 0, 0, 0);puts("");
+	ast_add (p, &p, "(");ast_print (&root->tree, 0, 0, 0);puts("");
 	ast_add (p, &p, "float");
 	ast_add (p, &p, "hello3");
-	ast_add (p, &p, ",");
-	ast_print (&root->tree, 0, 0, 0);puts("");
-	ast_add (p, &p, "int");
-	ast_print (&root->tree, 0, 0, 0);puts("");
-	ast_add (p, &p, "count");
-	ast_print (&root->tree, 0, 0, 0);puts("");
-	ast_add (p, &p, ")");
-	ast_print (&root->tree, 0, 0, 0);puts("");
-	ast_add (p, &p, ";");
-	ast_print (&root->tree, 0, 0, 0);puts("");
-	ast_add (p, &p, "int");
-	ast_print (&root->tree, 0, 0, 0);puts("");
-	ast_add (p, &p, "hello1");
-	ast_print (&root->tree, 0, 0, 0);puts("");
-	ast_add (p, &p, "(");
-	ast_print (&root->tree, 0, 0, 0);puts("");
+	ast_add (p, &p, ",");ast_print (&root->tree, 0, 0, 0);puts("");
+	ast_add (p, &p, "int");ast_print (&root->tree, 0, 0, 0);puts("");
+	ast_add (p, &p, "count");ast_print (&root->tree, 0, 0, 0);puts("");
+	ast_add (p, &p, ")");ast_print (&root->tree, 0, 0, 0);puts("");
+	ast_add (p, &p, ";");ast_print (&root->tree, 0, 0, 0);puts("");
+	ast_add (p, &p, "int");ast_print (&root->tree, 0, 0, 0);puts("");
+	ast_add (p, &p, "hello1");ast_print (&root->tree, 0, 0, 0);puts("");
+	ast_add (p, &p, "(");ast_print (&root->tree, 0, 0, 0);puts("");
+	ast_add (p, &p, ")");ast_print (&root->tree, 0, 0, 0);puts("");
+	ast_add (p, &p, "{");ast_print (&root->tree, 0, 0, 0);puts("");
+	ast_add (p, &p, "}");ast_print (&root->tree, 0, 0, 0);puts("");
+
 	//ast_print (&root->tree, 0, 0, 0);
 	//printf ("%s [%s]\n", ast_nodetype_tostr (p->kind), p->a);
 	/*

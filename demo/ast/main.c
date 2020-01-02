@@ -85,7 +85,7 @@ again:
 
 enum ast_nodetype
 {
-	AST_START,
+	AST_ROOT,
 	AST_DECLERATION,
 	AST_FUNCARGUMENTS,
 	AST_CALLARGUMENTS,
@@ -95,6 +95,9 @@ enum ast_nodetype
 	AST_LITERAL,
 	AST_LITERAL_INTEGER,
 	AST_LITERAL_STRING,
+	AST_ADD,
+	AST_SUB,
+	AST_MUL,
 };
 
 
@@ -328,9 +331,10 @@ int main (int argc, char * argv [])
 	setlocale (LC_CTYPE, "");
 	IupOpen (&argc, &argv);
 	char const code [] =
-	"ab ^ c * 2 * 3 ^ W - 3 * 2,a";
+	"a ^ b * c";
 
 	struct ast_node * ast = ast_create (code);
+	ast->kind = AST_ROOT;
 	//node1 = ast_add_child (node1, ast_create ("E"));
 	//node1 = ast_add_child (node1, ast_create ("E"));
 

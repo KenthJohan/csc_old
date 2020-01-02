@@ -9,7 +9,7 @@ HEADERS += $$PWD/../../src/csc_str.h
 HEADERS += $$PWD/../../src/csc_tok_c.h
 HEADERS += $$PWD/../../src/csc_tree4.h
 VPATH +=
-SOURCES += main.c
+SOURCES += main_test.c
 
 #IUP
 INCLUDEPATH += $$PWD/../../iup-3.28_Win64_mingw6_lib/include

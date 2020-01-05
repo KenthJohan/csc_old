@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdarg.h>
-#define _GNU_SOURCE
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -78,6 +77,7 @@ struct token
 	int lin;
 	int col;
 	int tok;
+	int padding;
 	char const * a;
 	char const * b;
 };
@@ -188,6 +188,7 @@ struct ast_node;
 struct ast_node
 {
 	enum ast_nodetype kind;
+	int padding;
 	struct csc_tree4 tree;
 	struct token tok;
 };
@@ -327,7 +328,7 @@ again:
 }
 
 
-void ast_print (struct csc_tree4 * node, int depth, int leaf, uint32_t indent)
+void ast_print (struct csc_tree4 const * node, int depth, int leaf, uint32_t indent)
 {
 	char vertical[] = TCOL(TCOL_NORMAL,TCOL_GREEN,TCOL_DEFAULT) "\u2502" TCOL_RST;
 	char cross[] = TCOL(TCOL_NORMAL,TCOL_GREEN,TCOL_DEFAULT) "\u251C" TCOL_RST;
@@ -337,9 +338,9 @@ void ast_print (struct csc_tree4 * node, int depth, int leaf, uint32_t indent)
 	//Traverse preorder (root, child, next).
 	if (!node) {return;}
 	char buf [100] = {0};
-	struct ast_node * n = container_of (node, struct ast_node, tree);
+	struct ast_node const * n = container_of_const (node, struct ast_node const, tree);
 	//snprintf (buf, sizeof (buf), "%02i %02i, %2.*s", depth, leaf, (int)(n->p - n->a), n->a);
-	snprintf (buf, sizeof (buf), TCOL(TCOL_BOLD,TCOL_DEFAULT,TCOL_DEFAULT) "%s" TCOL_RST " [%.*s] (%ic)", ast_nodetype_tostr (n->kind), n->tok.b-n->tok.a, n->tok.a, n->tree.child_count);
+	snprintf (buf, sizeof (buf), TCOL(TCOL_BOLD,TCOL_DEFAULT,TCOL_DEFAULT) "%s" TCOL_RST " [%.*s] (%ic)", ast_nodetype_tostr (n->kind), (int)(n->tok.b-n->tok.a), n->tok.a, n->tree.child_count);
 
 	for (int i = 0; i < depth; i ++)
 	{
@@ -386,9 +387,9 @@ void ast_print_nonrecursive (struct csc_tree4 const * node)
 	//int leaf = 0;
 	uint32_t indent = 0;
 again:
-	n = container_of (node, struct ast_node const, tree);
+	n = container_of_const (node, struct ast_node const, tree);
 	//snprintf (buf, sizeof (buf), "%02i %02i, %2.*s", depth, leaf, (int)(n->p - n->a), n->a);
-	snprintf (buf, sizeof (buf), TCOL(TCOL_BOLD,TCOL_DEFAULT,TCOL_DEFAULT) "%s" TCOL_RST " [%.*s] (%ic)", ast_nodetype_tostr (n->kind), n->tok.b-n->tok.a, n->tok.a, n->tree.child_count);
+	snprintf (buf, sizeof (buf), TCOL(TCOL_BOLD,TCOL_DEFAULT,TCOL_DEFAULT) "%s" TCOL_RST " [%.*s] (%ic)", ast_nodetype_tostr (n->kind), (int)(n->tok.b-n->tok.a), n->tok.a, n->tree.child_count);
 	for (int i = 0; i < depth; i ++)
 	{
 		if (indent & (1 << i))
@@ -443,22 +444,6 @@ again:
 }
 
 
-char *my_strndup(char *str, int chars)
-{
-	char *buffer;
-	int n;
-
-	buffer = (char *) malloc(chars +1);
-	if (buffer)
-	{
-		for (n = 0; ((n < chars) && (str[n] != 0)) ; n++) buffer[n] = str[n];
-		buffer[n] = 0;
-	}
-
-	return buffer;
-}
-
-
 int main (int argc, char * argv [])
 {
 	ASSERT (argc);
@@ -469,7 +454,6 @@ int main (int argc, char * argv [])
 	struct ast_node * root = calloc (1, sizeof (struct ast_node));
 	root->kind = AST_START;
 	struct ast_node * p = root;
-	struct ast_node * t;
 
 	char * code =
 		"int hello (float arg1, int count);"
@@ -480,7 +464,9 @@ int main (int argc, char * argv [])
 	do
 	{
 		tok_next (&tok);
-		fwrite (tok.a, 1, (tok.b-tok.a), stdout);puts("");
+		ASSERT (tok.b >= tok.a);
+		fwrite (tok.a, 1, (unsigned long long)(tok.b-tok.a), stdout);
+		puts("");
 		ast_add (p, &p, tok);
 	}
 	while (tok.tok);

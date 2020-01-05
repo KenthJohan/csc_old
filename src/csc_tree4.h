@@ -114,17 +114,6 @@ void csc_tree4_remove (struct csc_tree4 * node)
 }
 
 
-void csc_tree4_movechildren (struct csc_tree4 * from, struct csc_tree4 * to)
-{
-	struct csc_tree4 * f = from->child;
-	while (f)
-	{
-
-		f = f->next;
-	}
-}
-
-
 void csc_tree4_addparent2 (struct csc_tree4 * node, struct csc_tree4 * newnode)
 {
 	newnode->child = node;

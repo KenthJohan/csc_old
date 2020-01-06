@@ -1,5 +1,6 @@
-count = 1;
- while (count < 10) {
-     print("count is: ", count, "\n");
-     count = count + 1;
- }
+int hello (float arg1, int count);
+
+int hello1 (int)
+{
+	int var1;
+}

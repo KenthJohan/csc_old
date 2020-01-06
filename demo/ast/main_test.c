@@ -20,6 +20,7 @@
 #include <csc_str.h>
 #include <csc_tok_c.h>
 #include <csc_tree4.h>
+#include <csc_malloc_file.h>
 
 
 
@@ -31,7 +32,7 @@ enum ast_nodetype
 	AST_ROOT_CHILD,
 	AST_ROOT_CHILD0,
 	AST_UNKNOWN,
-	AST_FUNCTION_UNKNOWN,
+	AST_FUNCTION0,
 	AST_FUNCTION_HEADER,
 	AST_FUNCTION_IMPL,
 	AST_FUNCTION_IMPL_UNKNOWN,
@@ -39,19 +40,18 @@ enum ast_nodetype
 	AST_FUNCTION_BODY_UNKNOWN,
 	AST_FUNCTION_IDENTIFIER,
 	AST_FUNCTION_RETURNTYPE,
-	AST_FUNCTION0,
-	AST_PARAM_TYPE,
-	AST_PARAM_IDENTIFIER,
 	AST_DECLARATION0,
 	AST_DECLARATION_VARIABLE,
 	AST_NAME,
 	AST_TYPE,
 	AST_INITIALIZATION,
 	AST_PARAM,
+	AST_PARAM0,
 	AST_PARAM_UNKNOWN,
+	AST_PARAM_TYPE,
+	AST_PARAM_IDENTIFIER,
 	AST_PARAMS, //PARAMS, PARAM | PARAM | EMPTY
-	AST_PARAMS_UNKOWN, //PARAMS, PARAM | PARAM | EMPTY
-	AST_PARAMS0,
+	AST_PARAMS0, //PARAMS, PARAM | PARAM | EMPTY
 	AST_FUNCTION_ARGUMENT,
 	AST_FUNCTION_RETURN_TYPE,
 	AST_FUNCTION_NAME,
@@ -68,7 +68,11 @@ enum ast_nodetype
 	AST_SUB,
 	AST_MUL,
 	AST_UNSIGNED,
-	AST_SIGNED
+	AST_SIGNED,
+	AST_STM_UNKNOWN,
+	AST_STM,
+	AST_IF_UNKNOWN,
+	AST_IF
 };
 
 
@@ -80,6 +84,7 @@ struct token
 	int padding;
 	char const * a;
 	char const * b;
+	char const * c;
 };
 
 
@@ -92,6 +97,7 @@ again:
 	case '\0':
 		tok->tok = 0;
 		return;
+	case '\t':
 	case ' ':
 		tok->col ++;
 		tok->b ++;
@@ -127,7 +133,7 @@ again:
 	if (0) {}
 	else if (csc_next_literal (&tok->b, &tok->col))
 	{
-		tok->tok = CSC_TOK_LITERAL_INTEGER;
+		tok->tok = CSC_TOK_C_LITERAL_INTEGER;
 	}
 	else if (csc_str_next_cmp (&tok->b, &tok->col, "void"))
 	{
@@ -137,19 +143,20 @@ again:
 	{
 		tok->tok = CSC_TOK_C_VOID;
 	}
-	else if (csc_next_indentifer (&tok->b, &tok->col))
+	else if (csc_str_next_cmp (&tok->b, &tok->col, "if"))
 	{
-		tok->tok = CSC_TOK_IDENTIFIER;
+		tok->tok = CSC_TOK_C_IF;
 	}
 	else if (csc_next_indentifer (&tok->b, &tok->col))
 	{
-		tok->tok = CSC_TOK_INT;
+		tok->tok = CSC_TOK_C_IDENTIFIER;
+	}
+	else if (csc_next_indentifer (&tok->b, &tok->col))
+	{
+		tok->tok = CSC_TOK_C_INT;
 	}
 	return;
 }
-
-
-
 
 
 char const * ast_nodetype_tostr (enum ast_nodetype t)
@@ -162,13 +169,14 @@ char const * ast_nodetype_tostr (enum ast_nodetype t)
 	case AST_ROOT_CHILD: return "ROOT_CHILD";
 	case AST_ROOT_CHILD0: return "ROOT_CHILD0";
 	case AST_PARAM: return "FUN_PAR";
-	case AST_PARAM_UNKNOWN: return "FUN_PAR?";
+	case AST_PARAM0: return "FUN_PAR0";
 	case AST_PARAM_TYPE: return "FUN_PAR_TYPE";
 	case AST_PARAM_IDENTIFIER: return "FUN_PAR_ID";
-	case AST_PARAMS_UNKOWN: return "FUN_PARS?";
+	case AST_PARAM_UNKNOWN: return "FUN_PAR_?";
+	case AST_PARAMS0: return "FUN_PARS0";
 	case AST_PARAMS: return "FUN_PARS";
 	case AST_DECLARATION0: return "DECLARATION0";
-	case AST_FUNCTION_UNKNOWN: return "FUN?";
+	case AST_FUNCTION0: return "FUN0";
 	case AST_FUNCTION_HEADER: return "FUN_HEAD";
 	case AST_FUNCTION_IMPL: return "FUN_IMPL";
 	case AST_FUNCTION_IMPL_UNKNOWN: return "FUN_IMPL?";
@@ -176,9 +184,13 @@ char const * ast_nodetype_tostr (enum ast_nodetype t)
 	case AST_FUNCTION_BODY_UNKNOWN: return "FUN_BODY?";
 	case AST_FUNCTION_IDENTIFIER: return "FUN_ID";
 	case AST_FUNCTION_RETURNTYPE: return "FUN_RET";
-	case AST_FUNCTION0: return "FUNCTION0";
 	case AST_NAME: return "NAME";
 	case AST_TYPE: return "TYPE";
+	case AST_STM_UNKNOWN: return "STM_UNKNOWN";
+	case AST_STM: return "STM";
+	case AST_IF_UNKNOWN: return "IF_UNKNOWN";
+	case AST_IF: return "IF";
+	case AST_DECLARATION_VARIABLE: return "DECLARATION_VARIABLE";
 	default:return "";
 	}
 }
@@ -200,32 +212,63 @@ void ast_add (struct ast_node * root, struct ast_node ** nextroot, struct token 
 again:
 	switch (root->kind)
 	{
+	case AST_STM:
+	case AST_FUNCTION_IMPL:
+	case AST_DECLARATION_VARIABLE:
 	case AST_FUNCTION_HEADER:
 	case AST_START:
-		node = calloc (1, sizeof (struct ast_node));
-		node->kind = AST_UNKNOWN;
-		csc_tree4_addsibling (&root->tree, &node->tree);
-		root = node;
-		node = calloc (1, sizeof (struct ast_node));
-		node->kind = AST_UNKNOWN;
-		node->tok = tok;
-		csc_tree4_addchild (&root->tree, &node->tree);
-		*nextroot = node;
+		if (tok.tok == ';')
+		{
+			node = calloc (1, sizeof (struct ast_node));
+			node->kind = AST_STM;
+			node->tok = tok;
+			csc_tree4_addsibling (&root->tree, &node->tree);
+			*nextroot = node;
+		}
+		else if (tok.tok == '}')
+		{
+			root = container_of (root->tree.parent, struct ast_node, tree);
+			goto again;
+		}
+		else
+		{
+			node = calloc (1, sizeof (struct ast_node));
+			node->kind = AST_UNKNOWN;
+			csc_tree4_addsibling (&root->tree, &node->tree);
+			root = node;
+			node = calloc (1, sizeof (struct ast_node));
+			node->kind = AST_UNKNOWN;
+			node->tok = tok;
+			csc_tree4_addchild (&root->tree, &node->tree);
+			*nextroot = node;
+		}
 		break;
 
 	case AST_UNKNOWN:
 		if (root->tree.parent && (root->tree.parent->child_count == 2) && (tok.tok == '('))
 		{
 			node = container_of (root->tree.parent, struct ast_node, tree);
-			node->kind = AST_FUNCTION_UNKNOWN;
+			node->kind = AST_FUNCTION0;
 			node = container_of (root->tree.parent->child, struct ast_node, tree);
 			node->kind = AST_FUNCTION_RETURNTYPE;
 			node = container_of (root->tree.parent->child->next, struct ast_node, tree);
 			node->kind = AST_FUNCTION_IDENTIFIER;
 			node = calloc (1, sizeof (struct ast_node));
-			node->kind = AST_PARAMS_UNKOWN;
+			node->kind = AST_PARAMS0;
 			node->tok = tok;
 			csc_tree4_addsibling (&root->tree, &node->tree);
+			*nextroot = node;
+		}
+		else if (root->tree.parent && (root->tree.parent->child_count == 2) && (tok.tok == ';'))
+		{
+			node = container_of (root->tree.parent, struct ast_node, tree);
+			node->kind = AST_DECLARATION_VARIABLE;
+			node = container_of (root->tree.parent->child, struct ast_node, tree);
+			node->kind = AST_TYPE;
+			node = container_of (root->tree.parent->child->next, struct ast_node, tree);
+			node->kind = AST_IDENTIFIER;
+			node = container_of (root->tree.parent, struct ast_node, tree);
+			root = node;
 			*nextroot = node;
 		}
 		else
@@ -238,29 +281,28 @@ again:
 		}
 		break;
 
-	case AST_FUNCTION_UNKNOWN:
+	case AST_FUNCTION0:
 		break;
 
 	case AST_FUNCTION_IMPL_UNKNOWN:
 		if (tok.tok == '}')
 		{
 			root->kind = AST_FUNCTION_IMPL;
-			ASSERT (root->tree.parent);
-			node = container_of (root->tree.parent, struct ast_node, tree);
-			*nextroot = node;
+			*nextroot = root;
 		}
 		break;
 
 	//PARAMS | PARAM | EMPTY
-	case AST_PARAMS_UNKOWN:
+	case AST_PARAMS0:
 		if (tok.tok == ')')
 		{
 			root->kind = AST_PARAMS;
+			*nextroot = root;
 		}
 		else
 		{
 			node = calloc (1, sizeof (struct ast_node));
-			node->kind = AST_PARAM_UNKNOWN;
+			node->kind = AST_PARAM0;
 			csc_tree4_addchild (&root->tree, &node->tree);
 			root = node;
 			goto again;
@@ -275,6 +317,10 @@ again:
 			node = calloc (1, sizeof (struct ast_node));
 			node->kind = AST_FUNCTION_BODY_UNKNOWN;
 			node->tok = tok;
+			csc_tree4_addsibling (&root->tree, &node->tree);
+			root = node;
+			node = calloc (1, sizeof (struct ast_node));
+			node->kind = AST_START;
 			csc_tree4_addchild (&root->tree, &node->tree);
 			*nextroot = node;
 		}
@@ -286,45 +332,87 @@ again:
 		}
 		break;
 
-	case AST_PARAM_UNKNOWN:
-		node = calloc (1, sizeof (struct ast_node));
-		node->kind = AST_PARAM_TYPE;
-		node->tok = tok;
-		csc_tree4_addchild (&root->tree, &node->tree);
-		*nextroot = node;
+	case AST_PARAM0:
+		if (root->tree.parent && tok.tok == ')')
+		{
+			root->kind = AST_PARAM;
+			root = container_of (root->tree.parent, struct ast_node, tree);
+			goto again;
+		}
+		else
+		{
+			node = calloc (1, sizeof (struct ast_node));
+			node->kind = AST_PARAM_TYPE;
+			node->tok = tok;
+			csc_tree4_addchild (&root->tree, &node->tree);
+			*nextroot = node;
+		}
 		break;
 
 	case AST_PARAM_TYPE:
-		node = calloc (1, sizeof (struct ast_node));
-		node->kind = AST_PARAM_IDENTIFIER;
-		node->tok = tok;
-		csc_tree4_addsibling (&root->tree, &node->tree);
-		*nextroot = node;
+		if (tok.tok == ')')
+		{
+			root = container_of (root->tree.parent, struct ast_node, tree);
+			root = container_of (root->tree.parent, struct ast_node, tree);
+			root->kind = AST_PARAMS;
+			*nextroot = root;
+		}
+		else
+		{
+			node = calloc (1, sizeof (struct ast_node));
+			node->kind = AST_PARAM_IDENTIFIER;
+			node->tok = tok;
+			csc_tree4_addsibling (&root->tree, &node->tree);
+			*nextroot = node;
+		}
 		break;
 
 	case AST_PARAM_IDENTIFIER:
-		if (root->tree.parent && root->tree.parent->parent && tok.tok == ')')
+		if (root->tree.parent && tok.tok == ')')
 		{
-			node = container_of (root->tree.parent, struct ast_node, tree);
-			node->kind = AST_PARAM;
-			node = container_of (root->tree.parent->parent, struct ast_node, tree);
-			node->kind = AST_PARAMS;
-			*nextroot = node;
+			root = container_of (root->tree.parent, struct ast_node, tree);
+			root->kind = AST_PARAM;
+			root = container_of (root->tree.parent, struct ast_node, tree);
+			root->kind = AST_PARAMS;
+			*nextroot = root;
 		}
-		if (root->tree.parent && tok.tok == ',')
+		else if (root->tree.parent && tok.tok == ',')
 		{
 			root = container_of (root->tree.parent, struct ast_node, tree);
 			root->kind = AST_PARAM;
 			node = calloc (1, sizeof (struct ast_node));
-			node->kind = AST_PARAM_UNKNOWN;
+			node->kind = AST_PARAM0;
 			csc_tree4_addsibling (&root->tree, &node->tree);
 			*nextroot = node;
+		}
+		else
+		{
+			node = calloc (1, sizeof (struct ast_node));
+			node->kind = AST_PARAM_UNKNOWN;
+			node->tok = tok;
+			csc_tree4_addsibling (&root->tree, &node->tree);
+			*nextroot = node;
+		}
+		break;
+
+	case AST_FUNCTION_BODY_UNKNOWN:
+		if (tok.tok == '}')
+		{
+			root->kind = AST_FUNCTION_BODY;
+			ASSERT (root->tree.parent);
+			root = container_of (root->tree.parent, struct ast_node, tree);
+			root->kind = AST_FUNCTION_IMPL;
+			*nextroot = root;
 		}
 		break;
 
 	default:
 		break;
 	}
+
+
+
+
 }
 
 
@@ -375,7 +463,7 @@ void ast_print (struct csc_tree4 const * node, int depth, int leaf, uint32_t ind
 }
 
 
-void ast_print_nonrecursive (struct csc_tree4 const * node)
+void ast_print_nonrecursive (struct csc_tree4 const * node, struct ast_node const * highlight)
 {
 	char vertical[] = TCOL(TCOL_NORMAL,TCOL_GREEN,TCOL_DEFAULT) "\u2502" TCOL_RST;
 	char cross[] = TCOL(TCOL_NORMAL,TCOL_GREEN,TCOL_DEFAULT) "\u251C" TCOL_RST;
@@ -389,7 +477,14 @@ void ast_print_nonrecursive (struct csc_tree4 const * node)
 again:
 	n = container_of_const (node, struct ast_node const, tree);
 	//snprintf (buf, sizeof (buf), "%02i %02i, %2.*s", depth, leaf, (int)(n->p - n->a), n->a);
-	snprintf (buf, sizeof (buf), TCOL(TCOL_BOLD,TCOL_DEFAULT,TCOL_DEFAULT) "%s" TCOL_RST " [%.*s] (%ic)", ast_nodetype_tostr (n->kind), (int)(n->tok.b-n->tok.a), n->tok.a, n->tree.child_count);
+	if (n == highlight)
+	{
+		snprintf (buf, sizeof (buf), TCOL(TCOL_UNDERSCORE,TCOL_DEFAULT,TCOL_RED) "%s" TCOL_RST " [%.*s] (%ic)", ast_nodetype_tostr (n->kind), (int)(n->tok.b-n->tok.a), n->tok.a, n->tree.child_count);
+	}
+	else
+	{
+		snprintf (buf, sizeof (buf), TCOL(TCOL_BOLD,TCOL_DEFAULT,TCOL_DEFAULT) "%s" TCOL_RST " [%.*s] (%ic)", ast_nodetype_tostr (n->kind), (int)(n->tok.b-n->tok.a), n->tok.a, n->tree.child_count);
+	}
 	for (int i = 0; i < depth; i ++)
 	{
 		if (indent & (1 << i))
@@ -444,6 +539,21 @@ again:
 }
 
 
+void print_code (char const * code, char const * a, char const * b)
+{
+	ASSERT (a >= code);
+	ASSERT (b >= a);
+	ASSERT (b >= a);
+
+	fwrite (code, 1, (unsigned long long)(a-code), stdout);
+	fputs (TCOL(TCOL_UNDERSCORE,TCOL_DEFAULT,TCOL_RED), stdout);
+	fwrite (a, 1, (unsigned long long)(b-a), stdout);
+	fputs (TCOL_RST, stdout);
+	fputs (b, stdout);
+	fputs ("\n\n", stdout);
+}
+
+
 int main (int argc, char * argv [])
 {
 	ASSERT (argc);
@@ -455,23 +565,24 @@ int main (int argc, char * argv [])
 	root->kind = AST_START;
 	struct ast_node * p = root;
 
-	char * code =
-		"int hello (float arg1, int count);"
-		"int hello1 (){}";
+	char * code = csc_malloc_file ("../ast/c.c");
 
 	struct token tok;
 	tok.b = code;
-	do
+	tok_next (&tok);
+	while (tok.tok)
 	{
-		tok_next (&tok);
 		ASSERT (tok.b >= tok.a);
-		fwrite (tok.a, 1, (unsigned long long)(tok.b-tok.a), stdout);
-		puts("");
+		//fwrite (tok.a, 1, (unsigned long long)(tok.b-tok.a), stdout);
+		//printf (" = %i\n", tok.tok);
+		print_code (code, tok.a, tok.b);
 		ast_add (p, &p, tok);
+		ast_print_nonrecursive (&root->tree, p);
+		tok_next (&tok);
+		getc (stdin);
 	}
-	while (tok.tok);
 
-	ast_print_nonrecursive (&root->tree);
+
 	puts("");
 
 	return 0;

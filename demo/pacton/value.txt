@@ -1,6 +1,6 @@
            Name0                            Name1  Block   Byte    Bit    Dim   Prim  Order   Size 
-		   SPEED                  "Display Speed"      0      5      0      1     U8     LE      2
-		    STEP                   "Display Step"      0      5      2      1     U8     LE      3
+           SPEED                  "Display Speed"      4      5      0      1     U8     LE      2 
+            STEP                   "Display Step"      3      5      2      1     U8     LE      3 
           MENUNR                    "Menu Number"      0      6      0      1    U16     LE      4 
             MODE            "Remote Control Mode"      0      6      4      1     U8     LE      4 
          STOPPED                    "Stop active"      0      7      0      1     U8     LE      1 
